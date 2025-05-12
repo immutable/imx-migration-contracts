@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0.
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.27;
 
 interface IVaultProofVerifier {
     error InvalidVaultProof(string message);
+
     function verify(uint256[] calldata proof) external returns (bool);
 }
