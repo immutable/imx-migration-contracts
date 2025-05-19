@@ -15,11 +15,10 @@ contract VaultEscapeProofVerifierTest is Test, FixVaultEscapes, FixtureLookupTab
 
     uint256[] private invalidProofBadKey;
     uint256[] private invalidProofBadPath;
-    uint256 private forkId;
 
     function setUp() public {
         string memory L1_RPC_URL = vm.envString("ETH_RPC_URL");
-        forkId = vm.createSelectFork(L1_RPC_URL);
+        vm.createSelectFork(L1_RPC_URL);
 
         verifier = new VaultEscapeProofVerifier(ETH_LOOKUP_TABLES);
 

@@ -6,7 +6,7 @@ import "@src/assets/AssetsRegistry.sol";
 abstract contract FixtureAssets {
     AssetsRegistry.AssetDetails[] public fixAssets = [
         AssetsRegistry.AssetDetails(
-            11031145247550016405485558736718082058950380916811206066346969693319998457900,
+            1103114524755001640548555873671808205895038091681120606634696969331999845790,
             7,
             address(0xfff) // IMX
         ),
