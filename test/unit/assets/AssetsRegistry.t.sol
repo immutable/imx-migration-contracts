@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import "../../../src/assets/AssetsRegistry.sol";
-import "../../../src/assets/AssetsRegistry.sol";
+import "@src/assets/AssetsRegistry.sol";
+import "@src/assets/AssetsRegistry.sol";
 import "forge-std/Test.sol";
 
 // Create a concrete implementation for testing
