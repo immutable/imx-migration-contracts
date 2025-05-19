@@ -43,11 +43,13 @@ contract VaultEscapeProcessor is IVaultEscapeProcessor, AssetsRegistry, VaultCla
      * @param assets The mapping of assets on Immutable X to zkEVM assets.
      */
     constructor(address _accountVerifier, address _vaultVerifier, uint256 _vaultRoot, AssetDetails[] memory assets) {
-        require(_vaultRoot != 0, InvalidVaultRoot(_vaultRoot, "Vault root cannot be zero"));
-        vaultRoot = _vaultRoot;
+        require(_accountVerifier != address(0), "Invalid account verifier address");
+        require(_vaultVerifier != address(0), "Invalid vault verifier address");
+        require(_vaultRoot != 0, "Invalid vault root");
 
         accountVerifier = IAccountProofVerifier(_accountVerifier);
         vaultVerifier = IVaultEscapeProofVerifier(_vaultVerifier);
+        vaultRoot = _vaultRoot;
 
         _registerAssets(assets);
     }
