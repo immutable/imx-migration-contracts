@@ -10,9 +10,10 @@ env:
 
 jobs:
   check:
+    env:
+      ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
     strategy:
       fail-fast: true
-
     name: Foundry project
     runs-on: ubuntu-latest
     steps:
