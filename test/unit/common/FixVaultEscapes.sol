@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import "../../../../src/proofs/vaults/IVaultEscapeProofVerifier.sol";
+import "@src/proofs/vaults/IVaultEscapeProofVerifier.sol";
 
-abstract contract FixtureEscapeProofs {
+abstract contract FixVaultEscapes {
     struct VaultWithProof {
         IVaultEscapeProofVerifier.Vault vault;
         uint256[] proof;
         uint256 root;
     }
 
-    VaultWithProof[] public validVaultWithProofs = [
+    VaultWithProof[] public fixVaultEscapes = [
         VaultWithProof(
             IVaultEscapeProofVerifier.Vault(
                 897100481008394733782452644011992784373649770322340781927555782189666726076,

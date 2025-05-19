@@ -36,7 +36,7 @@ abstract contract AssetsRegistry {
     error InvalidAssetDetails(string reason);
 
     // Placeholder for the native asset address on Immutable zkEVM. Address aligns with value used in zkEVM bridge.
-    address public constant NATIVE_IMX_ADDRESS = address(0x0000000000000000000000000000000000000FfF);
+    address public constant NATIVE_IMX_ADDRESS = address(0xfff);
 
     mapping(uint256 => AssetDetails) public registeredAssets;
 

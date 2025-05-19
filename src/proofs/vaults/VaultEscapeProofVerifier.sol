@@ -15,7 +15,7 @@ contract VaultEscapeProofVerifier is IVaultEscapeProofVerifier {
     // Note that those values are hardcoded in the assembly.
     uint256 internal constant N_TABLES = 63;
 
-    address[N_TABLES] lookupTables;
+    address[N_TABLES] public lookupTables;
 
     constructor(address[N_TABLES] memory tables) {
         lookupTables = tables;

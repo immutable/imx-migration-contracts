@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import "../proofs/accounts/IAccountProofVerifier.sol";
-import "../proofs/vaults/IVaultEscapeProofVerifier.sol";
+import "@src/proofs/accounts/IAccountProofVerifier.sol";
+import "@src/proofs/vaults/IVaultEscapeProofVerifier.sol";
 
 /**
  * @title IVaultEscapeProcessor
