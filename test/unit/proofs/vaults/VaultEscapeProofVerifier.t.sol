@@ -97,10 +97,10 @@ contract VaultEscapeProofVerifierTest is Test, FixtureEscapeProofs {
 
     function test_ExtractLeafAndRootFromProof() public view {
         (IVaultEscapeProofVerifier.Vault memory vault, uint256 root) =
-                            verifier.extractLeafAndRootFromProof(validVaultWithProofs[0].proof);
+            verifier.extractLeafAndRootFromProof(validVaultWithProofs[0].proof);
 
         IVaultEscapeProofVerifier.Vault memory expectedVault = validVaultWithProofs[0].vault;
-        uint expectedRoot = validVaultWithProofs[0].root;
+        uint256 expectedRoot = validVaultWithProofs[0].root;
 
         assertEq(vault.starkKey, expectedVault.starkKey);
         assertEq(vault.assetId, expectedVault.assetId);

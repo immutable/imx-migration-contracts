@@ -22,10 +22,10 @@ contract VaultEscapeProofVerifier is IVaultEscapeProofVerifier {
 
         assembly {
             if gt(lookupTables.slot, 0) {
-            // The address of the lookupTables must be 0.
-            // This is guaranteed by the ABI, as long as it is the first storage variable.
-            // This is an assumption in the implementation, and can be removed if
-            // the lookup table address is taken into account.
+                // The address of the lookupTables must be 0.
+                // This is guaranteed by the ABI, as long as it is the first storage variable.
+                // This is an assumption in the implementation, and can be removed if
+                // the lookup table address is taken into account.
                 revert(0, 0)
             }
         }
@@ -121,15 +121,15 @@ contract VaultEscapeProofVerifier is IVaultEscapeProofVerifier {
         uint256 rowSize = (2 * nHashes) * 0x20;
         uint256[] memory proof = escapeProof;
         assembly {
-        // Skip the length of the proof array.
+            // Skip the length of the proof array.
             proof := add(proof, 0x20)
 
             function raise_error(message, msg_len) {
-            // Solidity generates reverts with reason that look as follows:
-            // 1. 4 bytes with the constant 0x08c379a0 (== Keccak256(b'Error(string)')[:4]).
-            // 2. 32 bytes offset bytes (typically 0x20).
-            // 3. 32 bytes with the length of the revert reason.
-            // 4. Revert reason string.
+                // Solidity generates reverts with reason that look as follows:
+                // 1. 4 bytes with the constant 0x08c379a0 (== Keccak256(b'Error(string)')[:4]).
+                // 2. 32 bytes offset bytes (typically 0x20).
+                // 3. 32 bytes with the length of the revert reason.
+                // 4. Revert reason string.
 
                 mstore(0, 0x08c379a000000000000000000000000000000000000000000000000000000000)
                 mstore(0x4, 0x20)
@@ -140,141 +140,141 @@ contract VaultEscapeProofVerifier is IVaultEscapeProofVerifier {
 
             let starkKey := shr(4, mload(proof))
             let assetId :=
-            and(mload(add(proof, 0x1f)), 0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
+                and(mload(add(proof, 0x1f)), 0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
 
             let primeMinusOne := 0x800000000000011000000000000000000000000000000000000000000000000
             if or(gt(starkKey, primeMinusOne), gt(assetId, primeMinusOne)) {
                 raise_error("Bad starkKey or assetId.", 24)
             }
 
-        // hash(starkKey, assetId) is on the left of the second hash.
+            // hash(starkKey, assetId) is on the left of the second hash.
             let nodeSelectors := shl(1, leafIndex)
 
-        // Allocate EC points table with dimensions N_TABLES by N_HASHES.
+            // Allocate EC points table with dimensions N_TABLES by N_HASHES.
             let table := mload(0x40)
             let tableEnd :=
-            add(
-                table,
-                mul(
-                    rowSize,
-                // N_TABLES=
-                    63
+                add(
+                    table,
+                    mul(
+                        rowSize,
+                        // N_TABLES=
+                        63
+                    )
                 )
-            )
 
-        // for i = 0..N_TABLES-1, fill the i'th row in the table.
-            for {let i := 0} lt(i, 63) {i := add(i, 1)} {
+            // for i = 0..N_TABLES-1, fill the i'th row in the table.
+            for { let i := 0 } lt(i, 63) { i := add(i, 1) } {
                 if iszero(staticcall(gas(), sload(i), add(proof, i), rowSize, add(table, mul(i, rowSize)), rowSize)) {
                     returndatacopy(0, 0, returndatasize())
                     revert(0, returndatasize())
                 }
             }
 
-        // The following variables are allocated above PRIME to avoid the stack too deep error.
-        // Byte offset used to access the table and proof.
+            // The following variables are allocated above PRIME to avoid the stack too deep error.
+            // Byte offset used to access the table and proof.
             let offset := 0
             let ptr
             let aZ
 
             let PRIME := 0x800000000000011000000000000000000000000000000000000000000000001
 
-        // For k = 0..HASHES-1, Compute the k'th hash by summing the k'th column in table.
-        // Instead of k we use offset := k * sizeof(EC point).
-        // Additonally we use ptr := offset + j * rowSize to ge over the EC points we want
-        // to sum.
+            // For k = 0..HASHES-1, Compute the k'th hash by summing the k'th column in table.
+            // Instead of k we use offset := k * sizeof(EC point).
+            // Additonally we use ptr := offset + j * rowSize to ge over the EC points we want
+            // to sum.
             for {} lt(offset, rowSize) {} {
-            // Init (aX, aY, aZ) to the first value in the current column and sum over the
-            // column.
+                // Init (aX, aY, aZ) to the first value in the current column and sum over the
+                // column.
                 ptr := add(table, offset)
                 aZ := 1
                 let aX := mload(ptr)
                 let aY := mload(add(ptr, 0x20))
 
-                for {ptr := add(ptr, rowSize)} lt(ptr, tableEnd) {ptr := add(ptr, rowSize)} {
+                for { ptr := add(ptr, rowSize) } lt(ptr, tableEnd) { ptr := add(ptr, rowSize) } {
                     let bX := mload(ptr)
                     let bY := mload(add(ptr, 0x20))
 
-                // Set (aX, aY, aZ) to be the sum of the EC points (aX, aY, aZ) and (bX, bY, 1).
+                    // Set (aX, aY, aZ) to be the sum of the EC points (aX, aY, aZ) and (bX, bY, 1).
                     let minusAZ := sub(PRIME, aZ)
-                // Slope = sN/sD =  {(aY/aZ) - (bY/1)} / {(aX/aZ) - (bX/1)}.
-                // sN = aY - bY * aZ.
+                    // Slope = sN/sD =  {(aY/aZ) - (bY/1)} / {(aX/aZ) - (bX/1)}.
+                    // sN = aY - bY * aZ.
                     let sN := addmod(aY, mulmod(minusAZ, bY, PRIME), PRIME)
 
                     let minusAZBX := mulmod(minusAZ, bX, PRIME)
-                // sD = aX - bX * aZ.
+                    // sD = aX - bX * aZ.
                     let sD := addmod(aX, minusAZBX, PRIME)
 
                     let sSqrD := mulmod(sD, sD, PRIME)
 
-                // Compute the (affine) x coordinate of the result as xN/xD.
+                    // Compute the (affine) x coordinate of the result as xN/xD.
 
-                // (xN/xD) = ((sN)^2/(sD)^2) - (aX/aZ) - (bX/1).
-                // xN = (sN)^2 * aZ - aX * (sD)^2 - bX * (sD)^2 * aZ.
-                // = (sN)^2 * aZ + (sD^2) (bX * (-aZ) - aX).
+                    // (xN/xD) = ((sN)^2/(sD)^2) - (aX/aZ) - (bX/1).
+                    // xN = (sN)^2 * aZ - aX * (sD)^2 - bX * (sD)^2 * aZ.
+                    // = (sN)^2 * aZ + (sD^2) (bX * (-aZ) - aX).
                     let xN :=
-                    addmod(
-                        mulmod(mulmod(sN, sN, PRIME), aZ, PRIME),
-                        mulmod(sSqrD, add(minusAZBX, sub(PRIME, aX)), PRIME),
-                        PRIME
-                    )
+                        addmod(
+                            mulmod(mulmod(sN, sN, PRIME), aZ, PRIME),
+                            mulmod(sSqrD, add(minusAZBX, sub(PRIME, aX)), PRIME),
+                            PRIME
+                        )
 
-                // xD = (sD)^2 * aZ.
+                    // xD = (sD)^2 * aZ.
                     let xD := mulmod(sSqrD, aZ, PRIME)
 
-                // Compute (aX', aY', aZ') for the next iteration and assigning them to (aX, aY, aZ).
-                // (y/z) = (sN/sD) * {(bX/1) - (xN/xD)} - (bY/1).
-                // aZ' = sD*xD.
+                    // Compute (aX', aY', aZ') for the next iteration and assigning them to (aX, aY, aZ).
+                    // (y/z) = (sN/sD) * {(bX/1) - (xN/xD)} - (bY/1).
+                    // aZ' = sD*xD.
                     aZ := mulmod(sD, xD, PRIME)
-                // aY' = sN*(bX * xD - xN) - bY*z = -bY * z + sN * (-xN + xD*bX).
+                    // aY' = sN*(bX * xD - xN) - bY*z = -bY * z + sN * (-xN + xD*bX).
                     aY :=
-                    addmod(
-                        sub(PRIME, mulmod(bY, aZ, PRIME)),
-                        mulmod(sN, add(sub(PRIME, xN), mulmod(xD, bX, PRIME)), PRIME),
-                        PRIME
-                    )
+                        addmod(
+                            sub(PRIME, mulmod(bY, aZ, PRIME)),
+                            mulmod(sN, add(sub(PRIME, xN), mulmod(xD, bX, PRIME)), PRIME),
+                            PRIME
+                        )
 
-                // As the value of the affine x coordinate is xN/xD and z=sD*xD,
-                // the projective x coordinate is xN*sD.
+                    // As the value of the affine x coordinate is xN/xD and z=sD*xD,
+                    // the projective x coordinate is xN*sD.
                     aX := mulmod(xN, sD, PRIME)
                 }
 
-            // At this point proof[offset + 0x40] holds the next input to be hashed.
-            // This input is typically in the form left_node||right_node||0 and
-            // we need to extract the relevant node for the consistent check below.
-            // Note that the same logic is reused for the leaf computation and
-            // for the consistent check with the final root.
+                // At this point proof[offset + 0x40] holds the next input to be hashed.
+                // This input is typically in the form left_node||right_node||0 and
+                // we need to extract the relevant node for the consistent check below.
+                // Note that the same logic is reused for the leaf computation and
+                // for the consistent check with the final root.
                 offset := add(offset, 0x40)
 
-            // Init expected_hash to left_node.
-            // It will be replaced by right_node if necessary.
+                // Init expected_hash to left_node.
+                // It will be replaced by right_node if necessary.
                 let expected_hash := shr(4, mload(add(proof, offset)))
 
                 let other_node :=
-                and(
-                // right_node
-                    mload(add(proof, add(offset, 0x1f))),
-                    0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-                )
+                    and(
+                        // right_node
+                        mload(add(proof, add(offset, 0x1f))),
+                        0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+                    )
 
-            // Make sure both nodes are in the range [0, PRIME - 1].
+                // Make sure both nodes are in the range [0, PRIME - 1].
                 if or(gt(expected_hash, primeMinusOne), gt(other_node, primeMinusOne)) {
                     raise_error("Value out of range.", 19)
                 }
 
-                if and(nodeSelectors, 1) {expected_hash := other_node}
+                if and(nodeSelectors, 1) { expected_hash := other_node }
 
-            // Make sure the result is consistent with the Merkle path.
-            // I.e (aX/aZ) == expected_hash,
-            // where expected_hash = (nodeSelectors & 1) == 0 ? left_node : right_node.
-            // We also make sure aZ is not 0. I.e. during the summation we never tried
-            // to add two points with the same x coordinate.
-            // This is not strictly necessary because knowing how to trigger this condition
-            // implies knowing a non-trivial linear equation on the random points defining the
-            // hash function.
-                if iszero(aZ) {raise_error("aZ is zero.", 11)}
+                // Make sure the result is consistent with the Merkle path.
+                // I.e (aX/aZ) == expected_hash,
+                // where expected_hash = (nodeSelectors & 1) == 0 ? left_node : right_node.
+                // We also make sure aZ is not 0. I.e. during the summation we never tried
+                // to add two points with the same x coordinate.
+                // This is not strictly necessary because knowing how to trigger this condition
+                // implies knowing a non-trivial linear equation on the random points defining the
+                // hash function.
+                if iszero(aZ) { raise_error("aZ is zero.", 11) }
 
                 if sub(aX, mulmod(expected_hash, aZ, PRIME)) {
-                // !=0
+                    // !=0
                     raise_error("Bad Merkle path.", 16)
                 }
                 nodeSelectors := shr(1, nodeSelectors)
@@ -303,10 +303,10 @@ contract VaultEscapeProofVerifier is IVaultEscapeProofVerifier {
      * @inheritdoc IVaultEscapeProofVerifier
      */
     function extractLeafAndRootFromProof(uint256[] calldata escapeProof)
-    external
-    pure
-    override
-    returns (Vault memory, uint256)
+        external
+        pure
+        override
+        returns (Vault memory, uint256)
     {
         _validateProofStructure(escapeProof);
         Vault memory vault = _extractLeafFromProof(escapeProof);
@@ -318,18 +318,13 @@ contract VaultEscapeProofVerifier is IVaultEscapeProofVerifier {
         uint256 starkKey;
         uint256 assetId;
         uint256 quantizedAmount;
-        
+
         assembly {
             proof := add(proof, 0x20)
             starkKey := shr(4, mload(proof))
-            assetId := and(
-                mload(add(proof, 0x1f)),
-                0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-            )
-            quantizedAmount := and(
-                mload(add(proof, 0x5f)),
-                0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-            )
+            assetId := and(mload(add(proof, 0x1f)), 0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
+            quantizedAmount :=
+                and(mload(add(proof, 0x5f)), 0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
         }
         return Vault(starkKey, assetId, quantizedAmount);
     }
