@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {AxelarExecutable} from "../../../lib/axelar-gmp-sdk-solidity/contracts/executable/AxelarExecutable.sol";
+import {AxelarExecutable} from "@axelar-gmp-sdk-solidity/executable/AxelarExecutable.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import "@src/withdrawals/IVaultRootManager.sol";
 

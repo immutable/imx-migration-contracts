@@ -45,6 +45,12 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
     VaultWithdrawalProcessor private vaultWithdrawalProcessor;
     MockAccountVerifier private accountVerifier;
     MockVaultVerifier private vaultVerifier;
+    VaultWithdrawalProcessor.InitializationRoles private initRoles = VaultWithdrawalProcessor.InitializationRoles({
+        pauser: address(this),
+        unpauser: address(this),
+        disburser: address(this),
+        defaultAdmin: address(this)
+    });
 
     uint256[] private invalidProofBadKey;
     uint256[] private invalidProofBadPath;
@@ -58,7 +64,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
         vaultVerifier = new MockVaultVerifier(ETH_LOOKUP_TABLES);
 
         vaultWithdrawalProcessor =
-            new VaultWithdrawalProcessor(accountVerifier, vaultVerifier, address(this), fixAssets);
+            new VaultWithdrawalProcessor(accountVerifier, vaultVerifier, address(this), fixAssets, initRoles);
         vaultWithdrawalProcessor.setVaultRoot(fixVaultEscapes[0].root);
     }
 
@@ -77,23 +83,27 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
 
     function test_RevertIf_Constructor_ZeroVaultRootProvider() public {
         vm.expectRevert("Invalid vault root provider address");
-        new VaultWithdrawalProcessor(accountVerifier, vaultVerifier, address(0), fixAssets);
+        new VaultWithdrawalProcessor(accountVerifier, vaultVerifier, address(0), fixAssets, initRoles);
     }
 
     function test_RevertIf_Constructor_ZeroAccountVerifier() public {
         vm.expectRevert("Invalid account verifier address");
-        new VaultWithdrawalProcessor(IAccountProofVerifier(address(0)), vaultVerifier, address(this), fixAssets);
+        new VaultWithdrawalProcessor(
+            IAccountProofVerifier(address(0)), vaultVerifier, address(this), fixAssets, initRoles
+        );
     }
 
     function test_RevertIf_Constructor_ZeroVaultVerifier() public {
         vm.expectRevert("Invalid vault verifier address");
-        new VaultWithdrawalProcessor(accountVerifier, IVaultEscapeProofVerifier(address(0)), address(this), fixAssets);
+        new VaultWithdrawalProcessor(
+            accountVerifier, IVaultEscapeProofVerifier(address(0)), address(this), fixAssets, initRoles
+        );
     }
 
     function test_RevertIf_Constructor_EmptyAssets() public {
         vm.expectRevert(abi.encodeWithSelector(AssetsRegistry.InvalidAssetDetails.selector, "No assets to register"));
         new VaultWithdrawalProcessor(
-            accountVerifier, vaultVerifier, address(this), new AssetsRegistry.AssetDetails[](0)
+            accountVerifier, vaultVerifier, address(this), new AssetsRegistry.AssetDetails[](0), initRoles
         );
     }
 

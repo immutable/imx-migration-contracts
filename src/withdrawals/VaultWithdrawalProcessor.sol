@@ -10,6 +10,8 @@ import {IVaultEscapeProofVerifier} from "@src/verifiers/vaults/IVaultEscapeProof
 import {IVaultRootManager} from "./IVaultRootManager.sol";
 import {IVaultWithdrawalProcessor} from "./IVaultWithdrawalProcessor.sol";
 import {VaultWithdrawalsRegistry} from "./VaultWithdrawalsRegistry.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
  * @title VaultEscapeProcessor
@@ -22,7 +24,7 @@ import {VaultWithdrawalsRegistry} from "./VaultWithdrawalsRegistry.sol";
  * 5. Disburse the funds to the recipient.
  * FIXME:
  * - The vault root will be set by the bridge, through a cross-chain message from the L1 contract, not during construction
- * - Pausability and AccessControl should be added to the contract
+ * - Pauseability and AccessControl should be added to the contract
  * - Consider having a readiness state to prevent processing claims before the bridge is ready (has funds, has root, has assets)
  */
 contract VaultWithdrawalProcessor is
@@ -30,9 +32,15 @@ contract VaultWithdrawalProcessor is
     IVaultRootManager,
     AssetsRegistry,
     VaultWithdrawalsRegistry,
-    ReentrancyGuard
+    ReentrancyGuard,
+    Pausable,
+    AccessControl
 {
     using SafeERC20 for IERC20;
+
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
+    bytes32 public constant DISBURSER_ROLE = keccak256("DISBURSER_ROLE");
 
     IAccountProofVerifier public immutable accountProofVerifier;
     IVaultEscapeProofVerifier public immutable vaultProofVerifier;
@@ -42,6 +50,13 @@ contract VaultWithdrawalProcessor is
     event WithdrawalProcessed(
         uint256 indexed starkKey, uint256 indexed assetId, uint256 amount, address recipient, address assetAddress
     );
+
+    struct InitializationRoles {
+        address pauser;
+        address unpauser;
+        address disburser;
+        address defaultAdmin;
+    }
 
     /*
      * @notice constructor
@@ -54,7 +69,8 @@ contract VaultWithdrawalProcessor is
         IAccountProofVerifier _accountProofVerifier,
         IVaultEscapeProofVerifier _vaultProofVerifier,
         address _vaultRootProvider,
-        AssetDetails[] memory assets
+        AssetDetails[] memory assets,
+        InitializationRoles memory roles
     ) {
         require(address(_accountProofVerifier) != address(0), "Invalid account verifier address");
         require(address(_vaultProofVerifier) != address(0), "Invalid vault verifier address");
@@ -65,6 +81,11 @@ contract VaultWithdrawalProcessor is
         vaultRootProvider = _vaultRootProvider;
 
         _registerAssets(assets);
+
+        _grantRole(PAUSER_ROLE, roles.pauser);
+        _grantRole(UNPAUSER_ROLE, roles.unpauser);
+        _grantRole(DISBURSER_ROLE, roles.disburser);
+        _grantRole(DEFAULT_ADMIN_ROLE, roles.defaultAdmin);
     }
 
     /*
@@ -78,7 +99,7 @@ contract VaultWithdrawalProcessor is
         address ethAddress,
         bytes32[] calldata accountProof,
         uint256[] calldata vaultProof
-    ) external returns (bool) {
+    ) external onlyRole(DISBURSER_ROLE) whenNotPaused returns (bool) {
         (IVaultEscapeProofVerifier.Vault memory vault, uint256 root) =
             vaultProofVerifier.extractLeafAndRootFromProof(vaultProof);
 
@@ -125,7 +146,7 @@ contract VaultWithdrawalProcessor is
         return true;
     }
 
-    function setVaultRoot(uint256 _vaultRoot) external override {
+    function setVaultRoot(uint256 _vaultRoot) external override whenNotPaused {
         require(msg.sender == vaultRootProvider, "Unauthorized: Only vault root provider can set the root");
         require(_vaultRoot != 0, InvalidVaultRoot());
 
@@ -135,6 +156,14 @@ contract VaultWithdrawalProcessor is
         vaultRoot = _vaultRoot;
 
         emit VaultRootSet(_vaultRoot);
+    }
+
+    function pause() external onlyRole(PAUSER_ROLE) {
+        _pause();
+    }
+
+    function unpause() external onlyRole(UNPAUSER_ROLE) {
+        _unpause();
     }
 
     function _processFundTransfer(address recipient, address assetAddress, uint256 amountToTransfer)
