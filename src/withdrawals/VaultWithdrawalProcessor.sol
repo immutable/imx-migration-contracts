@@ -6,7 +6,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AssetsRegistry} from "@src/assets/AssetsRegistry.sol";
 import {IAccountProofVerifier} from "@src/verifiers/accounts/IAccountProofVerifier.sol";
-import {IVaultEscapeProofVerifier} from "@src/verifiers/vaults/IVaultEscapeProofVerifier.sol";
+import {IVaultProofVerifier} from "@src/verifiers/vaults/IVaultProofVerifier.sol";
 import {IVaultRootManager} from "./IVaultRootManager.sol";
 import {IVaultWithdrawalProcessor} from "./IVaultWithdrawalProcessor.sol";
 import {VaultWithdrawalsRegistry} from "./VaultWithdrawalsRegistry.sol";
@@ -43,7 +43,7 @@ contract VaultWithdrawalProcessor is
     bytes32 public constant DISBURSER_ROLE = keccak256("DISBURSER_ROLE");
 
     IAccountProofVerifier public immutable accountProofVerifier;
-    IVaultEscapeProofVerifier public immutable vaultProofVerifier;
+    IVaultProofVerifier public immutable vaultProofVerifier;
     address public immutable vaultRootProvider;
     uint256 public vaultRoot;
 
@@ -67,7 +67,7 @@ contract VaultWithdrawalProcessor is
      */
     constructor(
         IAccountProofVerifier _accountProofVerifier,
-        IVaultEscapeProofVerifier _vaultProofVerifier,
+        IVaultProofVerifier _vaultProofVerifier,
         address _vaultRootProvider,
         AssetDetails[] memory assets,
         InitializationRoles memory roles
@@ -100,21 +100,20 @@ contract VaultWithdrawalProcessor is
         bytes32[] calldata accountProof,
         uint256[] calldata vaultProof
     ) external onlyRole(DISBURSER_ROLE) whenNotPaused returns (bool) {
-        (IVaultEscapeProofVerifier.Vault memory vault, uint256 root) =
+        (IVaultProofVerifier.Vault memory vault, uint256 root) =
             vaultProofVerifier.extractLeafAndRootFromProof(vaultProof);
 
         // verify that stark key, asset id are really 252bit numbers cast as 256 bit numbers
         require(
             vault.starkKey != 0 && vault.starkKey >> 252 == 0,
-            IVaultEscapeProofVerifier.InvalidVaultProof("Invalid Stark key")
+            IVaultProofVerifier.InvalidVaultProof("Invalid Stark key")
         );
         require(
-            vault.assetId != 0 && vault.assetId >> 252 == 0,
-            IVaultEscapeProofVerifier.InvalidVaultProof("Invalid asset ID")
+            vault.assetId != 0 && vault.assetId >> 252 == 0, IVaultProofVerifier.InvalidVaultProof("Invalid asset ID")
         );
-        require(vault.quantizedAmount != 0, IVaultEscapeProofVerifier.InvalidVaultProof("Invalid quantized amount"));
+        require(vault.quantizedAmount != 0, IVaultProofVerifier.InvalidVaultProof("Invalid quantized amount"));
 
-        require(root == vaultRoot, IVaultEscapeProofVerifier.InvalidVaultProof("Invalid root"));
+        require(root == vaultRoot, IVaultProofVerifier.InvalidVaultProof("Invalid root"));
 
         address assetAddress = getAssetAddress(vault.assetId);
         require(assetAddress != address(0), AssetNotRegistered(vault.assetId));
@@ -132,8 +131,7 @@ contract VaultWithdrawalProcessor is
 
         // Verify the vault escape proof
         require(
-            vaultProofVerifier.verifyEscapeProof(vaultProof),
-            IVaultEscapeProofVerifier.InvalidVaultProof("Invalid vault proof")
+            vaultProofVerifier.verifyProof(vaultProof), IVaultProofVerifier.InvalidVaultProof("Invalid vault proof")
         );
 
         _registerProcessedClaim(vault.starkKey, vault.assetId);

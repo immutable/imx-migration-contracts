@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0.
 pragma solidity ^0.8.27;
 
-import {IVaultEscapeProofVerifier} from "./IVaultEscapeProofVerifier.sol";
+import {IVaultProofVerifier} from "./IVaultProofVerifier.sol";
 
 /*
   An VaultEscapeProofVerifier is a contract that verifies vault escape proofs, against a given vault root.
@@ -9,7 +9,7 @@ import {IVaultEscapeProofVerifier} from "./IVaultEscapeProofVerifier.sol";
   specific height and root.
   The leaf index can be deduced from vaultId, see :sol:mod:`Escapes` for details.
 */
-contract VaultEscapeProofVerifier is IVaultEscapeProofVerifier {
+contract VaultEscapeProofVerifier is IVaultProofVerifier {
     // Note that those values are hardcoded in the assembly.
     uint256 internal constant N_TABLES = 63;
 
@@ -29,7 +29,10 @@ contract VaultEscapeProofVerifier is IVaultEscapeProofVerifier {
         }
     }
 
-    /**
+    /*
+     * @notice verifyProof verifies the escape proof for a vault.
+     * @param proof The proof to be verified, which includes the vault information, the root and the Merkle proof. Specific structure depends on the implementation.
+     * @return bool Returns true if the proof is valid. The function might return false or revert with an `InvalidVaultProof` error if the proof is invalid.
      * Verifies that the contents of a vault belong to a certain Merkle commitment (root).
      *
      *   The Merkle commitment uses the Pedersen hash variation described next:
@@ -100,7 +103,7 @@ contract VaultEscapeProofVerifier is IVaultEscapeProofVerifier {
      *       hash((left_node_{i-1}, right_node_{i-1})) ==
      *         (leafIndex & (1<<i)) == 0 ? left_node_i : right_node_i.
      */
-    function verifyEscapeProof(uint256[] calldata escapeProof) external view virtual override returns (bool) {
+    function verifyProof(uint256[] calldata escapeProof) external view virtual override returns (bool) {
         _validateProofStructure(escapeProof);
 
         uint256 proofLength = escapeProof.length;
@@ -282,7 +285,7 @@ contract VaultEscapeProofVerifier is IVaultEscapeProofVerifier {
     }
 
     /**
-     * @inheritdoc IVaultEscapeProofVerifier
+     * @inheritdoc IVaultProofVerifier
      */
     function extractLeafFromProof(uint256[] calldata escapeProof) external pure override returns (Vault memory) {
         _validateProofStructure(escapeProof);
@@ -290,7 +293,7 @@ contract VaultEscapeProofVerifier is IVaultEscapeProofVerifier {
     }
 
     /**
-     * @inheritdoc IVaultEscapeProofVerifier
+     * @inheritdoc IVaultProofVerifier
      */
     function extractRootFromProof(uint256[] calldata escapeProof) external pure override returns (uint256) {
         _validateProofStructure(escapeProof);
@@ -298,7 +301,7 @@ contract VaultEscapeProofVerifier is IVaultEscapeProofVerifier {
     }
 
     /**
-     * @inheritdoc IVaultEscapeProofVerifier
+     * @inheritdoc IVaultProofVerifier
      */
     function extractLeafAndRootFromProof(uint256[] calldata escapeProof)
         external

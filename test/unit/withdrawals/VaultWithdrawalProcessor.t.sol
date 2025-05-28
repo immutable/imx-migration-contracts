@@ -35,7 +35,7 @@ contract MockVaultVerifier is VaultEscapeProofVerifier {
         shouldVerify = _shouldVerify;
     }
 
-    function verifyEscapeProof(uint256[] calldata) external view override returns (bool) {
+    function verifyProof(uint256[] calldata) external view override returns (bool) {
         return shouldVerify;
     }
 }
@@ -96,7 +96,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
     function test_RevertIf_Constructor_ZeroVaultVerifier() public {
         vm.expectRevert("Invalid vault verifier address");
         new VaultWithdrawalProcessor(
-            accountVerifier, IVaultEscapeProofVerifier(address(0)), address(this), fixAssets, initRoles
+            accountVerifier, IVaultProofVerifier(address(0)), address(this), fixAssets, initRoles
         );
     }
 
@@ -175,9 +175,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
         accountVerifier.setShouldVerify(true);
         vaultVerifier.setShouldVerify(false);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(IVaultEscapeProofVerifier.InvalidVaultProof.selector, "Invalid vault proof")
-        );
+        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid vault proof"));
         vaultWithdrawalProcessor.verifyProofAndDisburseFunds(recipient, accountProof, fixVaultEscapes[0].proof);
     }
 

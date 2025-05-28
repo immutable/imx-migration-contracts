@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import "@src/verifiers/vaults/IVaultEscapeProofVerifier.sol";
+import "@src/verifiers/vaults/IVaultProofVerifier.sol";
 
 abstract contract FixVaultEscapes {
     struct VaultWithProof {
-        IVaultEscapeProofVerifier.Vault vault;
+        IVaultProofVerifier.Vault vault;
         uint256[] proof;
         uint256 root;
     }
 
     VaultWithProof[] public fixVaultEscapes = [
         VaultWithProof(
-            IVaultEscapeProofVerifier.Vault(
+            IVaultProofVerifier.Vault(
                 897100481008394733782452644011992784373649770322340781927555782189666726076,
                 1103114524755001640548555873671808205895038091681120606634696969331999845790,
                 1
@@ -92,7 +92,7 @@ abstract contract FixVaultEscapes {
             0x2a3f12f3f7331a930309946af7ee6f08a45bffc915d01851cda18bfcc469802
         ),
         VaultWithProof(
-            IVaultEscapeProofVerifier.Vault(
+            IVaultProofVerifier.Vault(
                 1195010186929785942923605093460428302341725237654854587083682185073354561245,
                 1809555916748850720871131658289807229585878923624860491957961382177209587662,
                 1
@@ -172,7 +172,7 @@ abstract contract FixVaultEscapes {
             0x2a3f12f3f7331a930309946af7ee6f08a45bffc915d01851cda18bfcc469802
         ),
         VaultWithProof(
-            IVaultEscapeProofVerifier.Vault(
+            IVaultProofVerifier.Vault(
                 1195010186929785942923605093460428302341725237654854587083682185073354561245,
                 1810904411670354579114094206528523777019223281748314185673123994510590793656,
                 1

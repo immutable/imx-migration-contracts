@@ -2,7 +2,7 @@
 pragma solidity ^0.8.27;
 
 import "@src/verifiers/accounts/IAccountProofVerifier.sol";
-import "@src/verifiers/vaults/IVaultEscapeProofVerifier.sol";
+import "@src/verifiers/vaults/IVaultProofVerifier.sol";
 
 /**
  * @title IVaultEscapeProcessor
