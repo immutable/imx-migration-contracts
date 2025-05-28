@@ -5,7 +5,6 @@ import "@src/assets/AssetsRegistry.sol";
 import "@src/assets/AssetsRegistry.sol";
 import "forge-std/Test.sol";
 
-// Create a concrete implementation for testing
 contract TestAssetsRegistry is AssetsRegistry {
     function registerAsset(AssetsRegistry.AssetDetails memory assetInfo) public {
         _registerAsset(assetInfo);

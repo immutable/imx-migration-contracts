@@ -4,11 +4,11 @@ pragma solidity ^0.8.27;
 import {AssetsRegistry} from "../assets/AssetsRegistry.sol";
 import {IAccountProofVerifier} from "../proofs/accounts/IAccountProofVerifier.sol";
 import {IVaultEscapeProofVerifier} from "../proofs/vaults/IVaultEscapeProofVerifier.sol";
-import {VaultClaimsRegistry} from "./VaultClaimsRegistry.sol";
+import {VaultWithdrawalsRegistry} from "./VaultWithdrawalsRegistry.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IVaultEscapeProcessor} from "./IVaultEscapeProcessor.sol";
+import "./IVaultWithdrawalProcessor.sol";
 
 /**
  * @title VaultEscapeProcessor
@@ -24,12 +24,18 @@ import {IVaultEscapeProcessor} from "./IVaultEscapeProcessor.sol";
  * - Pausability and AccessControl should be added to the contract
  * - Consider having a readiness state to prevent processing claims before the bridge is ready (has funds, has root, has assets)
  */
-contract VaultEscapeProcessor is IVaultEscapeProcessor, AssetsRegistry, VaultClaimsRegistry, ReentrancyGuard {
+contract VaultWithdrawalProcessor is
+    IVaultWithdrawalProcessor,
+    AssetsRegistry,
+    VaultWithdrawalsRegistry,
+    ReentrancyGuard
+{
     using SafeERC20 for IERC20;
 
-    IAccountProofVerifier public immutable accountVerifier;
-    IVaultEscapeProofVerifier public immutable vaultVerifier;
-    uint256 public immutable vaultRoot;
+    IAccountProofVerifier public immutable accountProofVerifier;
+    IVaultEscapeProofVerifier public immutable vaultProofVerifier;
+    address public immutable vaultRootProvider;
+    uint256 public vaultRoot;
 
     event WithdrawalProcessed(
         uint256 indexed starkKey, uint256 indexed assetId, uint256 amount, address recipient, address assetAddress
@@ -42,14 +48,19 @@ contract VaultEscapeProcessor is IVaultEscapeProcessor, AssetsRegistry, VaultCla
      * @param _vaultRoot The root of the vault to verify proofs against.
      * @param assets The mapping of assets on Immutable X to zkEVM assets.
      */
-    constructor(address _accountVerifier, address _vaultVerifier, uint256 _vaultRoot, AssetDetails[] memory assets) {
-        require(_accountVerifier != address(0), "Invalid account verifier address");
-        require(_vaultVerifier != address(0), "Invalid vault verifier address");
-        require(_vaultRoot != 0, "Invalid vault root");
+    constructor(
+        IAccountProofVerifier _accountProofVerifier,
+        IVaultEscapeProofVerifier _vaultProofVerifier,
+        address _vaultRootProvider,
+        AssetDetails[] memory assets
+    ) {
+        require(address(_accountProofVerifier) != address(0), "Invalid account verifier address");
+        require(address(_vaultProofVerifier) != address(0), "Invalid vault verifier address");
+        require(_vaultRootProvider != address(0), "Invalid vault root provider address");
 
-        accountVerifier = IAccountProofVerifier(_accountVerifier);
-        vaultVerifier = IVaultEscapeProofVerifier(_vaultVerifier);
-        vaultRoot = _vaultRoot;
+        accountProofVerifier = _accountProofVerifier;
+        vaultProofVerifier = _vaultProofVerifier;
+        vaultRootProvider = _vaultRootProvider;
 
         _registerAssets(assets);
     }
@@ -67,7 +78,7 @@ contract VaultEscapeProcessor is IVaultEscapeProcessor, AssetsRegistry, VaultCla
         uint256[] calldata vaultProof
     ) external returns (bool) {
         (IVaultEscapeProofVerifier.Vault memory vault, uint256 root) =
-            vaultVerifier.extractLeafAndRootFromProof(vaultProof);
+            vaultProofVerifier.extractLeafAndRootFromProof(vaultProof);
 
         // verify that stark key, asset id are really 252bit numbers cast as 256 bit numbers
         require(vault.starkKey != 0 && vault.starkKey >> 252 == 0, InvalidVaultProof("Invalid Stark key"));
@@ -86,12 +97,12 @@ contract VaultEscapeProcessor is IVaultEscapeProcessor, AssetsRegistry, VaultCla
         );
         // Verify the stark key and eth address association proof
         require(
-            accountVerifier.verify(vault.starkKey, ethAddress, accountProof),
+            accountProofVerifier.verify(vault.starkKey, ethAddress, accountProof),
             InvalidAccountProof(vault.starkKey, ethAddress)
         );
 
         // Verify the vault escape proof
-        require(vaultVerifier.verifyEscapeProof(vaultProof), InvalidVaultProof("Invalid vault proof"));
+        require(vaultProofVerifier.verifyEscapeProof(vaultProof), InvalidVaultProof("Invalid vault proof"));
 
         _registerProcessedClaim(vault.starkKey, vault.assetId);
 
@@ -101,6 +112,13 @@ contract VaultEscapeProcessor is IVaultEscapeProcessor, AssetsRegistry, VaultCla
         _processFundTransfer(ethAddress, assetAddress, amountToTransfer);
         emit WithdrawalProcessed(vault.starkKey, vault.assetId, amountToTransfer, ethAddress, assetAddress);
         return true;
+    }
+
+    function setVaultRoot(uint256 _vaultRoot) external {
+        require(msg.sender == vaultRootProvider, "Unauthorized: Only vault root provider can set the root");
+        require(_vaultRoot != 0, "Invalid vault root");
+        require(vaultRoot == 0, "Vault root already set");
+        vaultRoot = _vaultRoot;
     }
 
     function _processFundTransfer(address recipient, address assetAddress, uint256 amountToTransfer)

@@ -6,7 +6,7 @@ pragma solidity ^0.8.27;
  * @notice This contract is used to register processed vault escape claims and associated fund disbursals.
  * It is used to prevent double disbursals of funds.
  */
-abstract contract VaultClaimsRegistry {
+abstract contract VaultWithdrawalsRegistry {
     // @notice ClaimProcessed is an event emitted when a claim is processed.
     // @param starkKey The Stark key of the user.
     // @param assetId The identifier of the asset in the vault.

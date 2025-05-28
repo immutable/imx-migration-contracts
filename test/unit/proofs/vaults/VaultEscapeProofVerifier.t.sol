@@ -5,7 +5,7 @@ import "@src/proofs/vaults/IVaultEscapeProofVerifier.sol";
 import "@src/proofs/vaults/IVaultEscapeProofVerifier.sol";
 import "@src/proofs/vaults/IVaultEscapeProofVerifier.sol";
 import "@src/proofs/vaults/VaultEscapeProofVerifier.sol";
-import "@src/withdrawals/IVaultEscapeProcessor.sol";
+import "@src/withdrawals/IVaultWithdrawalProcessor.sol";
 import "forge-std/Test.sol";
 import {FixVaultEscapes} from "../../common/FixVaultEscapes.sol";
 import {FixtureLookupTables} from "../../common/FixtureLookupTables.sol";

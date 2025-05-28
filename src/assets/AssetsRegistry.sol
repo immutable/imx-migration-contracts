@@ -38,7 +38,7 @@ abstract contract AssetsRegistry {
     // Placeholder for the native asset address on Immutable zkEVM. Address aligns with value used in zkEVM bridge.
     address public constant NATIVE_IMX_ADDRESS = address(0xfff);
 
-    mapping(uint256 => AssetDetails) public registeredAssets;
+    mapping(uint256 assetIdOnIMX => AssetDetails) public assets;
 
     /**
      * @dev Checks if an asset is registered.
@@ -46,23 +46,23 @@ abstract contract AssetsRegistry {
      * @return True if the asset is registered, false otherwise.
      */
     function isRegistered(uint256 assetId) public view returns (bool) {
-        return registeredAssets[assetId].assetAddress != address(0);
+        return assets[assetId].assetAddress != address(0);
     }
 
     function isNativeAsset(uint256 assetId) public view returns (bool) {
-        return registeredAssets[assetId].assetAddress == NATIVE_IMX_ADDRESS;
+        return assets[assetId].assetAddress == NATIVE_IMX_ADDRESS;
     }
 
     function getAssetAddress(uint256 assetId) public view returns (address) {
-        return registeredAssets[assetId].assetAddress;
+        return assets[assetId].assetAddress;
     }
 
     function getAssetQuantum(uint256 assetId) public view returns (uint256) {
-        return registeredAssets[assetId].quantum;
+        return assets[assetId].quantum;
     }
 
     function getAssetDetails(uint256 assetId) public view returns (AssetDetails memory) {
-        return registeredAssets[assetId];
+        return assets[assetId];
     }
 
     function _registerAsset(AssetDetails memory assetDetails) internal {
@@ -72,7 +72,7 @@ abstract contract AssetsRegistry {
         require(!isRegistered(assetDetails.assetId), InvalidAssetDetails("Asset already registered"));
         // TODO: Add further boundary checks to the assetId and quantum
 
-        registeredAssets[assetDetails.assetId] = assetDetails;
+        assets[assetDetails.assetId] = assetDetails;
         emit AssetRegistered(assetDetails.assetId, assetDetails.quantum, assetDetails.assetAddress);
     }
 

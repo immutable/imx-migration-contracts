@@ -9,7 +9,7 @@ import "@src/proofs/vaults/IVaultEscapeProofVerifier.sol";
  * @notice This interface defines the functions and events for processing vault escape claims and disbursing funds.
  * It includes functions for verifying account proofs, processing claims, and handling errors.
  */
-interface IVaultEscapeProcessor {
+interface IVaultWithdrawalProcessor {
     // @notice InvalidVaultRoot is an error thrown when the provided vault root is invalid.
     // @param root The root of the vault.
     // @param reason The reason why the vault root is invalid.
