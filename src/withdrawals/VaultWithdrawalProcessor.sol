@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {AssetsRegistry} from "../assets/AssetsRegistry.sol";
-import {IAccountProofVerifier} from "../proofs/accounts/IAccountProofVerifier.sol";
-import {IVaultEscapeProofVerifier} from "../proofs/vaults/IVaultEscapeProofVerifier.sol";
-import {VaultWithdrawalsRegistry} from "./VaultWithdrawalsRegistry.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./IVaultWithdrawalProcessor.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {AssetsRegistry} from "@src/assets/AssetsRegistry.sol";
+import {IAccountProofVerifier} from "@src/verifiers/accounts/IAccountProofVerifier.sol";
+import {IVaultEscapeProofVerifier} from "@src/verifiers/vaults/IVaultEscapeProofVerifier.sol";
+import {IVaultRootManager} from "./IVaultRootManager.sol";
+import {IVaultWithdrawalProcessor} from "./IVaultWithdrawalProcessor.sol";
+import {VaultWithdrawalsRegistry} from "./VaultWithdrawalsRegistry.sol";
 
 /**
  * @title VaultEscapeProcessor
@@ -26,6 +27,7 @@ import "./IVaultWithdrawalProcessor.sol";
  */
 contract VaultWithdrawalProcessor is
     IVaultWithdrawalProcessor,
+    IVaultRootManager,
     AssetsRegistry,
     VaultWithdrawalsRegistry,
     ReentrancyGuard
@@ -81,11 +83,17 @@ contract VaultWithdrawalProcessor is
             vaultProofVerifier.extractLeafAndRootFromProof(vaultProof);
 
         // verify that stark key, asset id are really 252bit numbers cast as 256 bit numbers
-        require(vault.starkKey != 0 && vault.starkKey >> 252 == 0, InvalidVaultProof("Invalid Stark key"));
-        require(vault.assetId != 0 && vault.assetId >> 252 == 0, InvalidVaultProof("Invalid asset ID"));
-        require(vault.quantizedAmount != 0, InvalidVaultProof("Invalid quantized amount"));
+        require(
+            vault.starkKey != 0 && vault.starkKey >> 252 == 0,
+            IVaultEscapeProofVerifier.InvalidVaultProof("Invalid Stark key")
+        );
+        require(
+            vault.assetId != 0 && vault.assetId >> 252 == 0,
+            IVaultEscapeProofVerifier.InvalidVaultProof("Invalid asset ID")
+        );
+        require(vault.quantizedAmount != 0, IVaultEscapeProofVerifier.InvalidVaultProof("Invalid quantized amount"));
 
-        require(root == vaultRoot, InvalidVaultProof("Invalid root"));
+        require(root == vaultRoot, IVaultEscapeProofVerifier.InvalidVaultProof("Invalid root"));
 
         address assetAddress = getAssetAddress(vault.assetId);
         require(assetAddress != address(0), AssetNotRegistered(vault.assetId));
@@ -98,11 +106,14 @@ contract VaultWithdrawalProcessor is
         // Verify the stark key and eth address association proof
         require(
             accountProofVerifier.verify(vault.starkKey, ethAddress, accountProof),
-            InvalidAccountProof(vault.starkKey, ethAddress)
+            IAccountProofVerifier.InvalidAccountProof(vault.starkKey, ethAddress)
         );
 
         // Verify the vault escape proof
-        require(vaultProofVerifier.verifyEscapeProof(vaultProof), InvalidVaultProof("Invalid vault proof"));
+        require(
+            vaultProofVerifier.verifyEscapeProof(vaultProof),
+            IVaultEscapeProofVerifier.InvalidVaultProof("Invalid vault proof")
+        );
 
         _registerProcessedClaim(vault.starkKey, vault.assetId);
 
@@ -114,11 +125,16 @@ contract VaultWithdrawalProcessor is
         return true;
     }
 
-    function setVaultRoot(uint256 _vaultRoot) external {
+    function setVaultRoot(uint256 _vaultRoot) external override {
         require(msg.sender == vaultRootProvider, "Unauthorized: Only vault root provider can set the root");
-        require(_vaultRoot != 0, "Invalid vault root");
-        require(vaultRoot == 0, "Vault root already set");
+        require(_vaultRoot != 0, InvalidVaultRoot());
+
+        // Vault root can only be set once
+        require(vaultRoot == 0, VaultRootAlreadySet());
+
         vaultRoot = _vaultRoot;
+
+        emit VaultRootSet(_vaultRoot);
     }
 
     function _processFundTransfer(address recipient, address assetAddress, uint256 amountToTransfer)
@@ -128,17 +144,17 @@ contract VaultWithdrawalProcessor is
         if (assetAddress == NATIVE_IMX_ADDRESS) {
             uint256 contractBalance = address(this).balance;
             if (contractBalance < amountToTransfer) {
-                revert InsufficientContractBalance(assetAddress, amountToTransfer, contractBalance);
+                revert InsufficientBalance(assetAddress, amountToTransfer, contractBalance);
             }
             (bool sent,) = recipient.call{value: amountToTransfer}("");
             if (!sent) {
-                revert TransferFailed(recipient, assetAddress, amountToTransfer);
+                revert FundTransferFailed(recipient, assetAddress, amountToTransfer);
             }
         } else {
             IERC20 token = IERC20(assetAddress);
             uint256 contractBalance = token.balanceOf(address(this));
             if (contractBalance < amountToTransfer) {
-                revert InsufficientContractBalance(assetAddress, amountToTransfer, contractBalance);
+                revert InsufficientBalance(assetAddress, amountToTransfer, contractBalance);
             }
             token.safeTransfer(recipient, amountToTransfer);
         }

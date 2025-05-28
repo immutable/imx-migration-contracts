@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import "@src/proofs/vaults/IVaultEscapeProofVerifier.sol";
-import "@src/proofs/vaults/IVaultEscapeProofVerifier.sol";
-import "@src/proofs/vaults/IVaultEscapeProofVerifier.sol";
-import "@src/proofs/vaults/VaultEscapeProofVerifier.sol";
+import "@src/verifiers/vaults/IVaultEscapeProofVerifier.sol";
+import "@src/verifiers/vaults/IVaultEscapeProofVerifier.sol";
+import "@src/verifiers/vaults/IVaultEscapeProofVerifier.sol";
+import "@src/verifiers/vaults/VaultEscapeProofVerifier.sol";
 import "@src/withdrawals/IVaultWithdrawalProcessor.sol";
 import "forge-std/Test.sol";
 import {FixVaultEscapes} from "../../common/FixVaultEscapes.sol";

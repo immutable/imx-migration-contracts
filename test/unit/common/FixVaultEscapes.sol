@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import "@src/proofs/vaults/IVaultEscapeProofVerifier.sol";
+import "@src/verifiers/vaults/IVaultEscapeProofVerifier.sol";
 
 abstract contract FixVaultEscapes {
     struct VaultWithProof {

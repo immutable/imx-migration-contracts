@@ -6,8 +6,8 @@ import "@src/assets/AssetsRegistry.sol";
 import "@src/assets/AssetsRegistry.sol";
 import "@src/assets/AssetsRegistry.sol";
 import "@src/assets/AssetsRegistry.sol";
-import "@src/proofs/accounts/IAccountProofVerifier.sol";
-import "@src/proofs/vaults/VaultEscapeProofVerifier.sol";
+import "@src/verifiers/accounts/IAccountProofVerifier.sol";
+import "@src/verifiers/vaults/VaultEscapeProofVerifier.sol";
 import "@src/withdrawals/IVaultWithdrawalProcessor.sol";
 import "@src/withdrawals/VaultWithdrawalProcessor.sol";
 import "../common/FixVaultEscapes.sol";
@@ -154,7 +154,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                IVaultWithdrawalProcessor.InvalidAccountProof.selector, fixVaultEscapes[0].vault.starkKey, recipient
+                IAccountProofVerifier.InvalidAccountProof.selector, fixVaultEscapes[0].vault.starkKey, recipient
             )
         );
         vaultWithdrawalProcessor.verifyProofAndDisburseFunds(recipient, accountProof, fixVaultEscapes[0].proof);
@@ -166,7 +166,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
         vaultVerifier.setShouldVerify(false);
 
         vm.expectRevert(
-            abi.encodeWithSelector(IVaultWithdrawalProcessor.InvalidVaultProof.selector, "Invalid vault proof")
+            abi.encodeWithSelector(IVaultEscapeProofVerifier.InvalidVaultProof.selector, "Invalid vault proof")
         );
         vaultWithdrawalProcessor.verifyProofAndDisburseFunds(recipient, accountProof, fixVaultEscapes[0].proof);
     }
@@ -215,7 +215,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                IVaultWithdrawalProcessor.InsufficientContractBalance.selector,
+                IVaultWithdrawalProcessor.InsufficientBalance.selector,
                 vaultWithdrawalProcessor.NATIVE_IMX_ADDRESS(),
                 expectedAmount,
                 0
