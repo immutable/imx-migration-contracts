@@ -14,6 +14,7 @@ contract VaultEscapeProofVerifier is IVaultProofVerifier {
     uint256 internal constant N_TABLES = 63;
 
     address[N_TABLES] public lookupTables;
+    uint256 internal constant K_MODULUS = 0x800000000000011000000000000000000000000000000000000000000000001;
 
     constructor(address[N_TABLES] memory tables) {
         lookupTables = tables;
@@ -327,6 +328,10 @@ contract VaultEscapeProofVerifier is IVaultProofVerifier {
             quantizedAmount :=
                 and(mload(add(proof, 0x5f)), 0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
         }
+
+        require(starkKey != 0 && starkKey >> 252 == 0 && starkKey < K_MODULUS, InvalidVaultProof("Invalid Stark key."));
+        require(assetId != 0 && assetId >> 252 == 0 && assetId < K_MODULUS, InvalidVaultProof("Invalid asset ID."));
+
         return Vault(starkKey, assetId, quantizedAmount);
     }
 

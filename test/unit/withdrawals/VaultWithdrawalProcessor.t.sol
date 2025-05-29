@@ -108,7 +108,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
     }
 
     function test_ProcessValidEscapeClaim_IMX() public {
-        bytes32[] memory accountProof = new bytes32[](0);
+        bytes32[] memory accountProof = new bytes32[](2);
         accountVerifier.setShouldVerify(true);
         vaultVerifier.setShouldVerify(true);
 
@@ -122,7 +122,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
 
         assertTrue(success);
         assertTrue(
-            vaultWithdrawalProcessor.isClaimProcessed(
+            vaultWithdrawalProcessor.isWithdrawalProcessed(
                 fixVaultEscapes[0].vault.starkKey, fixVaultEscapes[0].vault.assetId
             )
         );
@@ -130,7 +130,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
     }
 
     function test_ProcessValidEscapeClaim_ERC20() public {
-        bytes32[] memory accountProof = new bytes32[](0);
+        bytes32[] memory accountProof = new bytes32[](1);
         accountVerifier.setShouldVerify(true);
         vaultVerifier.setShouldVerify(true);
 
@@ -150,7 +150,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
 
         assertTrue(success);
         assertTrue(
-            vaultWithdrawalProcessor.isClaimProcessed(
+            vaultWithdrawalProcessor.isWithdrawalProcessed(
                 testVaultWithProof.vault.starkKey, testVaultWithProof.vault.assetId
             )
         );
@@ -158,20 +158,18 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
     }
 
     function test_RevertIf_InvalidAccountProof() public {
-        bytes32[] memory accountProof = new bytes32[](0);
+        bytes32[] memory accountProof = new bytes32[](2);
         accountVerifier.setShouldVerify(false);
         vaultVerifier.setShouldVerify(true);
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IAccountProofVerifier.InvalidAccountProof.selector, fixVaultEscapes[0].vault.starkKey, recipient
-            )
+            abi.encodeWithSelector(IAccountProofVerifier.InvalidAccountProof.selector, "Proof verification failed")
         );
         vaultWithdrawalProcessor.verifyProofAndDisburseFunds(recipient, accountProof, fixVaultEscapes[0].proof);
     }
 
     function test_RevertIf_InvalidVaultProof() public {
-        bytes32[] memory accountProof = new bytes32[](0);
+        bytes32[] memory accountProof = new bytes32[](2);
         accountVerifier.setShouldVerify(true);
         vaultVerifier.setShouldVerify(false);
 
@@ -180,7 +178,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
     }
 
     function test_RevertIf_ClaimAlreadyProcessed() public {
-        bytes32[] memory accountProof = new bytes32[](0);
+        bytes32[] memory accountProof = new bytes32[](2);
         accountVerifier.setShouldVerify(true);
         vaultVerifier.setShouldVerify(true);
 
@@ -199,7 +197,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
     }
 
     function test_RevertIf_UnregisteredAsset() public {
-        bytes32[] memory accountProof = new bytes32[](0);
+        bytes32[] memory accountProof = new bytes32[](2);
         accountVerifier.setShouldVerify(true);
         vaultVerifier.setShouldVerify(true);
 
@@ -214,7 +212,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
     }
 
     function test_RevertIf_InsufficientBalance() public {
-        bytes32[] memory accountProof = new bytes32[](0);
+        bytes32[] memory accountProof = new bytes32[](2);
         accountVerifier.setShouldVerify(true);
         vaultVerifier.setShouldVerify(true);
 

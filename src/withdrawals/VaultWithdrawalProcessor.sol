@@ -7,9 +7,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AssetsRegistry} from "@src/assets/AssetsRegistry.sol";
 import {IAccountProofVerifier} from "@src/verifiers/accounts/IAccountProofVerifier.sol";
 import {IVaultProofVerifier} from "@src/verifiers/vaults/IVaultProofVerifier.sol";
-import {IVaultRootManager} from "./IVaultRootManager.sol";
+import {IVaultRootStore} from "./IVaultRootStore.sol";
 import {IVaultWithdrawalProcessor} from "./IVaultWithdrawalProcessor.sol";
-import {VaultWithdrawalsRegistry} from "./VaultWithdrawalsRegistry.sol";
+import {ProcessedWithdrawalsRegistry} from "./ProcessedWithdrawalsRegistry.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
@@ -29,9 +29,9 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
  */
 contract VaultWithdrawalProcessor is
     IVaultWithdrawalProcessor,
-    IVaultRootManager,
+    IVaultRootStore,
     AssetsRegistry,
-    VaultWithdrawalsRegistry,
+    ProcessedWithdrawalsRegistry,
     ReentrancyGuard,
     Pausable,
     AccessControl
@@ -100,33 +100,33 @@ contract VaultWithdrawalProcessor is
         bytes32[] calldata accountProof,
         uint256[] calldata vaultProof
     ) external onlyRole(DISBURSER_ROLE) whenNotPaused returns (bool) {
+        require(ethAddress != address(0), "Address cannot be zero");
+        require(accountProof.length > 0, IAccountProofVerifier.InvalidAccountProof("Account proof is empty"));
+        require(vaultProof.length > 0, IVaultProofVerifier.InvalidVaultProof("Vault proof is empty"));
+
         (IVaultProofVerifier.Vault memory vault, uint256 root) =
             vaultProofVerifier.extractLeafAndRootFromProof(vaultProof);
 
-        // verify that stark key, asset id are really 252bit numbers cast as 256 bit numbers
-        require(
-            vault.starkKey != 0 && vault.starkKey >> 252 == 0,
-            IVaultProofVerifier.InvalidVaultProof("Invalid Stark key")
-        );
-        require(
-            vault.assetId != 0 && vault.assetId >> 252 == 0, IVaultProofVerifier.InvalidVaultProof("Invalid asset ID")
-        );
-        require(vault.quantizedAmount != 0, IVaultProofVerifier.InvalidVaultProof("Invalid quantized amount"));
-
+        // the submitted proof is not a proof against the known vault root
         require(root == vaultRoot, IVaultProofVerifier.InvalidVaultProof("Invalid root"));
 
+        // disbursals are only processed for vaults with some balance
+        require(vault.quantizedAmount != 0, IVaultProofVerifier.InvalidVaultProof("Invalid quantized amount"));
+
+        // only disbursals for known assets should be processed
         address assetAddress = getAssetAddress(vault.assetId);
         require(assetAddress != address(0), AssetNotRegistered(vault.assetId));
 
-        // Ensure that the vault funds are not already claimed
+        // Ensure that this vault hasn't already been withdrawn/processed.
         require(
-            !isClaimProcessed(vault.starkKey, vault.assetId),
+            !isWithdrawalProcessed(vault.starkKey, vault.assetId),
             FundAlreadyDisbursedForVault(vault.starkKey, vault.assetId)
         );
+
         // Verify the stark key and eth address association proof
         require(
             accountProofVerifier.verify(vault.starkKey, ethAddress, accountProof),
-            IAccountProofVerifier.InvalidAccountProof(vault.starkKey, ethAddress)
+            IAccountProofVerifier.InvalidAccountProof("Proof verification failed")
         );
 
         // Verify the vault escape proof
@@ -134,7 +134,7 @@ contract VaultWithdrawalProcessor is
             vaultProofVerifier.verifyProof(vaultProof), IVaultProofVerifier.InvalidVaultProof("Invalid vault proof")
         );
 
-        _registerProcessedClaim(vault.starkKey, vault.assetId);
+        _registerProcessedWithdrawal(vault.starkKey, vault.assetId);
 
         // de-quantize the amount
         uint256 amountToTransfer = vault.quantizedAmount * getAssetQuantum(vault.assetId);
@@ -160,7 +160,7 @@ contract VaultWithdrawalProcessor is
         _pause();
     }
 
-    function unpause() external onlyRole(UNPAUSER_ROLE) {
+    function unpause() external onlyRole(UNPAUSER_ROLE) whenPaused {
         _unpause();
     }
 

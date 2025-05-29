@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import {AxelarExecutable} from "@axelar-gmp-sdk-solidity/executable/AxelarExecutable.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import "@src/withdrawals/IVaultRootManager.sol";
+import "@src/withdrawals/IVaultRootStore.sol";
 
 /**
  * @title VaultRootReceiver
@@ -15,12 +15,12 @@ contract VaultRootReceiver is AxelarExecutable {
     error InvalidSourceAddress();
     error InvalidVaultRoot();
 
-    IVaultRootManager public immutable stateManager;
+    IVaultRootStore public immutable stateManager;
     string public vaultSourceChain;
     string public vaultStateSender;
 
     constructor(
-        IVaultRootManager _stateManager,
+        IVaultRootStore _stateManager,
         string memory _vaultStateSender,
         string memory _vaultSourceChain,
         address _axelarGateway
