@@ -11,7 +11,9 @@ abstract contract ProcessedWithdrawalsRegistry {
     // @param starkKey The Stark key of the user.
     // @param assetId The identifier of the asset in the vault.
     // @param claimHash The hash of the claim, which is the keccak256 of the starkKey and assetId.
-    event ClaimProcessed(uint256 starkKey, uint256 assetId, bytes32 indexed claimHash);
+    event WithdrawalProcessed(uint256 starkKey, uint256 assetId, bytes32 indexed claimHash);
+
+    error WithdrawalAlreadyProcessed(uint256 starkKey, uint256 assetId);
 
     // @notice processedWithdrawals is a mapping that keeps track of processed claims.
     mapping(bytes32 => bool) public processedWithdrawals;
@@ -24,9 +26,9 @@ abstract contract ProcessedWithdrawalsRegistry {
      */
     function _registerProcessedWithdrawal(uint256 starkKey, uint256 assetId) internal {
         bytes32 claimHash = keccak256(abi.encode(starkKey, assetId));
-        require(!processedWithdrawals[claimHash], "Claim already exists");
+        require(!processedWithdrawals[claimHash], WithdrawalAlreadyProcessed(starkKey, assetId));
         processedWithdrawals[claimHash] = true;
-        emit ClaimProcessed(starkKey, assetId, claimHash);
+        emit WithdrawalProcessed(starkKey, assetId, claimHash);
     }
 
     /*

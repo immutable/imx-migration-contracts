@@ -45,7 +45,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
     VaultWithdrawalProcessor private vaultWithdrawalProcessor;
     MockAccountVerifier private accountVerifier;
     MockVaultVerifier private vaultVerifier;
-    VaultWithdrawalProcessor.InitializationRoles private initRoles = VaultWithdrawalProcessor.InitializationRoles({
+    VaultWithdrawalProcessor.Operators private initRoles = VaultWithdrawalProcessor.Operators({
         pauser: address(this),
         unpauser: address(this),
         disburser: address(this),
@@ -188,7 +188,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                IVaultWithdrawalProcessor.FundAlreadyDisbursedForVault.selector,
+                ProcessedWithdrawalsRegistry.WithdrawalAlreadyProcessed.selector,
                 fixVaultEscapes[0].vault.starkKey,
                 fixVaultEscapes[0].vault.assetId
             )

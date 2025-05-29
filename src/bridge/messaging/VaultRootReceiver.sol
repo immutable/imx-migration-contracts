@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import {AxelarExecutable} from "@axelar-gmp-sdk-solidity/executable/AxelarExecutable.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import "@src/withdrawals/IVaultRootStore.sol";
+import "@src/withdrawals/VaultRootStore.sol";
 
 /**
  * @title VaultRootReceiver
@@ -13,39 +13,38 @@ import "@src/withdrawals/IVaultRootStore.sol";
 contract VaultRootReceiver is AxelarExecutable {
     error InvalidSourceChain();
     error InvalidSourceAddress();
-    error InvalidVaultRoot();
 
-    IVaultRootStore public immutable stateManager;
-    string public vaultSourceChain;
-    string public vaultStateSender;
+    VaultRootStore public immutable vaultRootStore;
+    string public rootProviderChain;
+    string public rootProviderContract;
 
     constructor(
-        IVaultRootStore _stateManager,
-        string memory _vaultStateSender,
-        string memory _vaultSourceChain,
+        VaultRootStore _vaultRootStore,
+        string memory _rootProviderChain,
+        string memory _rootProviderContract,
         address _axelarGateway
     ) AxelarExecutable(_axelarGateway) {
-        require(address(_stateManager) != address(0), "Invalid withdrawal processer address");
-        require(bytes(_vaultSourceChain).length != 0, "Invalid vault source chain ID");
-        require(bytes(_vaultStateSender).length != 0, "Invalid vault source address");
+        require(bytes(_rootProviderChain).length != 0, "Invalid vault source chain ID");
+        require(bytes(_rootProviderContract).length != 0, "Invalid vault source address");
+
+        require(address(_vaultRootStore) != address(0), "Invalid withdrawal processer address");
 
         // Register the vault state sender as a trusted source for messages
-        stateManager = _stateManager;
-        vaultSourceChain = _vaultSourceChain;
-        vaultStateSender = _vaultStateSender;
+        rootProviderChain = _rootProviderChain;
+        rootProviderContract = _rootProviderContract;
+
+        vaultRootStore = _vaultRootStore;
     }
 
     function _execute(bytes32, string calldata _sourceChain, string calldata _sourceAddress, bytes calldata _payload)
         internal
         override
     {
-        require(Strings.equal(_sourceChain, vaultSourceChain), InvalidSourceChain());
-        require(Strings.equal(_sourceAddress, vaultStateSender), InvalidSourceAddress());
+        require(Strings.equal(_sourceChain, rootProviderChain), InvalidSourceChain());
+        require(Strings.equal(_sourceAddress, rootProviderContract), InvalidSourceAddress());
 
         (uint256 vaultRoot) = abi.decode(_payload, (uint256));
 
-        require(vaultRoot != 0, InvalidVaultRoot());
-
-        stateManager.setVaultRoot(vaultRoot);
+        vaultRootStore.setVaultRoot(vaultRoot);
     }
 }

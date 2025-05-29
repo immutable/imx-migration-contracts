@@ -7,7 +7,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AssetsRegistry} from "@src/assets/AssetsRegistry.sol";
 import {IAccountProofVerifier} from "@src/verifiers/accounts/IAccountProofVerifier.sol";
 import {IVaultProofVerifier} from "@src/verifiers/vaults/IVaultProofVerifier.sol";
-import {IVaultRootStore} from "./IVaultRootStore.sol";
+import {VaultRootStore} from "./VaultRootStore.sol";
 import {IVaultWithdrawalProcessor} from "./IVaultWithdrawalProcessor.sol";
 import {ProcessedWithdrawalsRegistry} from "./ProcessedWithdrawalsRegistry.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
@@ -29,7 +29,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
  */
 contract VaultWithdrawalProcessor is
     IVaultWithdrawalProcessor,
-    IVaultRootStore,
+    VaultRootStore,
     AssetsRegistry,
     ProcessedWithdrawalsRegistry,
     ReentrancyGuard,
@@ -44,14 +44,16 @@ contract VaultWithdrawalProcessor is
 
     IAccountProofVerifier public immutable accountProofVerifier;
     IVaultProofVerifier public immutable vaultProofVerifier;
-    address public immutable vaultRootProvider;
-    uint256 public vaultRoot;
 
     event WithdrawalProcessed(
-        uint256 indexed starkKey, uint256 indexed assetId, uint256 amount, address recipient, address assetAddress
+        uint256 indexed starkKey,
+        uint256 indexed assetId,
+        address indexed recipient,
+        uint256 amount,
+        address assetAddress
     );
 
-    struct InitializationRoles {
+    struct Operators {
         address pauser;
         address unpauser;
         address disburser;
@@ -70,22 +72,20 @@ contract VaultWithdrawalProcessor is
         IVaultProofVerifier _vaultProofVerifier,
         address _vaultRootProvider,
         AssetDetails[] memory assets,
-        InitializationRoles memory roles
-    ) {
+        Operators memory operators
+    ) VaultRootStore(_vaultRootProvider) {
         require(address(_accountProofVerifier) != address(0), "Invalid account verifier address");
         require(address(_vaultProofVerifier) != address(0), "Invalid vault verifier address");
-        require(_vaultRootProvider != address(0), "Invalid vault root provider address");
 
         accountProofVerifier = _accountProofVerifier;
         vaultProofVerifier = _vaultProofVerifier;
-        vaultRootProvider = _vaultRootProvider;
 
         _registerAssets(assets);
 
-        _grantRole(PAUSER_ROLE, roles.pauser);
-        _grantRole(UNPAUSER_ROLE, roles.unpauser);
-        _grantRole(DISBURSER_ROLE, roles.disburser);
-        _grantRole(DEFAULT_ADMIN_ROLE, roles.defaultAdmin);
+        _grantRole(PAUSER_ROLE, operators.pauser);
+        _grantRole(UNPAUSER_ROLE, operators.unpauser);
+        _grantRole(DISBURSER_ROLE, operators.disburser);
+        _grantRole(DEFAULT_ADMIN_ROLE, operators.defaultAdmin);
     }
 
     /*
@@ -120,7 +120,7 @@ contract VaultWithdrawalProcessor is
         // Ensure that this vault hasn't already been withdrawn/processed.
         require(
             !isWithdrawalProcessed(vault.starkKey, vault.assetId),
-            FundAlreadyDisbursedForVault(vault.starkKey, vault.assetId)
+            WithdrawalAlreadyProcessed(vault.starkKey, vault.assetId)
         );
 
         // Verify the stark key and eth address association proof
@@ -140,20 +140,12 @@ contract VaultWithdrawalProcessor is
         uint256 amountToTransfer = vault.quantizedAmount * getAssetQuantum(vault.assetId);
 
         _processFundTransfer(ethAddress, assetAddress, amountToTransfer);
-        emit WithdrawalProcessed(vault.starkKey, vault.assetId, amountToTransfer, ethAddress, assetAddress);
+        emit WithdrawalProcessed(vault.starkKey, vault.assetId, ethAddress, amountToTransfer, assetAddress);
         return true;
     }
 
-    function setVaultRoot(uint256 _vaultRoot) external override whenNotPaused {
-        require(msg.sender == vaultRootProvider, "Unauthorized: Only vault root provider can set the root");
-        require(_vaultRoot != 0, InvalidVaultRoot());
-
-        // Vault root can only be set once
-        require(vaultRoot == 0, VaultRootAlreadySet());
-
-        vaultRoot = _vaultRoot;
-
-        emit VaultRootSet(_vaultRoot);
+    function setVaultRoot(uint256 newRoot) external override whenNotPaused {
+        _setVaultRoot(newRoot);
     }
 
     function pause() external onlyRole(PAUSER_ROLE) {
