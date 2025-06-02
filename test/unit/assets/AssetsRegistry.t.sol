@@ -15,11 +15,11 @@ contract MockAssetsRegistry is AssetMappingRegistry {
 }
 
 contract AssetsMappingRegistryTest is Test {
-    MockAssetsRegistry public mockRegistry;
-
     uint256 public constant TEST_ASSET_ID = 1;
     address public constant TEST_ASSET_ADDRESS = address(0xBEEF);
     uint256 public constant TEST_QUANTUM = 1e11;
+
+    MockAssetsRegistry public mockRegistry;
 
     function setUp() public {
         mockRegistry = new MockAssetsRegistry();
@@ -30,7 +30,7 @@ contract AssetsMappingRegistryTest is Test {
             _createAssetDetails(TEST_ASSET_ID, TEST_QUANTUM, TEST_ASSET_ADDRESS);
 
         assertEq(mockRegistry.getMappedAssetAddress(TEST_ASSET_ID), address(0));
-        assertEq(mockRegistry.getAssetQuantum(TEST_ASSET_ID), 0);
+        assertEq(mockRegistry.getMappedAssetQuantum(TEST_ASSET_ID), 0);
         assertFalse(mockRegistry.isMapped(TEST_ASSET_ID));
 
         vm.expectEmit(true, true, true, true);
@@ -38,7 +38,7 @@ contract AssetsMappingRegistryTest is Test {
         mockRegistry.registerAssetMapping(assetInfo);
 
         assertEq(mockRegistry.getMappedAssetAddress(TEST_ASSET_ID), TEST_ASSET_ADDRESS);
-        assertEq(mockRegistry.getAssetQuantum(TEST_ASSET_ID), TEST_QUANTUM);
+        assertEq(mockRegistry.getMappedAssetQuantum(TEST_ASSET_ID), TEST_QUANTUM);
         assertTrue(mockRegistry.isMapped(TEST_ASSET_ID));
     }
 
@@ -56,11 +56,11 @@ contract AssetsMappingRegistryTest is Test {
         mockRegistry.registerAssetMapping(assetInfos);
 
         assertEq(mockRegistry.getMappedAssetAddress(1), address(0xBEEF));
-        assertEq(mockRegistry.getAssetQuantum(1), 1e18);
+        assertEq(mockRegistry.getMappedAssetQuantum(1), 1e18);
         assertTrue(mockRegistry.isMapped(1));
 
         assertEq(mockRegistry.getMappedAssetAddress(2), address(0xCAFE));
-        assertEq(mockRegistry.getAssetQuantum(2), 1e6);
+        assertEq(mockRegistry.getMappedAssetQuantum(2), 1e6);
         assertTrue(mockRegistry.isMapped(2));
     }
 
@@ -108,9 +108,7 @@ contract AssetsMappingRegistryTest is Test {
 
         mockRegistry.registerAssetMapping(assetInfo);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(AssetMappingRegistry.InvalidAssetDetails.selector, "Asset already registered")
-        );
+        vm.expectRevert(abi.encodeWithSelector(AssetMappingRegistry.AssetAlreadyRegistered.selector));
         mockRegistry.registerAssetMapping(assetInfo);
     }
 

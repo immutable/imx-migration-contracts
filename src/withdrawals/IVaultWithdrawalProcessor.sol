@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import "@src/verifiers/accounts/IAccountProofVerifier.sol";
-import "@src/verifiers/vaults/IVaultProofVerifier.sol";
-
 /**
  * @title IVaultEscapeProcessor
  * @notice This interface defines the functions and events for processing vault escape claims and disbursing funds.

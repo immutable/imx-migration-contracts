@@ -44,6 +44,10 @@ abstract contract AssetMappingRegistry {
      * @param reason The reason for the failure.
      */
     error InvalidAssetDetails(string reason);
+    /**
+     * @dev Emitted when an asset registration fails, because it is already registered.
+     */
+    error AssetAlreadyRegistered();
 
     /// @dev The upper bound for valid quantum values.
     uint256 public constant QUANTUM_UPPER_BOUND = 2 ** 128;
@@ -71,11 +75,11 @@ abstract contract AssetMappingRegistry {
         return assetMappings[assetId].assetOnZKEVM;
     }
 
-    function getAssetDetails(uint256 assetId) public view returns (AssetDetails memory) {
+    function getMappedAssetDetails(uint256 assetId) public view returns (AssetDetails memory) {
         return assetMappings[assetId];
     }
 
-    function getAssetQuantum(uint256 assetId) public view returns (uint256) {
+    function getMappedAssetQuantum(uint256 assetId) public view returns (uint256) {
         return assetMappings[assetId].assetOnIMX.quantum;
     }
 
@@ -87,7 +91,7 @@ abstract contract AssetMappingRegistry {
 
         require(assetDetails.assetOnZKEVM != address(0), InvalidAssetDetails("Asset address cannot be zero"));
 
-        require(!isMapped(immutableXAsset.id), InvalidAssetDetails("Asset already registered"));
+        require(!isMapped(immutableXAsset.id), AssetAlreadyRegistered());
 
         assetMappings[immutableXAsset.id] = assetDetails;
         emit AssetMapped(immutableXAsset.id, immutableXAsset.quantum, assetDetails.assetOnZKEVM);

@@ -3,18 +3,17 @@ pragma solidity ^0.8.27;
 
 import {IVaultProofVerifier} from "./IVaultProofVerifier.sol";
 
-/*
-  An VaultEscapeProofVerifier is a contract that verifies vault escape proofs, against a given vault root.
-  (starkKey, assetId, quantizedAmount) is the leaf in index leafIndex of a vaults Merkle tree with
-  specific height and root.
-  The leaf index can be deduced from vaultId, see :sol:mod:`Escapes` for details.
-*/
+/**
+ * @notice VaultEscapeProofVerifier is a contract that verifies vault escape proofs, against a given vault root.
+ * @dev (starkKey, assetId, quantizedAmount) is the leaf in index leafIndex of a vaults Merkle tree with
+ *      specific height and root. The leaf index can be deduced from vaultId, see :sol:mod:`Escapes` for details.
+ */
 contract VaultEscapeProofVerifier is IVaultProofVerifier {
-    // Note that those values are hardcoded in the assembly.
+    // number of lookup tables used in the escape proof verification.
     uint256 internal constant N_TABLES = 63;
+    uint256 internal constant K_MODULUS = 0x800000000000011000000000000000000000000000000000000000000000001;
 
     address[N_TABLES] public lookupTables;
-    uint256 internal constant K_MODULUS = 0x800000000000011000000000000000000000000000000000000000000000001;
 
     constructor(address[N_TABLES] memory tables) {
         lookupTables = tables;
@@ -32,9 +31,8 @@ contract VaultEscapeProofVerifier is IVaultProofVerifier {
 
     /*
      * @notice verifyProof verifies the escape proof for a vault.
-     * @param proof The proof to be verified, which includes the vault information, the root and the Merkle proof. Specific structure depends on the implementation.
-     * @return bool Returns true if the proof is valid. The function might return false or revert with an `InvalidVaultProof` error if the proof is invalid.
-     * Verifies that the contents of a vault belong to a certain Merkle commitment (root).
+     * @param proof The proof to be verified, which includes the vault information, the root and the Merkle proof.
+     * @return bool Returns true if the proof is valid. The function reverts with an `InvalidVaultProof` error if the proof is invalid.
      *
      *   The Merkle commitment uses the Pedersen hash variation described next:
      *

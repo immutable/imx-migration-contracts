@@ -77,7 +77,9 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
         for (uint256 i = 0; i < fixAssets.length; i++) {
             uint256 id = fixAssets[i].assetOnIMX.id;
             assertEq(vaultWithdrawalProcessor.getMappedAssetAddress(id), fixAssets[i].assetOnZKEVM);
-            assertEq(vaultWithdrawalProcessor.getAssetDetails(id).assetOnIMX.quantum, fixAssets[i].assetOnIMX.quantum);
+            assertEq(
+                vaultWithdrawalProcessor.getMappedAssetDetails(id).assetOnIMX.quantum, fixAssets[i].assetOnIMX.quantum
+            );
         }
     }
 
@@ -114,7 +116,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
         accountVerifier.setShouldVerify(true);
         vaultVerifier.setShouldVerify(true);
 
-        uint256 expectedTransfer = vaultWithdrawalProcessor.getAssetQuantum(fixVaultEscapes[0].vault.assetId)
+        uint256 expectedTransfer = vaultWithdrawalProcessor.getMappedAssetQuantum(fixVaultEscapes[0].vault.assetId)
             * fixVaultEscapes[0].vault.quantizedAmount;
 
         vm.deal(address(vaultWithdrawalProcessor), 1 ether);
@@ -142,7 +144,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
         ERC20MintableBurnable token = ERC20MintableBurnable(vaultWithdrawalProcessor.getMappedAssetAddress(assetId));
 
         uint256 expectedTransfer =
-            vaultWithdrawalProcessor.getAssetQuantum(assetId) * testVaultWithProof.vault.quantizedAmount;
+            vaultWithdrawalProcessor.getMappedAssetQuantum(assetId) * testVaultWithProof.vault.quantizedAmount;
 
         deal(address(token), address(vaultWithdrawalProcessor), 1 ether);
 
@@ -218,7 +220,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
         accountVerifier.setShouldVerify(true);
         vaultVerifier.setShouldVerify(true);
 
-        uint256 expectedAmount = vaultWithdrawalProcessor.getAssetQuantum(fixVaultEscapes[0].vault.assetId)
+        uint256 expectedAmount = vaultWithdrawalProcessor.getMappedAssetQuantum(fixVaultEscapes[0].vault.assetId)
             * fixVaultEscapes[0].vault.quantizedAmount;
 
         vm.expectRevert(

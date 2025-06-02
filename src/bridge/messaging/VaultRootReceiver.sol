@@ -4,44 +4,65 @@ pragma solidity ^0.8.27;
 import {AxelarExecutable} from "@axelar-gmp-sdk-solidity/executable/AxelarExecutable.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import "@src/withdrawals/VaultRootStore.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @title VaultRootReceiver
- * This contract receives a message from the corresponding L1 contract.
- * The message includes vault root information and asset registration related details
+ * @notice VaultRootReceiver receives an Axelar message containing a vault root hash from a corresponding vault root provider contract on L1, and stores it in the VaultRootStore.
  */
-contract VaultRootReceiver is AxelarExecutable {
-    error InvalidSourceChain();
-    error InvalidSourceAddress();
+contract VaultRootReceiver is AxelarExecutable, Ownable {
+    /// @notice Emitted when the source chain is invalid or does not match the expected one.
+    error InvalidSourceChain(string sourceChain);
+    /// @notice Emitted when the source address is invalid or does not match the expected one.
+    error InvalidSourceAddress(string sourceAddress);
 
-    VaultRootStore public immutable vaultRootStore;
+    /// @notice Emitted when the VaultRootStore address is invalid.
+    error InvalidVaultRootStore();
+
+    /// @notice The VaultRootStore contract that stores the vault root hash.
+    VaultRootStore public vaultRootStore;
+    /// @notice The chain ID of the root provider contract that is authorised to send the vault root hash.
     string public rootProviderChain;
+    /// @notice The contract address of the root provider contract that is authorised to send the vault root hash.
     string public rootProviderContract;
 
+    /**
+     * @notice Constructs the VaultRootReceiver contract.
+     * @param _owner The address of the owner of the contract, who can set the VaultRootStore.
+     * @param _rootProviderChain The chain ID of the root provider contract that is authorised to send the vault root hash.
+     * @param _rootProviderContract The contract address of the root provider contract that is authorised to send the vault root hash.
+     * @param _axelarGateway The address of the Axelar gateway contract that validates cross-chain messages.
+     */
     constructor(
-        VaultRootStore _vaultRootStore,
+        address _owner,
         string memory _rootProviderChain,
         string memory _rootProviderContract,
         address _axelarGateway
-    ) AxelarExecutable(_axelarGateway) {
-        require(bytes(_rootProviderChain).length != 0, "Invalid vault source chain ID");
-        require(bytes(_rootProviderContract).length != 0, "Invalid vault source address");
-
-        require(address(_vaultRootStore) != address(0), "Invalid withdrawal processer address");
+    ) AxelarExecutable(_axelarGateway) Ownable(_owner) {
+        require(bytes(_rootProviderChain).length != 0, InvalidSourceChain(""));
+        require(bytes(_rootProviderContract).length != 0, InvalidSourceAddress(""));
 
         // Register the vault state sender as a trusted source for messages
         rootProviderChain = _rootProviderChain;
         rootProviderContract = _rootProviderContract;
+    }
 
+    function setVaultRootStore(VaultRootStore _vaultRootStore) external onlyOwner {
+        require(address(_vaultRootStore) != address(0), InvalidVaultRootStore());
         vaultRootStore = _vaultRootStore;
     }
 
+    /**
+     * @notice Executed when a cross-chain message is received from L1. If the sender is authorised, it sets the provided vault root hash in the VaultRootStore contract.
+     * @param _sourceChain The chain ID of the source chain from which the message was sent.
+     * @param _sourceAddress The contract address of the source contract that sent the message.
+     * @param _payload The payload of the message, which contains the vault root hash to be set.
+     */
     function _execute(bytes32, string calldata _sourceChain, string calldata _sourceAddress, bytes calldata _payload)
         internal
         override
     {
-        require(Strings.equal(_sourceChain, rootProviderChain), InvalidSourceChain());
-        require(Strings.equal(_sourceAddress, rootProviderContract), InvalidSourceAddress());
+        require(Strings.equal(_sourceChain, rootProviderChain), InvalidSourceChain(_sourceChain));
+        require(Strings.equal(_sourceAddress, rootProviderContract), InvalidSourceAddress(_sourceAddress));
 
         (uint256 vaultRoot) = abi.decode(_payload, (uint256));
 

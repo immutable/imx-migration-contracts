@@ -136,7 +136,7 @@ contract VaultWithdrawalProcessor is
         _registerProcessedWithdrawal(vault.starkKey, vault.assetId);
 
         // de-quantize the amount
-        uint256 assetQuantum = getAssetDetails(vault.assetId).assetOnIMX.quantum;
+        uint256 assetQuantum = getMappedAssetDetails(vault.assetId).assetOnIMX.quantum;
         uint256 amountToTransfer = vault.quantizedAmount * assetQuantum;
 
         _processFundTransfer(ethAddress, assetAddress, amountToTransfer);

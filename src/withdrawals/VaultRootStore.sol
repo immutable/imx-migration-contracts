@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
+//  TODO: One possible optimisation to consider is having multiple intermediate roots in the main merkle tree, stored and used to prove against
 abstract contract VaultRootStore {
     error InvalidVaultRoot();
     error VaultRootAlreadySet();
