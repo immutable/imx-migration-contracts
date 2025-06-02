@@ -11,6 +11,7 @@ env:
 jobs:
   check:
     env:
+      ZKEVM_RPC_URL: ${{ secrets.ZKEVM_RPC_URL }}
       ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
     strategy:
       fail-fast: true

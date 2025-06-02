@@ -2,10 +2,7 @@
 pragma solidity ^0.8.27;
 
 import "forge-std/Test.sol";
-import "@src/assets/AssetsRegistry.sol";
-import "@src/assets/AssetsRegistry.sol";
-import "@src/assets/AssetsRegistry.sol";
-import "@src/assets/AssetsRegistry.sol";
+import "@src/assets/AssetMappingRegistry.sol";
 import "@src/verifiers/accounts/IAccountProofVerifier.sol";
 import "@src/verifiers/vaults/VaultEscapeProofVerifier.sol";
 import "@src/withdrawals/IVaultWithdrawalProcessor.sol";
@@ -57,11 +54,13 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
     address private recipient = address(0xA123);
 
     function setUp() public {
-        string memory ETH_RPC_URL = vm.envString("ETH_RPC_URL");
-        vm.createSelectFork(ETH_RPC_URL);
+        string memory ZKEVM_RPC_URL = vm.envString("ZKEVM_RPC_URL");
+        vm.createSelectFork(ZKEVM_RPC_URL);
 
         accountVerifier = new MockAccountVerifier();
-        vaultVerifier = new MockVaultVerifier(ETH_LOOKUP_TABLES);
+        vaultVerifier = new MockVaultVerifier(ZKEVM_LOOKUP_TABLES);
+
+        fixAssets[1].assetOnZKEVM = address(new ERC20MintableBurnable("USD Coin", "USDC", 6));
 
         vaultWithdrawalProcessor =
             new VaultWithdrawalProcessor(accountVerifier, vaultVerifier, address(this), fixAssets, initRoles);
@@ -69,15 +68,16 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
     }
 
     function test_Constructor() public view {
-        assertEq(address(vaultWithdrawalProcessor.accountProofVerifier()), address(accountVerifier));
+        assertEq(address(vaultWithdrawalProcessor.accountVerifier()), address(accountVerifier));
 
-        assertEq(address(vaultWithdrawalProcessor.vaultProofVerifier()), address(vaultVerifier));
+        assertEq(address(vaultWithdrawalProcessor.vaultVerifier()), address(vaultVerifier));
 
         assertEq(vaultWithdrawalProcessor.vaultRoot(), fixVaultEscapes[0].root);
 
         for (uint256 i = 0; i < fixAssets.length; i++) {
-            assertEq(vaultWithdrawalProcessor.getAssetAddress(fixAssets[i].assetId), fixAssets[i].assetAddress);
-            assertEq(vaultWithdrawalProcessor.getAssetQuantum(fixAssets[i].assetId), fixAssets[i].quantum);
+            uint256 id = fixAssets[i].assetOnIMX.id;
+            assertEq(vaultWithdrawalProcessor.getMappedAssetAddress(id), fixAssets[i].assetOnZKEVM);
+            assertEq(vaultWithdrawalProcessor.getAssetDetails(id).assetOnIMX.quantum, fixAssets[i].assetOnIMX.quantum);
         }
     }
 
@@ -101,9 +101,11 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
     }
 
     function test_RevertIf_Constructor_EmptyAssets() public {
-        vm.expectRevert(abi.encodeWithSelector(AssetsRegistry.InvalidAssetDetails.selector, "No assets to register"));
+        vm.expectRevert(
+            abi.encodeWithSelector(AssetMappingRegistry.InvalidAssetDetails.selector, "No assets to register")
+        );
         new VaultWithdrawalProcessor(
-            accountVerifier, vaultVerifier, address(this), new AssetsRegistry.AssetDetails[](0), initRoles
+            accountVerifier, vaultVerifier, address(this), new AssetMappingRegistry.AssetDetails[](0), initRoles
         );
     }
 
@@ -118,7 +120,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
         vm.deal(address(vaultWithdrawalProcessor), 1 ether);
         assertEq(recipient.balance, 0 ether);
         bool success =
-            vaultWithdrawalProcessor.verifyProofAndDisburseFunds(recipient, accountProof, fixVaultEscapes[0].proof);
+            vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, accountProof, fixVaultEscapes[0].proof);
 
         assertTrue(success);
         assertTrue(
@@ -137,16 +139,16 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
         VaultWithProof memory testVaultWithProof = fixVaultEscapes[2];
         uint256 assetId = testVaultWithProof.vault.assetId;
 
-        IERC20 token = IERC20(vaultWithdrawalProcessor.getAssetAddress(assetId));
-        console.log("token address", address(token));
+        ERC20MintableBurnable token = ERC20MintableBurnable(vaultWithdrawalProcessor.getMappedAssetAddress(assetId));
 
         uint256 expectedTransfer =
             vaultWithdrawalProcessor.getAssetQuantum(assetId) * testVaultWithProof.vault.quantizedAmount;
 
         deal(address(token), address(vaultWithdrawalProcessor), 1 ether);
+
         assertEq(token.balanceOf(recipient), 0);
         bool success =
-            vaultWithdrawalProcessor.verifyProofAndDisburseFunds(recipient, accountProof, testVaultWithProof.proof);
+            vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, accountProof, testVaultWithProof.proof);
 
         assertTrue(success);
         assertTrue(
@@ -165,7 +167,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
         vm.expectRevert(
             abi.encodeWithSelector(IAccountProofVerifier.InvalidAccountProof.selector, "Proof verification failed")
         );
-        vaultWithdrawalProcessor.verifyProofAndDisburseFunds(recipient, accountProof, fixVaultEscapes[0].proof);
+        vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, accountProof, fixVaultEscapes[0].proof);
     }
 
     function test_RevertIf_InvalidVaultProof() public {
@@ -174,7 +176,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
         vaultVerifier.setShouldVerify(false);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid vault proof"));
-        vaultWithdrawalProcessor.verifyProofAndDisburseFunds(recipient, accountProof, fixVaultEscapes[0].proof);
+        vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, accountProof, fixVaultEscapes[0].proof);
     }
 
     function test_RevertIf_ClaimAlreadyProcessed() public {
@@ -184,7 +186,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
 
         vm.deal(address(vaultWithdrawalProcessor), 1 ether);
 
-        vaultWithdrawalProcessor.verifyProofAndDisburseFunds(recipient, accountProof, fixVaultEscapes[0].proof);
+        vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, accountProof, fixVaultEscapes[0].proof);
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -193,7 +195,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
                 fixVaultEscapes[0].vault.assetId
             )
         );
-        vaultWithdrawalProcessor.verifyProofAndDisburseFunds(recipient, accountProof, fixVaultEscapes[0].proof);
+        vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, accountProof, fixVaultEscapes[0].proof);
     }
 
     function test_RevertIf_UnregisteredAsset() public {
@@ -208,7 +210,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
                 IVaultWithdrawalProcessor.AssetNotRegistered.selector, fixVaultEscapes[1].vault.assetId
             )
         );
-        vaultWithdrawalProcessor.verifyProofAndDisburseFunds(recipient, accountProof, proofWithUnregisteredAsset);
+        vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, accountProof, proofWithUnregisteredAsset);
     }
 
     function test_RevertIf_InsufficientBalance() public {
@@ -227,6 +229,6 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
                 0
             )
         );
-        vaultWithdrawalProcessor.verifyProofAndDisburseFunds(recipient, accountProof, fixVaultEscapes[0].proof);
+        vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, accountProof, fixVaultEscapes[0].proof);
     }
 }

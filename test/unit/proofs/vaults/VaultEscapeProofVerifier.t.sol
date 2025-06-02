@@ -17,10 +17,10 @@ contract VaultEscapeProofVerifierTest is Test, FixVaultEscapes, FixtureLookupTab
     uint256[] private invalidProofBadPath;
 
     function setUp() public {
-        string memory L1_RPC_URL = vm.envString("ETH_RPC_URL");
-        vm.createSelectFork(L1_RPC_URL);
+        string memory ZKEVM_RPC_URL = vm.envString("ZKEVM_RPC_URL");
+        vm.createSelectFork(ZKEVM_RPC_URL);
 
-        verifier = new VaultEscapeProofVerifier(ETH_LOOKUP_TABLES);
+        verifier = new VaultEscapeProofVerifier(ZKEVM_LOOKUP_TABLES);
 
         uint256[] memory validEscapeProof = fixVaultEscapes[0].proof;
 
@@ -37,7 +37,7 @@ contract VaultEscapeProofVerifierTest is Test, FixVaultEscapes, FixtureLookupTab
 
     function test_Constructor() public view {
         for (uint256 i = 0; i < 63; i++) {
-            assertEq(verifier.lookupTables(i), ETH_LOOKUP_TABLES[i]);
+            assertEq(verifier.lookupTables(i), ZKEVM_LOOKUP_TABLES[i]);
         }
     }
 

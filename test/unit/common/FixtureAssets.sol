@@ -1,19 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import "@src/assets/AssetsRegistry.sol";
+import "@src/assets/AssetMappingRegistry.sol";
+import {ERC20MintableBurnable} from "@axelar-gmp-sdk-solidity/test/token/ERC20MintableBurnable.sol";
 
 abstract contract FixtureAssets {
-    AssetsRegistry.AssetDetails[] public fixAssets = [
-        AssetsRegistry.AssetDetails(
-            1103114524755001640548555873671808205895038091681120606634696969331999845790,
-            7,
-            address(0xfff) // IMX
+    address constant NATIVE_IMX = address(0xfff);
+    AssetMappingRegistry.AssetDetails[] public fixAssets = [
+        AssetMappingRegistry.AssetDetails(
+            AssetMappingRegistry.ImmutableXAsset(
+                1103114524755001640548555873671808205895038091681120606634696969331999845790, 7
+            ),
+            NATIVE_IMX
         ),
-        AssetsRegistry.AssetDetails(
-            1810904411670354579114094206528523777019223281748314185673123994510590793656,
-            1,
-            address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48) // USDC
+        AssetMappingRegistry.AssetDetails(
+            AssetMappingRegistry.ImmutableXAsset(
+                1810904411670354579114094206528523777019223281748314185673123994510590793656, 1
+            ),
+            address(0)
         )
     ];
 }
