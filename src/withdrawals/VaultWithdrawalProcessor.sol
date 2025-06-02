@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.27;
+pragma solidity ^0.8.18;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -39,13 +39,6 @@ contract VaultWithdrawalProcessor is
 {
     using SafeERC20 for IERC20;
 
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
-    bytes32 public constant DISBURSER_ROLE = keccak256("DISBURSER_ROLE");
-
-    IAccountProofVerifier public immutable accountVerifier;
-    IVaultProofVerifier public immutable vaultVerifier;
-
     event WithdrawalProcessed(
         uint256 indexed starkKey,
         uint256 indexed assetId,
@@ -61,6 +54,17 @@ contract VaultWithdrawalProcessor is
         address defaultAdmin;
     }
 
+    error VaultRootAlreadySet();
+
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
+    bytes32 public constant DISBURSER_ROLE = keccak256("DISBURSER_ROLE");
+
+    IAccountProofVerifier public immutable accountVerifier;
+    IVaultProofVerifier public immutable vaultVerifier;
+
+    address public immutable vaultRootProvider;
+
     /*
      * @notice constructor
      * @param _accountVerifier The address of the account proof verifier contract.
@@ -74,12 +78,14 @@ contract VaultWithdrawalProcessor is
         address _vaultRootProvider,
         AssetDetails[] memory assets,
         Operators memory operators
-    ) VaultRootStore(_vaultRootProvider) {
+    ) {
         require(address(_accountVerifier) != address(0), "Invalid account verifier address");
         require(address(_vaultVerifier) != address(0), "Invalid vault verifier address");
+        require(_vaultRootProvider != address(0), "Invalid vault root provider address");
 
         accountVerifier = _accountVerifier;
         vaultVerifier = _vaultVerifier;
+        vaultRootProvider = _vaultRootProvider;
 
         _registerAssetMappings(assets);
 
@@ -145,6 +151,10 @@ contract VaultWithdrawalProcessor is
     }
 
     function setVaultRoot(uint256 newRoot) external override whenNotPaused {
+        require(msg.sender == vaultRootProvider, "Unauthorized: Only vault root provider can set the root");
+        // Vault root should only be set once
+        require(vaultRoot == 0, VaultRootAlreadySet());
+
         _setVaultRoot(newRoot);
     }
 

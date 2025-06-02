@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.27;
+pragma solidity ^0.8.18;
 
 import {AxelarExecutable} from "@axelar-gmp-sdk-solidity/executable/AxelarExecutable.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
@@ -18,6 +18,9 @@ contract VaultRootReceiver is AxelarExecutable, Ownable {
     /// @notice Emitted when the VaultRootStore address is invalid.
     error InvalidVaultRootStore();
 
+    /// @notice Emitted when the VaultRootStore is set.
+    event VaultRootStoreSet(address indexed vaultRootStore);
+
     /// @notice The VaultRootStore contract that stores the vault root hash.
     VaultRootStore public vaultRootStore;
     /// @notice The chain ID of the root provider contract that is authorised to send the vault root hash.
@@ -27,15 +30,15 @@ contract VaultRootReceiver is AxelarExecutable, Ownable {
 
     /**
      * @notice Constructs the VaultRootReceiver contract.
-     * @param _owner The address of the owner of the contract, who can set the VaultRootStore.
      * @param _rootProviderChain The chain ID of the root provider contract that is authorised to send the vault root hash.
      * @param _rootProviderContract The contract address of the root provider contract that is authorised to send the vault root hash.
+     * @param _owner The address of the owner of the contract, who can set the VaultRootStore.
      * @param _axelarGateway The address of the Axelar gateway contract that validates cross-chain messages.
      */
     constructor(
-        address _owner,
         string memory _rootProviderChain,
         string memory _rootProviderContract,
+        address _owner,
         address _axelarGateway
     ) AxelarExecutable(_axelarGateway) Ownable(_owner) {
         require(bytes(_rootProviderChain).length != 0, InvalidSourceChain(""));
@@ -49,6 +52,7 @@ contract VaultRootReceiver is AxelarExecutable, Ownable {
     function setVaultRootStore(VaultRootStore _vaultRootStore) external onlyOwner {
         require(address(_vaultRootStore) != address(0), InvalidVaultRootStore());
         vaultRootStore = _vaultRootStore;
+        emit VaultRootStoreSet(address(_vaultRootStore));
     }
 
     /**
