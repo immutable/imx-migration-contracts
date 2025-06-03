@@ -12,7 +12,7 @@ import {IVaultWithdrawalProcessor} from "./IVaultWithdrawalProcessor.sol";
 import {ProcessedWithdrawalsRegistry} from "./ProcessedWithdrawalsRegistry.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {AssetMappingRegistry} from "../assets/AssetMappingRegistry.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 /**
  * @title VaultEscapeProcessor
@@ -38,6 +38,7 @@ contract VaultWithdrawalProcessor is
     AccessControl
 {
     using SafeERC20 for IERC20;
+    using Address for address payable;
 
     event WithdrawalProcessed(
         uint256 indexed starkKey,
@@ -64,6 +65,7 @@ contract VaultWithdrawalProcessor is
     IVaultProofVerifier public immutable vaultVerifier;
 
     address public immutable vaultRootProvider;
+    address public immutable vaultFundProvider;
 
     /*
      * @notice constructor
@@ -76,16 +78,19 @@ contract VaultWithdrawalProcessor is
         IAccountProofVerifier _accountVerifier,
         IVaultProofVerifier _vaultVerifier,
         address _vaultRootProvider,
+        address _vaultFundProvider,
         AssetDetails[] memory assets,
         Operators memory operators
     ) {
         require(address(_accountVerifier) != address(0), "Invalid account verifier address");
         require(address(_vaultVerifier) != address(0), "Invalid vault verifier address");
         require(_vaultRootProvider != address(0), "Invalid vault root provider address");
+        require(_vaultFundProvider != address(0), "Invalid vault fund provider address");
 
         accountVerifier = _accountVerifier;
         vaultVerifier = _vaultVerifier;
         vaultRootProvider = _vaultRootProvider;
+        vaultFundProvider = _vaultFundProvider;
 
         _registerAssetMappings(assets);
 
@@ -168,24 +173,14 @@ contract VaultWithdrawalProcessor is
 
     function _processFundTransfer(address recipient, address asset, uint256 amount) internal nonReentrant {
         if (asset == NATIVE_IMX_ADDRESS) {
-            uint256 currentBalance = address(this).balance;
-            if (currentBalance < amount) {
-                revert InsufficientBalance(asset, amount, currentBalance);
-            }
-            (bool sent,) = recipient.call{value: amount}("");
-            if (!sent) {
-                revert FundTransferFailed(recipient, asset, amount);
-            }
+            Address.sendValue(payable(recipient), amount);
         } else {
             IERC20 token = IERC20(asset);
-            uint256 currentBalance = token.balanceOf(address(this));
-            if (currentBalance < amount) {
-                revert InsufficientBalance(asset, amount, currentBalance);
-            }
             token.safeTransfer(recipient, amount);
         }
     }
 
-    // TODO: Consider externalising Vault
-    receive() external payable {}
+    receive() external payable {
+        require(msg.sender == vaultFundProvider, "Unauthorized: Only vault fund provider can send funds");
+    }
 }

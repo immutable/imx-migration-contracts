@@ -11,10 +11,4 @@ interface IVaultWithdrawalProcessor {
     // @param assetId The identifier of the asset on Immutable X.
     // @dev This error is thrown when the Immutable X asset ID provided, has no registered association with an asset on zkEVM.
     error AssetNotRegistered(uint256 assetId);
-
-    // @notice InsufficientBalance is an error thrown when the contract does not have enough balance to process the disbursal.
-    error InsufficientBalance(address asset, uint256 required, uint256 available);
-
-    // @notice FundTransferFailed is an error thrown when the transfer of funds to the recipient fails.
-    error FundTransferFailed(address recipient, address asset, uint256 amount);
 }
