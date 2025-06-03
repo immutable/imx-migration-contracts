@@ -20,7 +20,7 @@ contract VaultEscapeProofVerifierTest is Test, FixVaultEscapes, FixtureLookupTab
         string memory ZKEVM_RPC_URL = vm.envString("ZKEVM_RPC_URL");
         vm.createSelectFork(ZKEVM_RPC_URL);
 
-        verifier = new VaultEscapeProofVerifier(ZKEVM_LOOKUP_TABLES);
+        verifier = new VaultEscapeProofVerifier(ZKEVM_MAINNET_LOOKUP_TABLES);
 
         uint256[] memory validEscapeProof = fixVaultEscapes[0].proof;
 
@@ -37,7 +37,7 @@ contract VaultEscapeProofVerifierTest is Test, FixVaultEscapes, FixtureLookupTab
 
     function test_Constructor() public view {
         for (uint256 i = 0; i < 63; i++) {
-            assertEq(verifier.lookupTables(i), ZKEVM_LOOKUP_TABLES[i]);
+            assertEq(verifier.lookupTables(i), ZKEVM_MAINNET_LOOKUP_TABLES[i]);
         }
     }
 

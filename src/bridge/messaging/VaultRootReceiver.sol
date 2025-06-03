@@ -18,8 +18,12 @@ contract VaultRootReceiver is AxelarExecutable, Ownable {
     /// @notice Emitted when the VaultRootStore address is invalid.
     error InvalidVaultRootStore();
 
+    error VaultRootNotSet();
+
     /// @notice Emitted when the VaultRootStore is set.
     event VaultRootStoreSet(address indexed vaultRootStore);
+
+    event VaultRootReceived(uint256 vaultRoot);
 
     /// @notice The VaultRootStore contract that stores the vault root hash.
     VaultRootStore public vaultRootStore;
@@ -67,9 +71,11 @@ contract VaultRootReceiver is AxelarExecutable, Ownable {
     {
         require(Strings.equal(_sourceChain, rootProviderChain), InvalidSourceChain(_sourceChain));
         require(Strings.equal(_sourceAddress, rootProviderContract), InvalidSourceAddress(_sourceAddress));
+        require(address(vaultRootStore) != address(0), VaultRootNotSet());
 
         (uint256 vaultRoot) = abi.decode(_payload, (uint256));
 
         vaultRootStore.setVaultRoot(vaultRoot);
+        emit VaultRootReceived(vaultRoot);
     }
 }

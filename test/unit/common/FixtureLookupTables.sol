@@ -2,7 +2,7 @@
 pragma solidity ^0.8.27;
 
 abstract contract FixtureLookupTables {
-    address[63] public ZKEVM_LOOKUP_TABLES = [
+    address[63] public ZKEVM_MAINNET_LOOKUP_TABLES = [
         0xB98CD7457BafA2B8F1bE10684A3ca7994A5F518b,
         0x16EA1DDf2f0569A9dfe79eEE8c80927941BEa818,
         0x675956E18A41172D32e03ab8c1C001F085eB605E,
@@ -67,7 +67,7 @@ abstract contract FixtureLookupTables {
         0xc92C55B1AE8fF7C9E6Af81b75CbD950935881082,
         0x5b862467445Fa62ceB06a424E406ca9200cc052c
     ];
-    address[63] public ETH_LOOKUP_TABLES = [
+    address[63] public ETH_MAINNET_LOOKUP_TABLES = [
         0x3325e8C5d390AeC436Ff225779Dcdd4D12314f27,
         0x5429509172710E58bb5BCACC550F3f980c992233,
         0x7F7cB4B506ed8f17de6d35d3a33D8976D67eCDD2,
