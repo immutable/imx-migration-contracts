@@ -17,7 +17,7 @@ abstract contract FixtureAssets {
             AssetMappingRegistry.ImmutableXAsset(
                 1810904411670354579114094206528523777019223281748314185673123994510590793656, 1
             ),
-            address(0)
+            address(0x6de8aCC0D406837030CE4dd28e7c08C5a96a30d2) // USDC on zkEVM mainnet
         )
     ];
 }

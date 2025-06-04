@@ -7,9 +7,9 @@ import "@src/verifiers/accounts/IAccountProofVerifier.sol";
 import "@src/verifiers/vaults/VaultEscapeProofVerifier.sol";
 import "@src/withdrawals/IVaultWithdrawalProcessor.sol";
 import "@src/withdrawals/VaultWithdrawalProcessor.sol";
-import "../common/FixVaultEscapes.sol";
-import "../common/FixtureAssets.sol";
-import "../common/FixtureLookupTables.sol";
+import "../../common/FixVaultEscapes.sol";
+import "../../common/FixtureAssets.sol";
+import "../../common/FixtureLookupTables.sol";
 import {Errors} from "@openzeppelin/contracts/utils/Errors.sol";
 
 contract MockAccountVerifier is IAccountProofVerifier {
@@ -59,8 +59,6 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
 
         accountVerifier = new MockAccountVerifier();
         vaultVerifier = new MockVaultVerifier(ZKEVM_MAINNET_LOOKUP_TABLES);
-
-        fixAssets[1].assetOnZKEVM = address(new ERC20MintableBurnable("USD Coin", "USDC", 6));
 
         vaultWithdrawalProcessor = new VaultWithdrawalProcessor(
             accountVerifier, vaultVerifier, address(this), address(this), fixAssets, initRoles
@@ -355,7 +353,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
 
     function test_RevertIf_SetVaultRoot_AlreadySet() public {
         uint256 newRoot = 0x123;
-        vm.expectRevert(abi.encodeWithSelector(VaultWithdrawalProcessor.VaultRootAlreadySet.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVaultWithdrawalProcessor.VaultRootAlreadySet.selector));
         vaultWithdrawalProcessor.setVaultRoot(newRoot);
     }
 

@@ -40,22 +40,12 @@ contract VaultWithdrawalProcessor is
     using SafeERC20 for IERC20;
     using Address for address payable;
 
-    event WithdrawalProcessed(
-        uint256 indexed starkKey,
-        uint256 indexed assetId,
-        address indexed recipient,
-        uint256 amount,
-        address assetAddress
-    );
-
     struct Operators {
         address pauser;
         address unpauser;
         address disburser;
         address defaultAdmin;
     }
-
-    error VaultRootAlreadySet();
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
@@ -79,8 +69,8 @@ contract VaultWithdrawalProcessor is
         IVaultProofVerifier _vaultVerifier,
         address _vaultRootProvider,
         address _vaultFundProvider,
-        AssetDetails[] memory assets,
-        Operators memory operators
+        AssetDetails[] memory _assets,
+        Operators memory _operators
     ) {
         require(address(_accountVerifier) != address(0), "Invalid account verifier address");
         require(address(_vaultVerifier) != address(0), "Invalid vault verifier address");
@@ -92,12 +82,12 @@ contract VaultWithdrawalProcessor is
         vaultRootProvider = _vaultRootProvider;
         vaultFundProvider = _vaultFundProvider;
 
-        _registerAssetMappings(assets);
+        _grantRole(PAUSER_ROLE, _operators.pauser);
+        _grantRole(UNPAUSER_ROLE, _operators.unpauser);
+        _grantRole(DISBURSER_ROLE, _operators.disburser);
+        _grantRole(DEFAULT_ADMIN_ROLE, _operators.defaultAdmin);
 
-        _grantRole(PAUSER_ROLE, operators.pauser);
-        _grantRole(UNPAUSER_ROLE, operators.unpauser);
-        _grantRole(DISBURSER_ROLE, operators.disburser);
-        _grantRole(DEFAULT_ADMIN_ROLE, operators.defaultAdmin);
+        _registerAssetMappings(_assets);
     }
 
     /*
@@ -126,7 +116,8 @@ contract VaultWithdrawalProcessor is
         require(vault.quantizedAmount != 0, IVaultProofVerifier.InvalidVaultProof("Invalid quantized amount"));
 
         // withdrawals can only be processed for known assets
-        address assetAddress = getMappedAssetAddress(vault.assetId);
+        AssetDetails memory mappedAsset = getMappedAssetDetails(vault.assetId);
+        address assetAddress = mappedAsset.assetOnZKEVM;
         require(assetAddress != address(0), AssetNotRegistered(vault.assetId));
 
         // Ensure that this vault hasn't already been withdrawn/processed.
@@ -147,7 +138,7 @@ contract VaultWithdrawalProcessor is
         _registerProcessedWithdrawal(vault.starkKey, vault.assetId);
 
         // de-quantize the amount
-        uint256 assetQuantum = getMappedAssetDetails(vault.assetId).assetOnIMX.quantum;
+        uint256 assetQuantum = mappedAsset.assetOnIMX.quantum;
         uint256 amountToTransfer = vault.quantizedAmount * assetQuantum;
 
         _processFundTransfer(ethAddress, assetAddress, amountToTransfer);

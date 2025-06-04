@@ -7,6 +7,16 @@ pragma solidity ^0.8.18;
  * It includes functions for verifying account proofs, processing claims, and handling errors.
  */
 interface IVaultWithdrawalProcessor {
+    event WithdrawalProcessed(
+        uint256 indexed starkKey,
+        uint256 indexed assetId,
+        address indexed recipient,
+        uint256 amount,
+        address assetAddress
+    );
+
+    error VaultRootAlreadySet();
+
     // @notice AssetNotRegistered is an error thrown when an the asset is not registered in the system.
     // @param assetId The identifier of the asset on Immutable X.
     // @dev This error is thrown when the Immutable X asset ID provided, has no registered association with an asset on zkEVM.

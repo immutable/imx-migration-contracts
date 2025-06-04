@@ -4,7 +4,7 @@ pragma solidity ^0.8.27;
 import "forge-std/Test.sol";
 import "@src/bridge/messaging/VaultRootReceiver.sol";
 import "@src/withdrawals/VaultRootStore.sol";
-import "./MockAxelarGateway.sol";
+import "../../../common/MockAxelarGateway.sol";
 import {IAxelarExecutable} from "@axelar-gmp-sdk-solidity/interfaces/IAxelarExecutable.sol";
 
 contract MockVaultRootStore is VaultRootStore {

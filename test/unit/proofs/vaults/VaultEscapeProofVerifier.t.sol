@@ -7,8 +7,8 @@ import "@src/verifiers/vaults/IVaultProofVerifier.sol";
 import "@src/verifiers/vaults/VaultEscapeProofVerifier.sol";
 import "@src/withdrawals/IVaultWithdrawalProcessor.sol";
 import "forge-std/Test.sol";
-import {FixVaultEscapes} from "../../common/FixVaultEscapes.sol";
-import {FixtureLookupTables} from "../../common/FixtureLookupTables.sol";
+import {FixVaultEscapes} from "../../../common/FixVaultEscapes.sol";
+import {FixtureLookupTables} from "../../../common/FixtureLookupTables.sol";
 
 contract VaultEscapeProofVerifierTest is Test, FixVaultEscapes, FixtureLookupTables {
     VaultEscapeProofVerifier public verifier;
