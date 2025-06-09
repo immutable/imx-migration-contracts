@@ -13,6 +13,7 @@ import {ProcessedWithdrawalsRegistry} from "./ProcessedWithdrawalsRegistry.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {console} from "forge-std/console.sol";
 
 /**
  * @title VaultEscapeProcessor
@@ -23,10 +24,6 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
  * 3. Verify the vault root using the vault proof verifier.
  * 4. Register the processed claim using the vault claims registry.
  * 5. Disburse the funds to the recipient.
- * FIXME:
- * - The vault root will be set by the bridge, through a cross-chain message from the L1 contract, not during construction
- * - Pauseability and AccessControl should be added to the contract
- * - Consider having a readiness state to prevent processing claims before the bridge is ready (has funds, has root, has assets)
  */
 contract VaultWithdrawalProcessor is
     IVaultWithdrawalProcessor,
@@ -92,17 +89,18 @@ contract VaultWithdrawalProcessor is
 
     /*
      * @notice verifyAndProcessWithdrawal
+     * @dev This function only disburses full amounts for a vault and not partial claims.
      * @param ethAddress The Ethereum address of the vault owner. This is the address that will receive the funds, and should be the same as the one provable in the account proof.
      * @param accountProof The account proof to verify. This is the proof that the vault owner's stark key maps to the provided eth address.
      * @param vaultProof The vault proof to verify. This is the proof that the vault is valid.
      * @return bool Returns true if the proof is valid.
      */
     function verifyAndProcessWithdrawal(
-        address ethAddress,
+        address receiverAddress,
         bytes32[] calldata accountProof,
         uint256[] calldata vaultProof
     ) external onlyRole(DISBURSER_ROLE) whenNotPaused returns (bool) {
-        require(ethAddress != address(0), "Address cannot be zero");
+        require(receiverAddress != address(0), "Address cannot be zero");
         require(accountProof.length > 0, IAccountProofVerifier.InvalidAccountProof("Account proof is empty"));
         require(vaultProof.length > 0, IVaultProofVerifier.InvalidVaultProof("Vault proof is empty"));
 
@@ -128,7 +126,7 @@ contract VaultWithdrawalProcessor is
 
         // Verify the stark key and eth address association proof
         require(
-            accountVerifier.verify(vault.starkKey, ethAddress, accountProof),
+            accountVerifier.verify(vault.starkKey, receiverAddress, accountProof),
             IAccountProofVerifier.InvalidAccountProof("Proof verification failed")
         );
 
@@ -139,10 +137,11 @@ contract VaultWithdrawalProcessor is
 
         // de-quantize the amount
         uint256 assetQuantum = mappedAsset.assetOnIMX.quantum;
-        uint256 amountToTransfer = vault.quantizedAmount * assetQuantum;
+        // TODO: Consider using SafeMath for multiplication to prevent overflow
+        uint256 amountToTransfer = vault.quantizedAmount * (10 ** assetQuantum);
 
-        _processFundTransfer(ethAddress, assetAddress, amountToTransfer);
-        emit WithdrawalProcessed(vault.starkKey, vault.assetId, ethAddress, amountToTransfer, assetAddress);
+        _processFundTransfer(receiverAddress, assetAddress, amountToTransfer);
+        emit WithdrawalProcessed(vault.starkKey, vault.assetId, receiverAddress, amountToTransfer, assetAddress);
         return true;
     }
 

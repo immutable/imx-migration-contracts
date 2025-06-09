@@ -85,8 +85,9 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
         accountVerifier.setShouldVerify(true);
         vaultVerifier.setShouldVerify(true);
 
-        uint256 expectedTransfer = vaultWithdrawalProcessor.getMappedAssetQuantum(fixVaultEscapes[0].vault.assetId)
-            * fixVaultEscapes[0].vault.quantizedAmount;
+        uint256 expectedTransfer = (
+            10 ** vaultWithdrawalProcessor.getMappedAssetQuantum(fixVaultEscapes[0].vault.assetId)
+        ) * fixVaultEscapes[0].vault.quantizedAmount;
 
         vm.deal(address(vaultWithdrawalProcessor), 1 ether);
         assertEq(recipient.balance, 0 ether);
@@ -113,7 +114,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
         ERC20MintableBurnable token = ERC20MintableBurnable(vaultWithdrawalProcessor.getMappedAssetAddress(assetId));
 
         uint256 expectedTransfer =
-            vaultWithdrawalProcessor.getMappedAssetQuantum(assetId) * testVaultWithProof.vault.quantizedAmount;
+            (10 ** vaultWithdrawalProcessor.getMappedAssetQuantum(assetId)) * testVaultWithProof.vault.quantizedAmount;
 
         deal(address(token), address(vaultWithdrawalProcessor), 1 ether);
 
@@ -286,7 +287,11 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
         accountVerifier.setShouldVerify(true);
         vaultVerifier.setShouldVerify(true);
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.InsufficientBalance.selector, 0, 7));
+        uint256 expectedAmount = (
+            10 ** vaultWithdrawalProcessor.getMappedAssetQuantum(fixVaultEscapes[0].vault.assetId)
+        ) * fixVaultEscapes[0].vault.quantizedAmount;
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InsufficientBalance.selector, 0, expectedAmount));
         vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, accountProof, fixVaultEscapes[0].proof);
     }
 
@@ -296,7 +301,7 @@ contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, F
         vaultVerifier.setShouldVerify(true);
 
         address rejector = address(new IMXRejector());
-        vm.deal(address(vaultWithdrawalProcessor), 7);
+        vm.deal(address(vaultWithdrawalProcessor), 1 ether);
 
         vm.expectRevert("Rejecting IMX transfers");
         vaultWithdrawalProcessor.verifyAndProcessWithdrawal(rejector, accountProof, fixVaultEscapes[0].proof);

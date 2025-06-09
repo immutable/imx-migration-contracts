@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0.
 pragma solidity ^0.8.18;
 
-import {Test} from "forge-std/Test.sol";
+import "../../../common/ProofUtils.sol";
 import {AccountProofVerifier} from "@src/verifiers/accounts/AccountProofVerifier.sol";
-import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {IAccountProofVerifier} from "@src/verifiers/accounts/IAccountProofVerifier.sol";
-import {console} from "forge-std/console.sol";
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {Test} from "forge-std/Test.sol";
+import {console} from "forge-std/console.sol";
 
-contract AccountProofVerifierTest is Test {
+contract AccountProofVerifierTest is Test, ProofUtils {
     AccountProofVerifier private verifier;
     bytes32 private merkleRoot;
     bytes32[] private leaves;
@@ -26,32 +27,18 @@ contract AccountProofVerifierTest is Test {
         leaves[2] = keccak256(abi.encode(0xabcdef, address(0xabcd)));
         leaves[3] = keccak256(abi.encode(0xbbbbbb, address(0xbbcde)));
 
-        // Sort leaves for consistent tree construction
-        _sortLeaves(leaves);
-
         // Create merkle tree
-        merkleRoot = _computeRoot(leaves);
+        merkleRoot = _computeMerkleRoot(leaves);
 
         // Deploy verifier
         verifier = new AccountProofVerifier(merkleRoot);
 
         // Get proof
-        testProof = _getProof(leaves, 0);
-
-        // Debug logs
-        console.log("Leaf:", string(abi.encode(leaf)));
-        console.log("Merkle Root:", string(abi.encode(merkleRoot)));
-        console.log("Proof Length:", testProof.length);
-        for (uint256 i = 0; i < testProof.length; i++) {
-            console.log("Proof[", i, "]:", string(abi.encode(testProof[i])));
-        }
+        testProof = _getMerkleProof(leaves, 0);
     }
 
     function test_VerifyValidProof() public view {
         bytes32 leaf = keccak256(abi.encode(starkKey, ethAddress));
-        console.log("Leaf in test:", string(abi.encode(leaf)));
-        console.log("Merkle Root in test:", string(abi.encode(verifier.merkleRoot())));
-
         bool isValid = verifier.verify(starkKey, ethAddress, testProof);
         assertTrue(isValid, "Merkle proof verification failed");
     }
@@ -101,81 +88,5 @@ contract AccountProofVerifierTest is Test {
             abi.encodeWithSelector(IAccountProofVerifier.InvalidAccountProof.selector, "Invalid merkle proof")
         );
         verifier.verify(nonExistentStarkKey, nonExistentEthAddress, testProof);
-    }
-
-    // Helper functions
-    function _sortLeaves(bytes32[] memory _leaves) internal pure {
-        for (uint256 i = 0; i < _leaves.length; i++) {
-            for (uint256 j = i + 1; j < _leaves.length; j++) {
-                if (_leaves[i] < _leaves[j]) {
-                    bytes32 temp = _leaves[i];
-                    _leaves[i] = _leaves[j];
-                    _leaves[j] = temp;
-                }
-            }
-        }
-    }
-
-    function _computeRoot(bytes32[] memory _leaves) internal pure returns (bytes32) {
-        if (_leaves.length == 0) return bytes32(0);
-        if (_leaves.length == 1) return _leaves[0];
-
-        bytes32[] memory nodes = new bytes32[]((_leaves.length + 1) / 2);
-        for (uint256 i = 0; i < _leaves.length; i += 2) {
-            if (i + 1 == _leaves.length) {
-                nodes[i / 2] = _leaves[i];
-            } else {
-                // Sort the pair before hashing
-                bytes32 left = _leaves[i];
-                bytes32 right = _leaves[i + 1];
-                if (left > right) {
-                    bytes32 temp = left;
-                    left = right;
-                    right = temp;
-                }
-                nodes[i / 2] = keccak256(abi.encode(left, right));
-            }
-        }
-        return _computeRoot(nodes);
-    }
-
-    function _getProof(bytes32[] memory _leaves, uint256 _index) internal pure returns (bytes32[] memory) {
-        if (_leaves.length == 0) return new bytes32[](0);
-        if (_leaves.length == 1) return new bytes32[](0);
-
-        bytes32[] memory proof = new bytes32[](32); // Maximum depth
-        uint256 proofLength = 0;
-
-        bytes32[] memory nodes = _leaves;
-        uint256 index = _index;
-
-        while (nodes.length > 1) {
-            if (index % 2 == 0) {
-                if (index + 1 < nodes.length) {
-                    proof[proofLength++] = nodes[index + 1];
-                }
-            } else {
-                proof[proofLength++] = nodes[index - 1];
-            }
-
-            bytes32[] memory newNodes = new bytes32[]((nodes.length + 1) / 2);
-            for (uint256 i = 0; i < nodes.length; i += 2) {
-                if (i + 1 == nodes.length) {
-                    newNodes[i / 2] = nodes[i];
-                } else {
-                    // Use abi.encode instead of abi.encodePacked for consistency
-                    newNodes[i / 2] = keccak256(abi.encode(nodes[i], nodes[i + 1]));
-                }
-            }
-            nodes = newNodes;
-            index = index / 2;
-        }
-
-        // Resize proof array to actual length
-        bytes32[] memory trimmedProof = new bytes32[](proofLength);
-        for (uint256 i = 0; i < proofLength; i++) {
-            trimmedProof[i] = proof[i];
-        }
-        return trimmedProof;
     }
 }
