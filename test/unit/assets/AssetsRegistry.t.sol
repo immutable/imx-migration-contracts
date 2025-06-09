@@ -17,7 +17,7 @@ contract MockAssetsRegistry is AssetMappingRegistry {
 contract AssetsMappingRegistryTest is Test {
     uint256 public constant TEST_ASSET_ID = 1;
     address public constant TEST_ASSET_ADDRESS = address(0xBEEF);
-    uint256 public constant TEST_QUANTUM = 1e11;
+    uint256 public constant TEST_QUANTUM = 11;
 
     MockAssetsRegistry public mockRegistry;
 
@@ -45,22 +45,22 @@ contract AssetsMappingRegistryTest is Test {
     function test_RegisterAssetMappings() public {
         AssetMappingRegistry.AssetDetails[] memory assetInfos = new AssetMappingRegistry.AssetDetails[](2);
 
-        assetInfos[0] = _createAssetDetails(1, 1e18, address(0xBEEF));
-        assetInfos[1] = _createAssetDetails(2, 1e6, address(0xCAFE));
+        assetInfos[0] = _createAssetDetails(1, 18, address(0xBEEF));
+        assetInfos[1] = _createAssetDetails(2, 6, address(0xCAFE));
 
         vm.expectEmit(true, true, true, true);
-        emit AssetMappingRegistry.AssetMapped(1, 1e18, address(0xBEEF));
+        emit AssetMappingRegistry.AssetMapped(1, 18, address(0xBEEF));
         vm.expectEmit(true, true, true, true);
-        emit AssetMappingRegistry.AssetMapped(2, 1e6, address(0xCAFE));
+        emit AssetMappingRegistry.AssetMapped(2, 6, address(0xCAFE));
 
         mockRegistry.registerAssetMapping(assetInfos);
 
         assertEq(mockRegistry.getMappedAssetAddress(1), address(0xBEEF));
-        assertEq(mockRegistry.getMappedAssetQuantum(1), 1e18);
+        assertEq(mockRegistry.getMappedAssetQuantum(1), 18);
         assertTrue(mockRegistry.isMapped(1));
 
         assertEq(mockRegistry.getMappedAssetAddress(2), address(0xCAFE));
-        assertEq(mockRegistry.getMappedAssetQuantum(2), 1e6);
+        assertEq(mockRegistry.getMappedAssetQuantum(2), 6);
         assertTrue(mockRegistry.isMapped(2));
     }
 

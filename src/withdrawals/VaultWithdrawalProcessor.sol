@@ -114,8 +114,7 @@ contract VaultWithdrawalProcessor is
         require(vault.quantizedAmount != 0, IVaultProofVerifier.InvalidVaultProof("Invalid quantized amount"));
 
         // withdrawals can only be processed for known assets
-        AssetDetails memory mappedAsset = getMappedAssetDetails(vault.assetId);
-        address assetAddress = mappedAsset.assetOnZKEVM;
+        address assetAddress = assetMappings[vault.assetId].assetOnZKEVM;
         require(assetAddress != address(0), AssetNotRegistered(vault.assetId));
 
         // Ensure that this vault hasn't already been withdrawn/processed.
@@ -136,7 +135,7 @@ contract VaultWithdrawalProcessor is
         _registerProcessedWithdrawal(vault.starkKey, vault.assetId);
 
         // de-quantize the amount
-        uint256 assetQuantum = mappedAsset.assetOnIMX.quantum;
+        uint256 assetQuantum = assetMappings[vault.assetId].assetOnIMX.quantum;
         // TODO: Consider using SafeMath for multiplication to prevent overflow
         uint256 amountToTransfer = vault.quantizedAmount * (10 ** assetQuantum);
 

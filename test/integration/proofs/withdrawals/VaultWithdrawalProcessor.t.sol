@@ -107,7 +107,10 @@ contract VaultWithdrawalProcessorIntegrationTest is
 
         bytes32[] memory accProof = _getMerkleProof(accounts, 0);
         uint256[] memory vaultProof = fixVaultEscapes[0].proof;
+
+        vm.startSnapshotGas("ProcessVaultWithdrawal_NativeAsset");
         vaultProcessor.verifyAndProcessWithdrawal(user1Address, accProof, vaultProof);
+        vm.stopSnapshotGas();
 
         assertEq(user1Address.balance, 0.01 gwei, "Post-withdrawal user's IMX balance did not match expected value");
         assertEq(
@@ -138,7 +141,10 @@ contract VaultWithdrawalProcessorIntegrationTest is
 
         bytes32[] memory accProof = _getMerkleProof(accounts, 1);
         uint256[] memory vaultProof = fixVaultEscapes[2].proof;
+
+        vm.startSnapshotGas("ProcessVaultWithdrawal_ERC20");
         vaultProcessor.verifyAndProcessWithdrawal(user2Address, accProof, vaultProof);
+        vm.stopSnapshotGas();
 
         assertEq(usdc.balanceOf(user2Address), 1 ether, "Post-withdrawal user USDC balance did not match expected");
         assertEq(
