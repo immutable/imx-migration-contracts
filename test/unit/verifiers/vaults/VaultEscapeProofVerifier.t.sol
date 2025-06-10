@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "@src/verifiers/vaults/IVaultProofVerifier.sol";
 import "@src/verifiers/vaults/IVaultProofVerifier.sol";
 import "@src/verifiers/vaults/IVaultProofVerifier.sol";
@@ -31,7 +32,7 @@ contract VaultEscapeProofVerifierTest is Test, FixVaultEscapes, FixtureLookupTab
             invalidProofBadKey[i] = validEscapeProof[i];
             invalidProofBadPath[i] = validEscapeProof[i];
         }
-        invalidProofBadKey[0] = invalidProofBadKey[0] << 4; // Invalid starkKey
+        invalidProofBadKey[0] = invalidProofBadKey[0] << 5; // Invalid starkKey
         invalidProofBadPath[10] = 0xffff << 4; // Invalid path element
     }
 

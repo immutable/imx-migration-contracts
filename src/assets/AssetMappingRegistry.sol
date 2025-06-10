@@ -50,6 +50,7 @@ abstract contract AssetMappingRegistry {
     error AssetAlreadyRegistered();
 
     /// @dev The upper bound for valid quantum values.
+    // TODO Consider further constraining this value given we know the set of tokens and their quanta that will be migrated. Need to carefully consider the implications of imposing such a constraint, if so.
     uint256 public constant QUANTUM_UPPER_BOUND = 2 ** 128;
 
     /// @dev Reference to the native asset address on Immutable zkEVM. This aligns with the value used to represent IMX on the zkEVM bridge.

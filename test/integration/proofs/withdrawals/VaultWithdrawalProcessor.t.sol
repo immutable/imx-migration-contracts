@@ -39,10 +39,10 @@ contract VaultWithdrawalProcessorIntegrationTest is
     VaultRootReceiver private vaultRootReceiver;
     bytes32[] private accounts;
     // Create test data
-    uint256 private user1SK = fixVaultEscapes[0].vault.starkKey;
+    uint256 private user1SK = fixVaultEscapes[2].vault.starkKey;
     address private user1Address = address(0x123);
 
-    uint256 private user2SK = fixVaultEscapes[2].vault.starkKey;
+    uint256 private user2SK = fixVaultEscapes[1].vault.starkKey;
     address private user2Address = address(0xabc);
 
     bytes32 private accountsRoot;
@@ -86,7 +86,7 @@ contract VaultWithdrawalProcessorIntegrationTest is
         rootReceiver.setVaultRootStore(VaultRootStore(address(vaultProcessor)));
     }
 
-    function test_ProcessVaultWithdrawal_NativeAsset() public {
+    function test_ProcessVaultWithdrawal_IMX() public {
         // Set the vault root. In practice this would be done through a cross-chain message from an L1 contract using Axelar
         vm.expectEmit(true, true, true, true);
         emit VaultRootStore.VaultRootSet(0, fixVaultEscapes[0].root);
@@ -106,8 +106,12 @@ contract VaultWithdrawalProcessorIntegrationTest is
         assertEq(user1Address.balance, 0);
 
         bytes32[] memory accProof = _getMerkleProof(accounts, 0);
-        uint256[] memory vaultProof = fixVaultEscapes[0].proof;
-        uint256 vaultBalance = 0.01 gwei;
+
+        uint256[] memory vaultProof = fixVaultEscapes[2].proof;
+        uint256 vaultBalance = 546024000000000;
+
+        console.log("User 1 stark key: %s", user1SK);
+        console.log("Proof extracted stark key: %s", vaultVerifier.extractLeafFromProof(vaultProof).starkKey);
 
         vm.startSnapshotGas("ProcessVaultWithdrawal_NativeAsset");
         vaultProcessor.verifyAndProcessWithdrawal(user1Address, accProof, vaultProof);
@@ -121,14 +125,14 @@ contract VaultWithdrawalProcessorIntegrationTest is
         );
     }
 
-    function test_ProcessVaultWithdrawal_ERC20() public {
+    function test_ProcessVaultWithdrawal_USDC() public {
         // Set the vault root. In practice this would be done through a cross-chain message from an L1 contract using Axelar
         vm.expectEmit(true, true, true, true);
-        emit VaultRootStore.VaultRootSet(0, fixVaultEscapes[0].root);
+        emit VaultRootStore.VaultRootSet(0, fixVaultEscapes[1].root);
         vm.expectEmit(true, true, true, true);
-        emit VaultRootReceiver.VaultRootReceived(fixVaultEscapes[0].root);
+        emit VaultRootReceiver.VaultRootReceived(fixVaultEscapes[1].root);
         rootReceiver.execute(
-            keccak256("set-vault-root"), "ethereum", rootProviderContract, abi.encode(fixVaultEscapes[0].root)
+            keccak256("set-vault-root"), "ethereum", rootProviderContract, abi.encode(fixVaultEscapes[1].root)
         );
 
         address vaultProcessorAddr = address(vaultProcessor);
@@ -141,8 +145,8 @@ contract VaultWithdrawalProcessorIntegrationTest is
         assertEq(usdc.balanceOf(user1Address), 0);
 
         bytes32[] memory accProof = _getMerkleProof(accounts, 1);
-        uint256[] memory vaultProof = fixVaultEscapes[2].proof;
-        uint256 vaultBalance = 0.001 gwei;
+        uint256[] memory vaultProof = fixVaultEscapes[1].proof;
+        uint256 vaultBalance = 76;
 
         vm.startSnapshotGas("ProcessVaultWithdrawal_ERC20");
         vaultProcessor.verifyAndProcessWithdrawal(user2Address, accProof, vaultProof);
