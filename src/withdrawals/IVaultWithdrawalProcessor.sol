@@ -8,11 +8,7 @@ pragma solidity ^0.8.18;
  */
 interface IVaultWithdrawalProcessor {
     event WithdrawalProcessed(
-        uint256 indexed starkKey,
-        uint256 indexed assetId,
-        address indexed recipient,
-        uint256 amount,
-        address assetAddress
+        uint256 indexed starkKey, uint256 indexed assetId, address recipient, uint256 amount, address assetAddress
     );
 
     error VaultRootAlreadySet();
@@ -21,4 +17,6 @@ interface IVaultWithdrawalProcessor {
     // @param assetId The identifier of the asset on Immutable X.
     // @dev This error is thrown when the Immutable X asset ID provided, has no registered association with an asset on zkEVM.
     error AssetNotRegistered(uint256 assetId);
+
+    error ZeroAddress();
 }

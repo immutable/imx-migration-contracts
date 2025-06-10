@@ -24,6 +24,7 @@ import {console} from "forge-std/console.sol";
  * 3. Verify the vault root using the vault proof verifier.
  * 4. Register the processed claim using the vault claims registry.
  * 5. Disburse the funds to the recipient.
+ * TODO: Optimization: consider inheriting vault escape proof verifier and account proof verifier contracts instead of using them as dependencies, to reduce gas costs.
  */
 contract VaultWithdrawalProcessor is
     IVaultWithdrawalProcessor,
@@ -69,10 +70,10 @@ contract VaultWithdrawalProcessor is
         AssetDetails[] memory _assets,
         Operators memory _operators
     ) {
-        require(address(_accountVerifier) != address(0), "Invalid account verifier address");
-        require(address(_vaultVerifier) != address(0), "Invalid vault verifier address");
-        require(_vaultRootProvider != address(0), "Invalid vault root provider address");
-        require(_vaultFundProvider != address(0), "Invalid vault fund provider address");
+        require(address(_accountVerifier) != address(0), ZeroAddress());
+        require(address(_vaultVerifier) != address(0), ZeroAddress());
+        require(_vaultRootProvider != address(0), ZeroAddress());
+        require(_vaultFundProvider != address(0), ZeroAddress());
 
         accountVerifier = _accountVerifier;
         vaultVerifier = _vaultVerifier;
@@ -100,7 +101,7 @@ contract VaultWithdrawalProcessor is
         bytes32[] calldata accountProof,
         uint256[] calldata vaultProof
     ) external onlyRole(DISBURSER_ROLE) whenNotPaused returns (bool) {
-        require(receiverAddress != address(0), "Address cannot be zero");
+        require(receiverAddress != address(0), ZeroAddress());
         require(accountProof.length > 0, IAccountProofVerifier.InvalidAccountProof("Account proof is empty"));
         require(vaultProof.length > 0, IVaultProofVerifier.InvalidVaultProof("Vault proof is empty"));
 
@@ -136,8 +137,7 @@ contract VaultWithdrawalProcessor is
 
         // de-quantize the amount
         uint256 assetQuantum = assetMappings[vault.assetId].assetOnIMX.quantum;
-        // TODO: Consider using SafeMath for multiplication to prevent overflow
-        uint256 amountToTransfer = vault.quantizedAmount * (10 ** assetQuantum);
+        uint256 amountToTransfer = vault.quantizedAmount * assetQuantum;
 
         _processFundTransfer(receiverAddress, assetAddress, amountToTransfer);
         emit WithdrawalProcessed(vault.starkKey, vault.assetId, receiverAddress, amountToTransfer, assetAddress);
@@ -147,7 +147,9 @@ contract VaultWithdrawalProcessor is
     function setVaultRoot(uint256 newRoot) external override whenNotPaused {
         require(msg.sender == vaultRootProvider, "Unauthorized: Only vault root provider can set the root");
         // Vault root should only be set once
+        // TODO: Consider whether we want to enforce this invariant here or elsewhere
         require(vaultRoot == 0, VaultRootAlreadySet());
+        // TODO: Additional validation on vault root
 
         _setVaultRoot(newRoot);
     }

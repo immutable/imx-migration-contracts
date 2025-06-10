@@ -9,13 +9,13 @@ abstract contract FixtureAssets {
     AssetMappingRegistry.AssetDetails[] public fixAssets = [
         AssetMappingRegistry.AssetDetails(
             AssetMappingRegistry.ImmutableXAsset(
-                1103114524755001640548555873671808205895038091681120606634696969331999845790, 7
+                1103114524755001640548555873671808205895038091681120606634696969331999845790, 10 ** 7
             ),
             NATIVE_IMX
         ),
         AssetMappingRegistry.AssetDetails(
             AssetMappingRegistry.ImmutableXAsset(
-                1810904411670354579114094206528523777019223281748314185673123994510590793656, 18
+                1810904411670354579114094206528523777019223281748314185673123994510590793656, 10 ** 6
             ),
             address(0x6de8aCC0D406837030CE4dd28e7c08C5a96a30d2) // USDC on zkEVM mainnet
         )

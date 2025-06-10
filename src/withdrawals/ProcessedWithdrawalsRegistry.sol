@@ -11,7 +11,7 @@ abstract contract ProcessedWithdrawalsRegistry {
     // @param starkKey The Stark key of the user.
     // @param assetId The identifier of the asset in the vault.
     // @param claimHash The hash of the claim, which is the keccak256 of the starkKey and assetId.
-    event WithdrawalProcessed(uint256 starkKey, uint256 assetId, bytes32 indexed claimHash);
+    event WithdrawalProcessed(uint256 indexed starkKey, uint256 indexed assetId, bytes32 claimHash);
 
     // @notice WithdrawalAlreadyProcessed is an error thrown when if a claim is attempted to be processed more than once.
     error WithdrawalAlreadyProcessed(uint256 starkKey, uint256 assetId);
