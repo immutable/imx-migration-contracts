@@ -38,7 +38,6 @@ contract AccountProofVerifierTest is Test, ProofUtils {
     }
 
     function test_VerifyValidProof() public view {
-        bytes32 leaf = keccak256(abi.encode(starkKey, ethAddress));
         bool isValid = verifier.verifyAccountProof(starkKey, ethAddress, testProof);
         assertTrue(isValid, "Merkle proof verification failed");
     }
