@@ -95,6 +95,7 @@ contract VaultWithdrawalProcessor is
      * @param accountProof The account proof to verify. This is the proof that the vault owner's stark key maps to the provided eth address.
      * @param vaultProof The vault proof to verify. This is the proof that the vault is valid.
      * @return bool Returns true if the proof is valid.
+     * TODO: Make this function permissionless, so that anyone can process a withdrawal for a vault, as long as they provide the correct proofs.
      */
     function verifyAndProcessWithdrawal(
         address receiverAddress,
@@ -126,12 +127,14 @@ contract VaultWithdrawalProcessor is
 
         // Verify the stark key and eth address association proof
         require(
-            accountVerifier.verify(vault.starkKey, receiverAddress, accountProof),
+            accountVerifier.verifyAccountProof(vault.starkKey, receiverAddress, accountProof),
             IAccountProofVerifier.InvalidAccountProof("Proof verification failed")
         );
 
         // Verify the vault escape proof
-        require(vaultVerifier.verifyProof(vaultProof), IVaultProofVerifier.InvalidVaultProof("Invalid vault proof"));
+        require(
+            vaultVerifier.verifyVaultProof(vaultProof), IVaultProofVerifier.InvalidVaultProof("Invalid vault proof")
+        );
 
         _registerProcessedWithdrawal(vault.starkKey, vault.assetId);
 

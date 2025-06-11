@@ -31,39 +31,39 @@ contract AccountProofVerifierTest is Test, ProofUtils {
         merkleRoot = _computeMerkleRoot(leaves);
 
         // Deploy verifier
-        verifier = new AccountProofVerifier(merkleRoot);
-
+        verifier = new AccountProofVerifier(address(this));
+        verifier.setAccountRoot(merkleRoot);
         // Get proof
         testProof = _getMerkleProof(leaves, 0);
     }
 
     function test_VerifyValidProof() public view {
         bytes32 leaf = keccak256(abi.encode(starkKey, ethAddress));
-        bool isValid = verifier.verify(starkKey, ethAddress, testProof);
+        bool isValid = verifier.verifyAccountProof(starkKey, ethAddress, testProof);
         assertTrue(isValid, "Merkle proof verification failed");
     }
 
     function test_RevertIf_InvalidStarkKey() public {
         uint256 invalidStarkKey = 0x800000000000011000000000000000000000000000000000000000000000002;
         vm.expectRevert("Invalid stark key");
-        verifier.verify(invalidStarkKey, ethAddress, testProof);
+        verifier.verifyAccountProof(invalidStarkKey, ethAddress, testProof);
     }
 
     function test_RevertIf_ZeroStarkKey() public {
         vm.expectRevert("Invalid stark key");
-        verifier.verify(0, ethAddress, testProof);
+        verifier.verifyAccountProof(0, ethAddress, testProof);
     }
 
     function test_RevertIf_ZeroAddress() public {
         vm.expectRevert("Invalid Ethereum address");
-        verifier.verify(starkKey, address(0), testProof);
+        verifier.verifyAccountProof(starkKey, address(0), testProof);
     }
 
     function test_RevertIf_EmptyProof() public {
         bytes32[] memory emptyProof = new bytes32[](0);
 
         vm.expectRevert("Proof must not be empty");
-        verifier.verify(starkKey, ethAddress, emptyProof);
+        verifier.verifyAccountProof(starkKey, ethAddress, emptyProof);
     }
 
     function test_RejectInvalidProof() public {
@@ -77,7 +77,7 @@ contract AccountProofVerifierTest is Test, ProofUtils {
         vm.expectRevert(
             abi.encodeWithSelector(IAccountProofVerifier.InvalidAccountProof.selector, "Invalid merkle proof")
         );
-        verifier.verify(starkKey, ethAddress, invalidProof);
+        verifier.verifyAccountProof(starkKey, ethAddress, invalidProof);
     }
 
     function test_RejectNonExistentLeaf() public {
@@ -87,6 +87,6 @@ contract AccountProofVerifierTest is Test, ProofUtils {
         vm.expectRevert(
             abi.encodeWithSelector(IAccountProofVerifier.InvalidAccountProof.selector, "Invalid merkle proof")
         );
-        verifier.verify(nonExistentStarkKey, nonExistentEthAddress, testProof);
+        verifier.verifyAccountProof(nonExistentStarkKey, nonExistentEthAddress, testProof);
     }
 }

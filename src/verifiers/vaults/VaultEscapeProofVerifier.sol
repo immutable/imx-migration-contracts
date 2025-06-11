@@ -102,7 +102,7 @@ contract VaultEscapeProofVerifier is IVaultProofVerifier {
      *       hash((left_node_{i-1}, right_node_{i-1})) ==
      *         (leafIndex & (1<<i)) == 0 ? left_node_i : right_node_i.
      */
-    function verifyProof(uint256[] calldata escapeProof) external view virtual override returns (bool) {
+    function verifyVaultProof(uint256[] calldata escapeProof) external view virtual override returns (bool) {
         _validateProofStructure(escapeProof);
 
         uint256 proofLength = escapeProof.length;

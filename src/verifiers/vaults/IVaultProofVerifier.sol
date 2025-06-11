@@ -23,11 +23,11 @@ interface IVaultProofVerifier {
     error InvalidVaultProof(string message);
 
     /*
-     * @notice verifyProof verifies the proof for a vault. It is assumed that the proof contains the vault information, the root, and the proof.
+     * @notice verifyVaultProof verifies the proof for a vault. It is assumed that the proof contains the vault information, the root, and the proof.
      * @param proof The proof to be verified, which is assumed to include the vault information, the root and the Merkle proof.
      * @return success Returns true if the proof is valid. The function might return false or revert if the proof is invalid.
      */
-    function verifyProof(uint256[] calldata proof) external view returns (bool success);
+    function verifyVaultProof(uint256[] calldata proof) external view returns (bool success);
     /*
      * @notice extractLeafFromProof extracts the leaf (vault information) encoded in a given proof.
      * @param proof The proof to be verified, which is assumed to include the vault information. Specific structure depends on the implementation.

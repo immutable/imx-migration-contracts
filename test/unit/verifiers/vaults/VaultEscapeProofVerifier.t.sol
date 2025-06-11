@@ -44,35 +44,35 @@ contract VaultEscapeProofVerifierTest is Test, FixVaultEscapes, FixtureLookupTab
 
     function test_VerifyValidEscapeProof() public view {
         uint256[] memory validEscapeProof = fixVaultEscapes[0].proof;
-        bool result = verifier.verifyProof(validEscapeProof);
+        bool result = verifier.verifyVaultProof(validEscapeProof);
         assertTrue(result);
     }
 
     function test_RevertIf_VerifyProof_WithInvalidKey() public {
         vm.expectRevert("Bad starkKey or assetId.");
-        verifier.verifyProof(invalidProofBadKey);
+        verifier.verifyVaultProof(invalidProofBadKey);
     }
 
     function test_RevertIf_VerifyProof_WithInvalidPath() public {
         vm.expectRevert("Bad Merkle path.");
-        verifier.verifyProof(invalidProofBadPath);
+        verifier.verifyVaultProof(invalidProofBadPath);
     }
 
     function test_RevertIf_VerifyProof_WithInvalidLength_Short() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Proof too short."));
-        verifier.verifyProof(new uint256[](67));
+        verifier.verifyVaultProof(new uint256[](67));
     }
 
     function test_RevertIf_VerifyProof_WithInvalidLength_Long() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Proof too long."));
-        verifier.verifyProof(new uint256[](200));
+        verifier.verifyVaultProof(new uint256[](200));
     }
 
     function test_RevertIf_VerifyProof_WithInvalidLength_Odd() public {
         vm.expectRevert(
             abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Proof length must be even.")
         );
-        verifier.verifyProof(new uint256[](69));
+        verifier.verifyVaultProof(new uint256[](69));
     }
 
     function test_ExtractLeafFromProof() public view {

@@ -19,7 +19,7 @@ contract MockAccountVerifier is IAccountProofVerifier {
         shouldVerify = _shouldVerify;
     }
 
-    function verify(uint256, address, bytes32[] calldata) external view override returns (bool) {
+    function verifyAccountProof(uint256, address, bytes32[] calldata) external view override returns (bool) {
         return shouldVerify;
     }
 }
@@ -33,7 +33,7 @@ contract MockVaultVerifier is VaultEscapeProofVerifier {
         shouldVerify = _shouldVerify;
     }
 
-    function verifyProof(uint256[] calldata) external view override returns (bool) {
+    function verifyVaultProof(uint256[] calldata) external view override returns (bool) {
         return shouldVerify;
     }
 }

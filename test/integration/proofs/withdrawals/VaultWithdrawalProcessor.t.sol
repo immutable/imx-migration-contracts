@@ -65,7 +65,8 @@ contract VaultWithdrawalProcessorIntegrationTest is
         accounts[3] = keccak256(abi.encode(0xbbbbbb, address(0xbbcde)));
 
         accountsRoot = _computeMerkleRoot(accounts);
-        accountVerifier = new AccountProofVerifier(accountsRoot);
+        accountVerifier = new AccountProofVerifier(address(this));
+        accountVerifier.setAccountRoot(accountsRoot);
 
         rootReceiver = new VaultRootReceiver("ethereum", rootProviderContract, address(this), address(axelarGateway));
 

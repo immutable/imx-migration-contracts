@@ -4,5 +4,7 @@ pragma solidity ^0.8.18;
 interface IAccountProofVerifier {
     error InvalidAccountProof(string message);
 
-    function verify(uint256 starkKey, address ethAddress, bytes32[] calldata proof) external returns (bool);
+    function verifyAccountProof(uint256 starkKey, address ethAddress, bytes32[] calldata proof)
+        external
+        returns (bool);
 }
