@@ -20,7 +20,7 @@ contract AccountProofVerifier is IAccountProofVerifier, Ownable {
         view
         returns (bool)
     {
-        require(starkKey != 0 && starkKey >> 252 == 0 && starkKey < K_MODULUS, "Invalid stark key");
+        require(starkKey != 0 && starkKey < K_MODULUS, "Invalid stark key");
         require(ethAddress != address(0), "Invalid Ethereum address");
         require(proof.length > 0, "Proof must not be empty");
         bytes32 leaf = Hashes.commutativeKeccak256(bytes32(starkKey), bytes32(uint256(uint160(ethAddress))));

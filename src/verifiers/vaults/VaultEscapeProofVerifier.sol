@@ -327,8 +327,8 @@ contract VaultEscapeProofVerifier is IVaultProofVerifier {
                 and(mload(add(proof, 0x5f)), 0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
         }
 
-        require(starkKey != 0 && starkKey >> 252 == 0 && starkKey < K_MODULUS, InvalidVaultProof("Invalid Stark key."));
-        require(assetId != 0 && assetId >> 252 == 0 && assetId < K_MODULUS, InvalidVaultProof("Invalid asset ID."));
+        require(starkKey != 0 && starkKey < K_MODULUS, InvalidVaultProof("Invalid Stark key."));
+        require(assetId != 0 && assetId < K_MODULUS, InvalidVaultProof("Invalid asset ID."));
 
         return Vault(starkKey, assetId, quantizedAmount);
     }
