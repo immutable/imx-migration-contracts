@@ -4,7 +4,7 @@ pragma solidity ^0.8.27;
 import "@src/verifiers/vaults/IVaultProofVerifier.sol";
 
 // TODO: Load this data from a file to enable testing of a wider range of vault proofs
-abstract contract FixVaultEscapes {
+abstract contract FixtureVaultEscapes {
     struct VaultWithProof {
         IVaultProofVerifier.Vault vault;
         uint256[] proof;

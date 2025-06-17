@@ -11,8 +11,9 @@ import {Test} from "forge-std/Test.sol";
 import {VaultEscapeProofVerifier} from "../../../../src/verifiers/vaults/VaultEscapeProofVerifier.sol";
 import {VaultRootReceiver} from "../../../../src/bridge/messaging/VaultRootReceiver.sol";
 import {FixtureAssets} from "../../../common/FixtureAssets.sol";
-import {FixVaultEscapes} from "../../../common/FixVaultEscapes.sol";
+import {FixtureVaultEscapes} from "../../../common/FixtureVaultEscapes.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import {FixtureAccounts} from "../../../common/FixtureAccounts.sol";
 /**
  * VaultWithdrawalProcessorIntegrationTest.sol
  * - Create a set of account associations and a merkle root.
@@ -31,21 +32,14 @@ contract VaultWithdrawalProcessorIntegrationTest is
     Test,
     ProofUtils,
     FixtureAssets,
-    FixVaultEscapes,
+    FixtureVaultEscapes,
+    FixtureAccounts,
     FixtureLookupTables
 {
     AccountProofVerifier private accountVerifier;
     VaultEscapeProofVerifier private vaultVerifier;
     VaultRootReceiver private vaultRootReceiver;
-    bytes32[] private accounts;
-    // Create test data
-    uint256 private user1SK = fixVaultEscapes[2].vault.starkKey;
-    address private user1Address = address(0x123);
 
-    uint256 private user2SK = fixVaultEscapes[1].vault.starkKey;
-    address private user2Address = address(0xabc);
-
-    bytes32 private accountsRoot;
     MockAxelarGateway private axelarGateway;
     VaultRootReceiver private rootReceiver;
     VaultWithdrawalProcessor private vaultProcessor;
@@ -58,13 +52,7 @@ contract VaultWithdrawalProcessorIntegrationTest is
 
         axelarGateway = new MockAxelarGateway(true);
         // Create account associations and compute the merkle root
-        accounts = new bytes32[](4);
-        accounts[0] = keccak256(abi.encode(user1SK, user1Address));
-        accounts[1] = keccak256(abi.encode(user2SK, user2Address));
-        accounts[2] = keccak256(abi.encode(0xabcdef, address(0xabcd)));
-        accounts[3] = keccak256(abi.encode(0xbbbbbb, address(0xbbcde)));
 
-        accountsRoot = _computeMerkleRoot(accounts);
         accountVerifier = new AccountProofVerifier(address(this));
         accountVerifier.setAccountRoot(accountsRoot);
 
@@ -104,21 +92,24 @@ contract VaultWithdrawalProcessorIntegrationTest is
         deal(vaultProcessorAddr, 1 ether);
 
         assertEq(vaultProcessorAddr.balance, 1 ether);
-        assertEq(user1Address.balance, 0);
+        AccountAssociation memory account = fixAccounts[fixVaultEscapes[2].vault.starkKey];
 
-        bytes32[] memory accProof = _getMerkleProof(accounts, 0);
+        assertEq(account.ethAddress.balance, 0);
 
         uint256[] memory vaultProof = fixVaultEscapes[2].proof;
         uint256 vaultBalance = 546024000000000;
 
-        console.log("User 1 stark key: %s", user1SK);
+        console.log("User 1 stark key: %s", account.starkKey);
         console.log("Proof extracted stark key: %s", vaultVerifier.extractLeafFromProof(vaultProof).starkKey);
 
         vm.startSnapshotGas("ProcessVaultWithdrawal_NativeAsset");
-        vaultProcessor.verifyAndProcessWithdrawal(user1Address, accProof, vaultProof);
+        bytes32[] memory accProof = _getMerkleProof(account.starkKey);
+        vaultProcessor.verifyAndProcessWithdrawal(account.ethAddress, accProof, vaultProof);
         vm.stopSnapshotGas();
 
-        assertEq(user1Address.balance, vaultBalance, "Post-withdrawal user's IMX balance did not match expected value");
+        assertEq(
+            account.ethAddress.balance, vaultBalance, "Post-withdrawal user's IMX balance did not match expected value"
+        );
         assertEq(
             vaultProcessorAddr.balance,
             1 ether - vaultBalance,
@@ -143,17 +134,21 @@ contract VaultWithdrawalProcessorIntegrationTest is
         deal(address(usdc), vaultProcessorAddr, 1 ether);
 
         assertEq(usdc.balanceOf(vaultProcessorAddr), 1 ether);
-        assertEq(usdc.balanceOf(user1Address), 0);
+        AccountAssociation memory account = fixAccounts[fixVaultEscapes[1].vault.starkKey];
 
-        bytes32[] memory accProof = _getMerkleProof(accounts, 1);
+        assertEq(usdc.balanceOf(account.ethAddress), 0);
+
+        bytes32[] memory accProof = _getMerkleProof(account.starkKey);
         uint256[] memory vaultProof = fixVaultEscapes[1].proof;
         uint256 vaultBalance = 76;
 
         vm.startSnapshotGas("ProcessVaultWithdrawal_ERC20");
-        vaultProcessor.verifyAndProcessWithdrawal(user2Address, accProof, vaultProof);
+        vaultProcessor.verifyAndProcessWithdrawal(account.ethAddress, accProof, vaultProof);
         vm.stopSnapshotGas();
 
-        assertEq(usdc.balanceOf(user2Address), vaultBalance, "Post-withdrawal user USDC balance did not match expected");
+        assertEq(
+            usdc.balanceOf(account.ethAddress), vaultBalance, "Post-withdrawal user USDC balance did not match expected"
+        );
         assertEq(
             usdc.balanceOf(vaultProcessorAddr),
             1 ether - vaultBalance,

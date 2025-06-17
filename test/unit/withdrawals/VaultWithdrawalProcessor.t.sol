@@ -7,7 +7,7 @@ import "@src/verifiers/accounts/IAccountProofVerifier.sol";
 import "@src/verifiers/vaults/VaultEscapeProofVerifier.sol";
 import "@src/withdrawals/IVaultWithdrawalProcessor.sol";
 import "@src/withdrawals/VaultWithdrawalProcessor.sol";
-import "../../common/FixVaultEscapes.sol";
+import "../../common/FixtureVaultEscapes.sol";
 import "../../common/FixtureAssets.sol";
 import "../../common/FixtureLookupTables.sol";
 import {Errors} from "@openzeppelin/contracts/utils/Errors.sol";
@@ -38,7 +38,7 @@ contract MockVaultVerifier is VaultEscapeProofVerifier {
     }
 }
 
-contract VaultWithdrawalProcessorTest is Test, FixVaultEscapes, FixtureAssets, FixtureLookupTables {
+contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAssets, FixtureLookupTables {
     VaultWithdrawalProcessor private vaultWithdrawalProcessor;
     MockAccountVerifier private accountVerifier;
     MockVaultVerifier private vaultVerifier;

@@ -8,10 +8,10 @@ import "@src/verifiers/vaults/IVaultProofVerifier.sol";
 import "@src/verifiers/vaults/VaultEscapeProofVerifier.sol";
 import "@src/withdrawals/IVaultWithdrawalProcessor.sol";
 import "forge-std/Test.sol";
-import {FixVaultEscapes} from "../../../common/FixVaultEscapes.sol";
+import {FixtureVaultEscapes} from "../../../common/FixtureVaultEscapes.sol";
 import {FixtureLookupTables} from "../../../common/FixtureLookupTables.sol";
 
-contract VaultEscapeProofVerifierTest is Test, FixVaultEscapes, FixtureLookupTables {
+contract VaultEscapeProofVerifierTest is Test, FixtureVaultEscapes, FixtureLookupTables {
     VaultEscapeProofVerifier public verifier;
 
     uint256[] private invalidProofBadKey;
