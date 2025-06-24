@@ -9,7 +9,7 @@ interface IStarkExchangeMigration {
     error ZeroAmount();
     error InsufficientBalance();
 
-    event VaultStateMigrationInitiated(uint256 vaultRoot);
+    event VaultStateMigrationInitiated(uint256 indexed vaultRoot, address inititator);
     event ERC20HoldingMigrationInitiated(address indexed token, uint256 amount);
     event ETHHoldingMigrationInitiated(uint256 amount);
 

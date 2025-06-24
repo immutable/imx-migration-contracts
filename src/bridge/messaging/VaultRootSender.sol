@@ -11,7 +11,7 @@ contract VaultRootSender is AxelarExecutable {
     string public zkEVMChainId;
     string public zkEVMVaultReceiver;
 
-    event AxelarMessageSent(string indexed destinationChain, string indexed vaultReceiver, bytes indexed payload);
+    event VaultRootSent(string indexed destinationChain, string indexed vaultReceiver, bytes indexed payload);
 
     error InvalidChainId();
     error UnauthorizedCaller();
@@ -52,7 +52,7 @@ contract VaultRootSender is AxelarExecutable {
         );
 
         IAxelarGateway(gatewayAddress).callContract(_zkEVMChainId, _zkEVMVaultReceiver, payload);
-        emit AxelarMessageSent(_zkEVMChainId, _zkEVMVaultReceiver, payload);
+        emit VaultRootSent(_zkEVMChainId, _zkEVMVaultReceiver, payload);
     }
 
     function _execute(bytes32, string calldata, string calldata, bytes calldata) internal pure override {

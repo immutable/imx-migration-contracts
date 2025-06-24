@@ -4,6 +4,7 @@ pragma solidity ^0.8.27;
 import "@src/bridge/starkex/StarkExchangeMigration.sol";
 import "forge-std/Test.sol";
 import {IStarkExchangeMigration} from "../../../../src/bridge/starkex/IStarkExchangeMigration.sol";
+import {MockVaultRootSender} from "../../../common/MockVaultRootSender.sol";
 
 interface IStarkExchangeProxy is IStarkExchangeMigration {
     event ImplementationAdded(address indexed implementation, bytes initData, bool finalize);
@@ -16,12 +17,14 @@ interface IStarkExchangeProxy is IStarkExchangeMigration {
 }
 // TODO: significantly improve the test coverage for the StarkExchangeMigration contract
 
-contract StarkExchangeTest is Test {
+contract StarkExchangeMigrationTest is Test {
     IStarkExchangeProxy public constant starkExProxy = IStarkExchangeProxy(0x5FDCCA53617f4d2b9134B29090C87D01058e27e9);
-    address public constant zkEVMBridge = 0xBa5E35E26Ae59c7aea6F029B68c6460De2d13eB6; // Bridge address
-    address public constant proxyOwner = 0xD2C37fC6fD89563187f3679304975655e448D192;
-    address public constant l2VaultProcessor = 0x5Ffb1b3C4D6E8B7A9c1E8d3f2b5e6f7a8B9C0d1E; // L2 Vault Processor address
-    address public constant migrationManager = proxyOwner;
+    address private constant zkEVMBridge = 0xBa5E35E26Ae59c7aea6F029B68c6460De2d13eB6; // Bridge address
+    address private constant proxyOwner = 0xD2C37fC6fD89563187f3679304975655e448D192;
+    address private constant l2VaultProcessor = 0x5Ffb1b3C4D6E8B7A9c1E8d3f2b5e6f7a8B9C0d1E; // L2 Vault Processor address
+    address private constant migrationInitiator = proxyOwner;
+
+    address private mockVaultRootSender;
 
     // TODO: Include the below tokens once they are mapped to the zkEVM bridge
     //        0x7E77dCb127F99ECe88230a64Db8d595F31F1b068, // SILV2
@@ -38,12 +41,13 @@ contract StarkExchangeTest is Test {
     function setUp() public {
         string memory RPC_URL = vm.envString("ETH_RPC_URL");
         vm.createSelectFork(RPC_URL);
+        mockVaultRootSender = address(new MockVaultRootSender());
     }
 
     function _upgradeStarkExchange() internal returns (address) {
         vm.startPrank(proxyOwner);
         address starkExchange = address(new StarkExchangeMigration());
-        bytes memory initData = abi.encode(migrationManager, zkEVMBridge, l2VaultProcessor);
+        bytes memory initData = abi.encode(migrationInitiator, zkEVMBridge, mockVaultRootSender, l2VaultProcessor);
 
         vm.expectEmit(true, true, true, true);
         emit IStarkExchangeProxy.ImplementationAdded(starkExchange, initData, false);
@@ -81,11 +85,11 @@ contract StarkExchangeTest is Test {
 
         _upgradeStarkExchange();
 
-        vm.startPrank(migrationManager);
+        vm.startPrank(migrationInitiator);
         uint256 migrateAmount = initStarkExBal;
 
         uint256 bridgeFee = 0.001 ether; // Example bridge fee
-        vm.deal(migrationManager, bridgeFee);
+        vm.deal(migrationInitiator, bridgeFee);
         starkExProxy.migrateETHHoldings{value: bridgeFee}(migrateAmount);
 
         uint256 finStarkExBal = address(starkExProxy).balance;
@@ -98,10 +102,10 @@ contract StarkExchangeTest is Test {
 
     function test_migrateAllERC20Holdings() public {
         _upgradeStarkExchange();
-        vm.startPrank(migrationManager);
+        vm.startPrank(migrationInitiator);
 
         uint256 bridgeFee = 0.001 ether;
-        vm.deal(migrationManager, bridgeFee * tokens.length);
+        vm.deal(migrationInitiator, bridgeFee * tokens.length);
 
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20Metadata token = IERC20Metadata(tokens[i]);
@@ -123,6 +127,28 @@ contract StarkExchangeTest is Test {
                 finzkEVMBal, initzkEVMBal + initStarkExBal, "Final balance on zkEVM bridge does not match expected"
             );
         }
+        vm.stopPrank();
+    }
+
+    function test_migrateVaultState() public {
+        _upgradeStarkExchange();
+        vm.startPrank(migrationInitiator);
+
+        uint256 vaultRoot = starkExProxy.vaultRoot();
+        assertGt(vaultRoot, 0, "Vault root should be greater than zero");
+
+        uint256 bridgeFee = 0.001 ether; // Example bridge fee
+        vm.deal(migrationInitiator, bridgeFee);
+
+        vm.expectCall(
+            mockVaultRootSender,
+            abi.encodeCall(VaultRootSender(mockVaultRootSender).sendVaultRoot, (vaultRoot, migrationInitiator))
+        );
+        starkExProxy.migrateVaultState{value: bridgeFee}();
+
+        uint256 newVaultRoot = starkExProxy.vaultRoot();
+        assertEq(newVaultRoot, vaultRoot, "Vault root should remain the same after migration");
+
         vm.stopPrank();
     }
 }

@@ -7,6 +7,7 @@ import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.s
 import {IRootERC20Bridge} from "../zkEVM/IRootERC20Bridge.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IStarkExchangeMigration} from "./IStarkExchangeMigration.sol";
+import {VaultRootSender} from "../messaging/VaultRootSender.sol";
 
 /**
  * @title StarkExchangeMigration
@@ -20,19 +21,21 @@ contract StarkExchangeMigration is MainStorage, Initializable, IStarkExchangeMig
     address public constant NATIVE_ETH = address(0xeee);
 
     modifier onlyMigrationManager() {
-        require(msg.sender == migrationManager, "NOT_MIGRATION_MANAGER");
+        require(msg.sender == migrationInitiator, "NOT_MIGRATION_MANAGER");
         _;
     }
 
     function initialize(bytes calldata data) external initializer {
-        (address _migrationManager, address _zkEVMBridge, address _l2VaultProcessor) =
-            abi.decode(data, (address, address, address));
+        (address _migrationManager, address _zkEVMBridge, address _vaultRootSender, address _l2VaultProcessor) =
+            abi.decode(data, (address, address, address, address));
         require(_migrationManager != address(0), ZeroAddress());
         require(_zkEVMBridge != address(0), ZeroAddress());
+        require(_vaultRootSender != address(0), ZeroAddress());
         require(_l2VaultProcessor != address(0), ZeroAddress());
-        migrationManager = _migrationManager;
-        bridgeAddress = _zkEVMBridge;
-        l2VaultProcessor = _l2VaultProcessor;
+        migrationInitiator = _migrationManager;
+        zkEVMBridge = _zkEVMBridge;
+        zkEVMVaultProcessor = _l2VaultProcessor;
+        vaultRootSender = VaultRootSender(_vaultRootSender);
     }
 
     function isFrozen() external pure returns (bool) {
@@ -41,8 +44,9 @@ contract StarkExchangeMigration is MainStorage, Initializable, IStarkExchangeMig
 
     function migrateVaultState() external payable override onlyMigrationManager {
         require(msg.value > 0, NoBridgeFee());
-        // TODO:
-        emit VaultStateMigrationInitiated(vaultRoot);
+        //TODO: Consider externalising gas refund receipient
+        vaultRootSender.sendVaultRoot{value: msg.value}(vaultRoot, msg.sender);
+        emit VaultStateMigrationInitiated(vaultRoot, msg.sender);
     }
 
     function migrateERC20Holdings(IERC20Metadata token, uint256 amount)
@@ -68,8 +72,8 @@ contract StarkExchangeMigration is MainStorage, Initializable, IStarkExchangeMig
         uint256 balance = token.balanceOf(address(this));
         require(balance >= amount, InsufficientBalance());
         // Transfer the specified amount of tokens to the recipient
-        token.approve(bridgeAddress, amount);
-        IRootERC20Bridge(bridgeAddress).depositTo{value: msg.value}(token, l2VaultProcessor, amount);
+        token.approve(zkEVMBridge, amount);
+        IRootERC20Bridge(zkEVMBridge).depositTo{value: msg.value}(token, zkEVMVaultProcessor, amount);
     }
 
     function _depositETHToZKEVMBridge(uint256 amount) private {
@@ -79,6 +83,6 @@ contract StarkExchangeMigration is MainStorage, Initializable, IStarkExchangeMig
         uint256 balance = address(this).balance;
         require(balance >= amount, InsufficientBalance());
 
-        IRootERC20Bridge(bridgeAddress).depositToETH{value: amount + msg.value}(l2VaultProcessor, amount);
+        IRootERC20Bridge(zkEVMBridge).depositToETH{value: amount + msg.value}(zkEVMVaultProcessor, amount);
     }
 }

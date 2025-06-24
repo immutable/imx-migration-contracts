@@ -82,7 +82,7 @@ contract VaultRootSenderTest is Test {
 
         // Check that the event was emitted
         vm.expectEmit(true, true, true, true);
-        emit VaultRootSender.AxelarMessageSent(L2_CHAIN_ID, L2_VAULT_RECEIVER, abi.encode(vaultRoot));
+        emit VaultRootSender.VaultRootSent(L2_CHAIN_ID, L2_VAULT_RECEIVER, abi.encode(vaultRoot));
         sender.sendVaultRoot{value: bridgeFee}(vaultRoot, refundAddress);
     }
 

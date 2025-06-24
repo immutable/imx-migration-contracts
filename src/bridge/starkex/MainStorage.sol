@@ -3,6 +3,7 @@ pragma solidity ^0.8.27;
 
 import "./ProxyStorage.sol";
 import "./Common.sol";
+import {VaultRootSender} from "../messaging/VaultRootSender.sol";
 
 /*
   Holds ALL the main contract state (storage) variables.
@@ -104,12 +105,14 @@ contract MainStorage is ProxyStorage {
     // Append only list of requested forced action hashes.
     bytes32[] actionHashList;
 
-    address bridgeAddress; // NOLINT: constable-states uninitialized-state.
-    address migrationManager; // NOLINT: constable-states uninitialized-state.
-    address l2VaultProcessor; // NOLINT: constable-states uninitialized-state.
+    address public zkEVMBridge; // NOLINT: constable-states uninitialized-state.
+    address public zkEVMVaultProcessor; // NOLINT: constable-states uninitialized-state.
+    address public migrationInitiator; // NOLINT: constable-states uninitialized-state.
+    VaultRootSender public vaultRootSender; // NOLINT: constable-states uninitialized-state.
+
     // Reserved storage space for Extensibility.
     // Every added MUST be added above the end gap, and the __endGap size must be reduced
     // accordingly.
     // NOLINTNEXTLINE: naming-convention.
-    uint256[LAYOUT_LENGTH - 40] private __endGap; // __endGap complements layout to LAYOUT_LENGTH.
+    uint256[LAYOUT_LENGTH - 41] private __endGap; // __endGap complements layout to LAYOUT_LENGTH.
 }
