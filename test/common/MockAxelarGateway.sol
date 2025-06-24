@@ -36,7 +36,5 @@ contract MockAxelarGateway is IAxelarGateway {
         return false;
     }
 
-    function callContract(string calldata, string calldata, bytes calldata) external pure override {
-        revert("unimplemented");
-    }
+    function callContract(string calldata, string calldata, bytes calldata) external pure override {}
 }

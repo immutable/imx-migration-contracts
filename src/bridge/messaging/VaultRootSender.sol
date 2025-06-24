@@ -6,52 +6,56 @@ import {AxelarExecutable} from "@axelar-gmp-sdk-solidity/executable/AxelarExecut
 import {IAxelarGateway} from "@axelar-gmp-sdk-solidity/interfaces/IAxelarGateway.sol";
 
 contract VaultRootSender is AxelarExecutable {
-    address public immutable bridge;
-    IAxelarGasService public immutable gasService;
-    string public l2ChainId;
-    string public l2VaultReceiver;
+    address public immutable starkExBridge;
+    IAxelarGasService public immutable axelarGasService;
+    string public zkEVMChainId;
+    string public zkEVMVaultReceiver;
 
     event AxelarMessageSent(string indexed destinationChain, string indexed vaultReceiver, bytes indexed payload);
 
-    constructor(
-        address _l1StarkExBridge,
-        string memory _l2VaultReceiver,
-        string memory _l2ChainId,
-        address _gasService,
-        address _gateway
-    ) AxelarExecutable(_gateway) {
-        // TODO: custom error
-        require(_l1StarkExBridge != address(0), "Bridge address cannot be zero");
-        require(bytes(_l2VaultReceiver).length > 0, "L2 vault receiver cannot be empty");
-        require(bytes(_l2ChainId).length > 0, "L2 chain name cannot be empty");
-        require(_gasService != address(0), "Gas service address cannot be zero");
+    error InvalidChainId();
+    error UnauthorizedCaller();
+    error NoBridgeFee();
+    error InvalidVaultRoot();
 
-        bridge = _l1StarkExBridge;
-        l2VaultReceiver = _l2VaultReceiver;
-        l2ChainId = _l2ChainId;
-        gasService = IAxelarGasService(_gasService);
+    constructor(
+        address _starkExBridge,
+        string memory _zkEVMVaultReceiver,
+        string memory _zkEVMChainId,
+        address _axelarGasService,
+        address _axelarGateway
+    ) AxelarExecutable(_axelarGateway) {
+        require(_starkExBridge != address(0), InvalidAddress());
+        require(_axelarGasService != address(0), InvalidAddress());
+        require(bytes(_zkEVMVaultReceiver).length > 0, InvalidAddress());
+        require(bytes(_zkEVMChainId).length > 0, InvalidChainId());
+
+        starkExBridge = _starkExBridge;
+        zkEVMVaultReceiver = _zkEVMVaultReceiver;
+        zkEVMChainId = _zkEVMChainId;
+        axelarGasService = IAxelarGasService(_axelarGasService);
     }
 
     function sendVaultRoot(uint256 vaultRoot, address gasRefundReceiver) external payable {
-        require(msg.sender == bridge, "Caller is not the bridge");
-        require(msg.value > 0, "No gas provided");
-        require(gasRefundReceiver != address(0), "Refund recipient cannot be zero address");
-        require(vaultRoot != 0, "Root cannot be zero");
+        require(msg.sender == starkExBridge, UnauthorizedCaller());
+        require(msg.value > 0, NoBridgeFee());
+        require(gasRefundReceiver != address(0), InvalidAddress());
+        require(vaultRoot != 0, InvalidVaultRoot());
 
         // Load from storage.
-        string memory _l2VaultReceiver = l2VaultReceiver;
-        string memory _l2ChainId = l2ChainId;
+        string memory _zkEVMVaultReceiver = zkEVMVaultReceiver;
+        string memory _zkEVMChainId = zkEVMChainId;
         bytes memory payload = abi.encode(vaultRoot);
 
-        gasService.payNativeGasForContractCall{value: msg.value}(
-            address(this), _l2ChainId, _l2VaultReceiver, payload, gasRefundReceiver
+        axelarGasService.payNativeGasForContractCall{value: msg.value}(
+            address(this), _zkEVMChainId, _zkEVMVaultReceiver, payload, gasRefundReceiver
         );
 
-        IAxelarGateway(gatewayAddress).callContract(_l2ChainId, _l2VaultReceiver, payload);
-        emit AxelarMessageSent(_l2ChainId, _l2VaultReceiver, payload);
+        IAxelarGateway(gatewayAddress).callContract(_zkEVMChainId, _zkEVMVaultReceiver, payload);
+        emit AxelarMessageSent(_zkEVMChainId, _zkEVMVaultReceiver, payload);
     }
 
     function _execute(bytes32, string calldata, string calldata, bytes calldata) internal pure override {
-        revert("VaultRootProvider does not support direct execution");
+        revert("Not Supported");
     }
 }
