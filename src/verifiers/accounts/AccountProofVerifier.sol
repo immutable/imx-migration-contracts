@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0.
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.27;
 
 import {IAccountProofVerifier} from "./IAccountProofVerifier.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
@@ -37,6 +37,7 @@ contract AccountProofVerifier is IAccountProofVerifier, Ownable {
 
     // TODO: Account root should be set only once
     function setAccountRoot(bytes32 newRoot) external onlyOwner {
+        // TODO: Add validation of the account root
         accountRoot = newRoot;
     }
 }

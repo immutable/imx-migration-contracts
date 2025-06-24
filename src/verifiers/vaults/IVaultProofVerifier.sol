@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0.
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.27;
 
 // @title IVaultProofVerifier
 // @notice This interface defines the functions and types for verifying Immutable X vault proofs.
