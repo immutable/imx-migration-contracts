@@ -7,7 +7,7 @@ import "../src/verifiers/vaults/VaultEscapeProofVerifier.sol";
 import "../src/verifiers/accounts/AccountProofVerifier.sol";
 import "../src/withdrawals/VaultWithdrawalProcessor.sol";
 import "../src/assets/AssetMappingRegistry.sol";
-import "./DeploymentLookupTables.sol";
+import "./LookupTablesRegistry.sol";
 
 /**
  * @title Deploy
@@ -25,7 +25,7 @@ import "./DeploymentLookupTables.sol";
  *   - VAULT_ROOT_PROVIDER: Address of the vault root provider (defaults to owner)
  *   - VAULT_FUND_PROVIDER: Address of the vault fund provider (defaults to owner)
  */
-contract Deploy is Script, DeploymentLookupTables {
+contract DeployL2Contracts is Script, LookupTablesRegistry {
     VaultEscapeProofVerifier public vaultVerifier;
     AccountProofVerifier public accountVerifier;
     VaultWithdrawalProcessor public vaultProcessor;
@@ -42,7 +42,6 @@ contract Deploy is Script, DeploymentLookupTables {
         vaultRootProvider = vm.envOr("VAULT_ROOT_PROVIDER", owner);
         vaultFundProvider = vm.envOr("VAULT_FUND_PROVIDER", owner);
 
-        require(owner != address(0), "Owner address cannot be zero");
         require(vaultRootProvider != address(0), "Vault root provider cannot be zero");
         require(vaultFundProvider != address(0), "Vault fund provider cannot be zero");
     }

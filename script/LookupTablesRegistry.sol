@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-abstract contract DeploymentLookupTables {
+abstract contract LookupTablesRegistry {
     address[63] public ZKEVM_MAINNET_LOOKUP_TABLES = [
         0xB98CD7457BafA2B8F1bE10684A3ca7994A5F518b,
         0x16EA1DDf2f0569A9dfe79eEE8c80927941BEa818,

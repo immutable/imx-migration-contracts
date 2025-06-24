@@ -59,13 +59,6 @@ contract VaultEscapeProofVerifier is IVaultProofVerifier {
      *       | root (252)                    | zeros(4) | leafIndex(248) | zeros (8) |
      *       +-------------------------------+-----------+---------------+-----------+
      *
-     *   If the proof is accepted, this is registered under the following claim hash that may later
-     *   be queried for validity:
-     *
-     *    `claimHash = keccak256(starkKey, assetId, quantizedAmount, vaultRoot, treeHeight, leafIndex)`
-     *
-     *   For information about when this module is to be used, see :sol:mod:`Escapes`.
-     *
      *   Implementation details:
      *   The EC sum required for the hash computation is computed using lookup tables and EC additions.
      *   There are 63 lookup tables and each table contains all the possible subset sums of the
