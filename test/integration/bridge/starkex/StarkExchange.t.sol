@@ -14,6 +14,7 @@ interface IStarkExchangeProxy is IStarkExchangeMigration {
     function upgradeTo(address newImplementation, bytes calldata initData, bool finalized) external payable;
     function implementation() external view returns (address implementation);
 }
+// TODO: significantly improve the test coverage for the StarkExchangeMigration contract
 
 contract StarkExchangeTest is Test {
     IStarkExchangeProxy public constant starkExProxy = IStarkExchangeProxy(0x5FDCCA53617f4d2b9134B29090C87D01058e27e9);
@@ -122,7 +123,6 @@ contract StarkExchangeTest is Test {
                 finzkEVMBal, initzkEVMBal + initStarkExBal, "Final balance on zkEVM bridge does not match expected"
             );
         }
-
         vm.stopPrank();
     }
 }
