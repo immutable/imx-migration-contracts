@@ -31,7 +31,7 @@ contract AccountProofVerifierTest is Test, ProofUtils {
         merkleRoot = _computeMerkleRoot(leaves);
 
         // Deploy verifier
-        verifier = new AccountProofVerifier(address(this));
+        verifier = new AccountProofVerifier(address(this), false);
         verifier.setAccountRoot(merkleRoot);
         // Get proof
         testProof = _getMerkleProof(leaves, 0);

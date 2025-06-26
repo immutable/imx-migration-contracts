@@ -62,7 +62,7 @@ contract DeployL2Contracts is Script, LookupTablesRegistry {
 
         // 2. Deploy AccountProofVerifier
         console.log("Deploying AccountProofVerifier...");
-        accountVerifier = new AccountProofVerifier(owner);
+        accountVerifier = new AccountProofVerifier(owner, true);
         console.log("AccountProofVerifier deployed at:", address(accountVerifier));
 
         // 3. Create asset mappings for the vault processor
@@ -78,7 +78,7 @@ contract DeployL2Contracts is Script, LookupTablesRegistry {
         // 5. Deploy VaultWithdrawalProcessor
         console.log("Deploying VaultWithdrawalProcessor...");
         vaultProcessor = new VaultWithdrawalProcessor(
-            accountVerifier, vaultVerifier, vaultRootProvider, vaultFundProvider, assets, operators
+            accountVerifier, vaultVerifier, vaultRootProvider, vaultFundProvider, assets, operators, true
         );
         console.log("VaultWithdrawalProcessor deployed at:", address(vaultProcessor));
 

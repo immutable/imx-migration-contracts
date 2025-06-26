@@ -53,7 +53,7 @@ contract VaultWithdrawalProcessorIntegrationTest is
         axelarGateway = new MockAxelarGateway(true);
         // Create account associations and compute the merkle root
 
-        accountVerifier = new AccountProofVerifier(address(this));
+        accountVerifier = new AccountProofVerifier(address(this), true);
         accountVerifier.setAccountRoot(accountsRoot);
 
         rootReceiver = new VaultRootReceiver("ethereum", rootProviderContract, address(this), address(axelarGateway));
@@ -68,7 +68,7 @@ contract VaultWithdrawalProcessorIntegrationTest is
         });
 
         vaultProcessor = new VaultWithdrawalProcessor(
-            accountVerifier, vaultVerifier, address(rootReceiver), address(this), fixAssets, operators
+            accountVerifier, vaultVerifier, address(rootReceiver), address(this), fixAssets, operators, true
         );
 
         // Configure the vault root store in the root receiver

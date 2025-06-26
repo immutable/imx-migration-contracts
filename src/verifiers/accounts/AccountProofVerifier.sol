@@ -12,8 +12,14 @@ contract AccountProofVerifier is IAccountProofVerifier, Ownable {
     uint256 internal constant K_MODULUS = 0x800000000000011000000000000000000000000000000000000000000000001;
     bytes32 public accountRoot;
     address public immutable rootProvider;
+    bool public rootOverrideAllowed = false;
 
-    constructor(address _rootProvider) Ownable(_rootProvider) {}
+    error InvalidAccountRoot();
+    error AccountRootOverrideNotAllowed();
+
+    constructor(address _rootProvider, bool _rootOverrideAllowed) Ownable(_rootProvider) {
+        rootOverrideAllowed = _rootOverrideAllowed;
+    }
 
     function verifyAccountProof(uint256 starkKey, address ethAddress, bytes32[] calldata proof)
         external
@@ -37,7 +43,8 @@ contract AccountProofVerifier is IAccountProofVerifier, Ownable {
 
     // TODO: Account root should be set only once
     function setAccountRoot(bytes32 newRoot) external onlyOwner {
-        // TODO: Add validation of the account root
+        require(newRoot != bytes32(0), InvalidAccountRoot());
+        require(accountRoot == bytes32(0) || rootOverrideAllowed, AccountRootOverrideNotAllowed());
         accountRoot = newRoot;
     }
 }

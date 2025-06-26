@@ -61,7 +61,7 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
         vaultVerifier = new MockVaultVerifier(ZKEVM_MAINNET_LOOKUP_TABLES);
 
         vaultWithdrawalProcessor = new VaultWithdrawalProcessor(
-            accountVerifier, vaultVerifier, address(this), address(this), fixAssets, initRoles
+            accountVerifier, vaultVerifier, address(this), address(this), fixAssets, initRoles, false
         );
         vaultWithdrawalProcessor.setVaultRoot(fixVaultEscapes[0].root);
     }
@@ -306,25 +306,29 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
 
     function test_RevertIf_Constructor_ZeroVaultRootProvider() public {
         vm.expectRevert(IVaultWithdrawalProcessor.ZeroAddress.selector);
-        new VaultWithdrawalProcessor(accountVerifier, vaultVerifier, address(0), address(this), fixAssets, initRoles);
+        new VaultWithdrawalProcessor(
+            accountVerifier, vaultVerifier, address(0), address(this), fixAssets, initRoles, true
+        );
     }
 
     function test_RevertIf_Constructor_ZeroVaultFundProvider() public {
         vm.expectRevert(IVaultWithdrawalProcessor.ZeroAddress.selector);
-        new VaultWithdrawalProcessor(accountVerifier, vaultVerifier, address(this), address(0), fixAssets, initRoles);
+        new VaultWithdrawalProcessor(
+            accountVerifier, vaultVerifier, address(this), address(0), fixAssets, initRoles, true
+        );
     }
 
     function test_RevertIf_Constructor_ZeroAccountVerifier() public {
         vm.expectRevert(IVaultWithdrawalProcessor.ZeroAddress.selector);
         new VaultWithdrawalProcessor(
-            IAccountProofVerifier(address(0)), vaultVerifier, address(this), address(this), fixAssets, initRoles
+            IAccountProofVerifier(address(0)), vaultVerifier, address(this), address(this), fixAssets, initRoles, true
         );
     }
 
     function test_RevertIf_Constructor_ZeroVaultVerifier() public {
         vm.expectRevert(IVaultWithdrawalProcessor.ZeroAddress.selector);
         new VaultWithdrawalProcessor(
-            accountVerifier, IVaultProofVerifier(address(0)), address(this), address(this), fixAssets, initRoles
+            accountVerifier, IVaultProofVerifier(address(0)), address(this), address(this), fixAssets, initRoles, true
         );
     }
 
@@ -338,7 +342,8 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
             address(this),
             address(this),
             new AssetMappingRegistry.AssetDetails[](0),
-            initRoles
+            initRoles,
+            false
         );
     }
 
@@ -355,7 +360,7 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
 
     function test_RevertIf_SetVaultRoot_AlreadySet() public {
         uint256 newRoot = 0x123;
-        vm.expectRevert(abi.encodeWithSelector(IVaultWithdrawalProcessor.VaultRootAlreadySet.selector));
+        vm.expectRevert(abi.encodeWithSelector(IVaultWithdrawalProcessor.VaultRootOverrideNotAllowed.selector));
         vaultWithdrawalProcessor.setVaultRoot(newRoot);
     }
 

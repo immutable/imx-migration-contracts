@@ -55,6 +55,7 @@ contract VaultWithdrawalProcessor is
     address public immutable vaultRootProvider;
     address public immutable vaultFundProvider;
 
+    bool public rootOverrideAllowed = false;
     /*
      * @notice constructor
      * @param _accountVerifier The address of the account proof verifier contract.
@@ -62,13 +63,15 @@ contract VaultWithdrawalProcessor is
      * @param _vaultRoot The root of the vault to verify proofs against.
      * @param assets The mapping of assets on Immutable X to zkEVM assets.
      */
+
     constructor(
         IAccountProofVerifier _accountVerifier,
         IVaultProofVerifier _vaultVerifier,
         address _vaultRootProvider,
         address _vaultFundProvider,
         AssetDetails[] memory _assets,
-        Operators memory _operators
+        Operators memory _operators,
+        bool _rootOverrideAllowed
     ) {
         require(address(_accountVerifier) != address(0), ZeroAddress());
         require(address(_vaultVerifier) != address(0), ZeroAddress());
@@ -86,6 +89,7 @@ contract VaultWithdrawalProcessor is
         _grantRole(DEFAULT_ADMIN_ROLE, _operators.defaultAdmin);
 
         _registerAssetMappings(_assets);
+        rootOverrideAllowed = _rootOverrideAllowed;
     }
 
     /*
@@ -151,7 +155,7 @@ contract VaultWithdrawalProcessor is
         require(msg.sender == vaultRootProvider, "Unauthorized: Only vault root provider can set the root");
         // Vault root should only be set once
         // TODO: Consider whether we want to enforce this invariant here or elsewhere
-        require(vaultRoot == 0, VaultRootAlreadySet());
+        require(vaultRoot == 0 || rootOverrideAllowed, VaultRootOverrideNotAllowed());
         // TODO: Additional validation on vault root
 
         _setVaultRoot(newRoot);

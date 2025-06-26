@@ -11,7 +11,7 @@ interface IVaultWithdrawalProcessor {
         uint256 indexed starkKey, uint256 indexed assetId, address recipient, uint256 amount, address assetAddress
     );
 
-    error VaultRootAlreadySet();
+    error VaultRootOverrideNotAllowed();
 
     // @notice AssetNotRegistered is an error thrown when an the asset is not registered in the system.
     // @param assetId The identifier of the asset on Immutable X.
