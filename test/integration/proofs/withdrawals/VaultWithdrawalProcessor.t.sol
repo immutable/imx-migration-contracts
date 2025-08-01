@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import "../../../../src/assets/AssetMappingRegistry.sol";
+import "../../../../src/assets/TokenMappings.sol";
 import "../../../../src/withdrawals/VaultWithdrawalProcessor.sol";
 import {AccountProofVerifier} from "../../../../src/verifiers/accounts/AccountProofVerifier.sol";
 import {FixtureLookupTables} from "../../../common/FixtureLookupTables.sol";

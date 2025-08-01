@@ -2,15 +2,11 @@
 pragma solidity ^0.8.27;
 
 /**
- * @title AssetMappingRegistry
- * @notice Maintains a registry of asset associations between Immutable X and Immutable zkEVM.
- * TODO:
- *  Asset ID can be deterministically derived from the L1 token address and asset type (ERC20, ETH).
- *  Hence, a more trustless approach to registering assets could be to register an asset providing the id and L1 token address and quantum, then:
- *  we can a) validate that the ID is valid according to the derivation and b) infer the L2 token address from the bridge's rootToChildToken mapping
- *  https://github.com/starkware-libs/starkex-contracts/blob/f4ed79bb04b56d587618c24312e87d81e4efc56b/scalable-dex/contracts/src/interactions/TokenAssetData.sol#L9
+ * @title Map Immutable X tokens to their corresponding tokens on Immutable zkEVM
+ * @notice Maintains a mapping between Immutable X tokens and their corresponding tokens on Immutable zkEVM.
+ * @dev For the Immutable X version of a token, the both the asset ID and quantum of the asset are maintained.
  */
-abstract contract AssetMappingRegistry {
+abstract contract TokenMappings {
     /**
      * @dev Associates an Immutable X asset to its corresponding address on Immutable zkEVM.
      * @param assetOnIMX Details of the asset on Immutable X.
@@ -98,7 +94,7 @@ abstract contract AssetMappingRegistry {
         emit AssetMapped(immutableXAsset.id, immutableXAsset.quantum, assetDetails.assetOnZKEVM);
     }
 
-    function _registerAssetMappings(AssetDetails[] memory assetsDetails) internal {
+    function _registerTokenMappings(AssetDetails[] memory assetsDetails) internal {
         require(assetsDetails.length > 0, InvalidAssetDetails("No assets to register"));
 
         for (uint256 i = 0; i < assetsDetails.length; i++) {

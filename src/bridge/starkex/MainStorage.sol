@@ -2,7 +2,7 @@
 pragma solidity ^0.8.27;
 
 import "./ProxyStorage.sol";
-import "./Common.sol";
+import "./libraries/Common.sol";
 import {VaultRootSender} from "../messaging/VaultRootSender.sol";
 
 /*

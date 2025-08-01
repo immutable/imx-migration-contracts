@@ -8,14 +8,12 @@ import "forge-std/console.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {Hashes} from "@openzeppelin/contracts/utils/cryptography/Hashes.sol";
 
+// FIXME: This should be stateless abstract contract, and verifyAccountProof should take accountRoot as an argument.
 contract AccountProofVerifier is IAccountProofVerifier, Ownable {
     uint256 internal constant K_MODULUS = 0x800000000000011000000000000000000000000000000000000000000000001;
     bytes32 public accountRoot;
     address public immutable rootProvider;
     bool public rootOverrideAllowed = false;
-
-    error InvalidAccountRoot();
-    error AccountRootOverrideNotAllowed();
 
     constructor(address _rootProvider, bool _rootOverrideAllowed) Ownable(_rootProvider) {
         rootOverrideAllowed = _rootOverrideAllowed;

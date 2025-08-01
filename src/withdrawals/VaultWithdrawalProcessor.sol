@@ -4,7 +4,7 @@ pragma solidity ^0.8.27;
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {AssetMappingRegistry} from "@src/assets/AssetMappingRegistry.sol";
+import {TokenMappings} from "@src/assets/TokenMappings.sol";
 import {IAccountProofVerifier} from "@src/verifiers/accounts/IAccountProofVerifier.sol";
 import {IVaultProofVerifier} from "@src/verifiers/vaults/IVaultProofVerifier.sol";
 import {VaultRootStore} from "./VaultRootStore.sol";
@@ -29,7 +29,7 @@ import {console} from "forge-std/console.sol";
 contract VaultWithdrawalProcessor is
     IVaultWithdrawalProcessor,
     VaultRootStore,
-    AssetMappingRegistry,
+    TokenMappings,
     ProcessedWithdrawalsRegistry,
     ReentrancyGuard,
     Pausable,
@@ -39,10 +39,10 @@ contract VaultWithdrawalProcessor is
     using Address for address payable;
 
     struct Operators {
+        address defaultAdmin;
+        address disburser;
         address pauser;
         address unpauser;
-        address disburser;
-        address defaultAdmin;
     }
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
@@ -63,6 +63,7 @@ contract VaultWithdrawalProcessor is
      * @param _vaultRoot The root of the vault to verify proofs against.
      * @param assets The mapping of assets on Immutable X to zkEVM assets.
      */
+    // FIXME: Remove _vaultFundProvider
 
     constructor(
         IAccountProofVerifier _accountVerifier,
@@ -88,7 +89,7 @@ contract VaultWithdrawalProcessor is
         _grantRole(DISBURSER_ROLE, _operators.disburser);
         _grantRole(DEFAULT_ADMIN_ROLE, _operators.defaultAdmin);
 
-        _registerAssetMappings(_assets);
+        _registerTokenMappings(_assets);
         rootOverrideAllowed = _rootOverrideAllowed;
     }
 

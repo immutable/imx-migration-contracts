@@ -2,7 +2,7 @@
 pragma solidity ^0.8.27;
 
 /*
-  Common Utility librarries.
+  Common Utility libraries.
   I. Addresses (extending address).
 */
 library Addresses {

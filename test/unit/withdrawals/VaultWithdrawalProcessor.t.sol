@@ -2,7 +2,7 @@
 pragma solidity ^0.8.27;
 
 import "forge-std/Test.sol";
-import "@src/assets/AssetMappingRegistry.sol";
+import "@src/assets/TokenMappings.sol";
 import "@src/verifiers/accounts/IAccountProofVerifier.sol";
 import "@src/verifiers/vaults/VaultEscapeProofVerifier.sol";
 import "@src/withdrawals/IVaultWithdrawalProcessor.sol";
@@ -333,15 +333,13 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
     }
 
     function test_RevertIf_Constructor_EmptyAssets() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(AssetMappingRegistry.InvalidAssetDetails.selector, "No assets to register")
-        );
+        vm.expectRevert(abi.encodeWithSelector(TokenMappings.InvalidAssetDetails.selector, "No assets to register"));
         new VaultWithdrawalProcessor(
             accountVerifier,
             vaultVerifier,
             address(this),
             address(this),
-            new AssetMappingRegistry.AssetDetails[](0),
+            new TokenMappings.AssetDetails[](0),
             initRoles,
             false
         );
