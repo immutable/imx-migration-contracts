@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0.
 pragma solidity ^0.8.27;
 
-import "./MGovernance.sol";
+struct GovernanceInfoStruct {
+    mapping(address => bool) effectiveGovernors;
+    address candidateGovernor;
+    bool initialized;
+}
 
 /*
   Holds the governance slots for ALL entities, including proxy and the main contract.
