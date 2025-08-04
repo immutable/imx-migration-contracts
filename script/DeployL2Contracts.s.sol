@@ -1,3 +1,4 @@
+// Copyright Immutable Pty Ltd 2018 - 2025
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
@@ -29,9 +30,7 @@ contract DeployL2Contracts is Script {
         vaultFundProvider = vm.parseJsonAddress(config, "$.vault_fund_provider");
         require(vaultFundProvider != address(0), "Vault fund provider cannot be zero");
 
-        // zero address implies new deployment is required
         accountVerifier = vm.parseJsonAddress(config, "$.account_verifier");
-        // zero address implies new deployment is required
         vaultVerifier = vm.parseJsonAddress(config, "$.vault_verifier");
 
         operators = abi.decode(vm.parseJson(config, "$.operators"), (VaultWithdrawalProcessor.Operators));
@@ -48,7 +47,6 @@ contract DeployL2Contracts is Script {
 
     // NOTE: Make sure to use either --slow or -batch-size 1 when running this script for Tenderly to avoid out of order deployments of contracts and incorrect addresses.
     function run() external {
-
         // Deploy account verifier if not provided
         if (accountVerifier == address(0)) {
             vm.broadcast();

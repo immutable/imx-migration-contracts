@@ -1,10 +1,11 @@
+// Copyright Immutable Pty Ltd 2018 - 2025
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
 /**
- * @title Map Immutable X tokens to their corresponding tokens on Immutable zkEVM
- * @notice Maintains a mapping between Immutable X tokens and their corresponding tokens on Immutable zkEVM.
- * @dev For the Immutable X version of a token, the both the asset ID and quantum of the asset are maintained.
+ * @title Maps Immutable X tokens to their corresponding tokens on Immutable zkEVM
+ * @notice This contract maintains a mapping of Immutable X tokens to their corresponding tokens on Immutable zkEVM (e.g. USDC on Immutable X to USDC on Immutable zkEVM).
+ * @dev While a token on Immutable zkEVM is identified by an address, the token on Immutable X is represented by a token ID and a quantum.
  */
 abstract contract TokenMappings {
     /**
