@@ -130,7 +130,7 @@ contract VaultWithdrawalProcessorIntegrationTest is
         address vaultProcessorAddr = address(vaultProcessor);
 
         // Fund some USDC
-        IERC20 usdc = IERC20(fixAssets[1].assetOnZKEVM);
+        IERC20 usdc = IERC20(fixAssets[1].tokenOnZKEVM);
         deal(address(usdc), vaultProcessorAddr, 1 ether);
 
         assertEq(usdc.balanceOf(vaultProcessorAddr), 1 ether);

@@ -18,7 +18,7 @@ contract DeployL2Contracts is Script {
     address[63] private lookupTables;
     VaultWithdrawalProcessor private withdrawalProcessor;
     VaultWithdrawalProcessor.Operators private operators;
-    TokenMappings.AssetDetails[] private assetMappings;
+    TokenMappings.AssetMapping[] private assetMappings;
 
     function setUp() external {
         string memory config = vm.readFile(vm.envString("DEPLOYMENT_CONFIG_FILE"));
@@ -41,7 +41,7 @@ contract DeployL2Contracts is Script {
             lookupTables[i] = _lookupTables[i];
         }
 
-        assetMappings = abi.decode(vm.parseJson(config, "$.asset_mappings"), (TokenMappings.AssetDetails[]));
+        assetMappings = abi.decode(vm.parseJson(config, "$.asset_mappings"), (TokenMappings.AssetMapping[]));
         require(assetMappings.length > 0, "At least one asset mapping must be provided");
     }
 

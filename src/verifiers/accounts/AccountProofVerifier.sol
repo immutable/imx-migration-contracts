@@ -9,9 +9,15 @@ import "forge-std/console.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {Hashes} from "@openzeppelin/contracts/utils/cryptography/Hashes.sol";
 
-// FIXME: This should be stateless abstract contract, and verifyAccountProof should take accountRoot as an argument.
+/**
+ * @title Account Association Proof Verifier
+ * @notice Verifies that a proof of account associations is correct against a stored Merkle root.
+ * @dev An account association, refers to a Stark key <> Ethereum address mapping. A Merkle tree of such account associations is stored off-chain.
+ * @dev Given an Merkle root of the off-chain tree, and a Merkle proof of an association (Stark key and ETH address), this contract can verify that the association is valid.
+ */
 contract AccountProofVerifier is IAccountProofVerifier, Ownable {
-    uint256 internal constant K_MODULUS = 0x800000000000011000000000000000000000000000000000000000000000001;
+    uint256 internal constant STARK_KEY_UPPER_BOUND = 0x800000000000011000000000000000000000000000000000000000000000001;
+
     bytes32 public accountRoot;
     address public immutable rootProvider;
     bool public rootOverrideAllowed = false;
@@ -25,7 +31,7 @@ contract AccountProofVerifier is IAccountProofVerifier, Ownable {
         view
         returns (bool)
     {
-        require(starkKey != 0 && starkKey < K_MODULUS, "Invalid stark key");
+        require(starkKey != 0 && starkKey < STARK_KEY_UPPER_BOUND, "Invalid stark key");
         require(ethAddress != address(0), "Invalid Ethereum address");
         require(proof.length > 0, "Proof must not be empty");
         bytes32 leaf = Hashes.commutativeKeccak256(bytes32(starkKey), bytes32(uint256(uint160(ethAddress))));

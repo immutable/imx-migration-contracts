@@ -1,3 +1,4 @@
+// Copyright Immutable Pty Ltd 2018 - 2025
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
@@ -72,11 +73,9 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
         assertEq(vaultWithdrawalProcessor.vaultRoot(), fixVaultEscapes[0].root);
 
         for (uint256 i = 0; i < fixAssets.length; i++) {
-            uint256 id = fixAssets[i].assetOnIMX.id;
-            assertEq(vaultWithdrawalProcessor.getMappedAssetAddress(id), fixAssets[i].assetOnZKEVM);
-            assertEq(
-                vaultWithdrawalProcessor.getMappedAssetDetails(id).assetOnIMX.quantum, fixAssets[i].assetOnIMX.quantum
-            );
+            uint256 id = fixAssets[i].tokenOnIMX.id;
+            assertEq(vaultWithdrawalProcessor.getZKEVMAddress(id), fixAssets[i].tokenOnZKEVM);
+            assertEq(vaultWithdrawalProcessor.getAssetMapping(id).tokenOnIMX.quantum, fixAssets[i].tokenOnIMX.quantum);
         }
     }
 
@@ -85,7 +84,7 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
         accountVerifier.setShouldVerify(true);
         vaultVerifier.setShouldVerify(true);
 
-        uint256 expectedTransfer = vaultWithdrawalProcessor.getMappedAssetQuantum(fixVaultEscapes[2].vault.assetId)
+        uint256 expectedTransfer = vaultWithdrawalProcessor.getAssetQuantum(fixVaultEscapes[2].vault.assetId)
             * fixVaultEscapes[2].vault.quantizedAmount;
 
         vm.deal(address(vaultWithdrawalProcessor), 1 ether);
@@ -112,9 +111,9 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
         uint256 assetId = testVaultWithProof.vault.assetId;
 
         uint256 expectedTransfer =
-            vaultWithdrawalProcessor.getMappedAssetQuantum(assetId) * testVaultWithProof.vault.quantizedAmount;
+            vaultWithdrawalProcessor.getAssetQuantum(assetId) * testVaultWithProof.vault.quantizedAmount;
 
-        IERC20 token = IERC20(vaultWithdrawalProcessor.getMappedAssetAddress(assetId));
+        IERC20 token = IERC20(vaultWithdrawalProcessor.getZKEVMAddress(assetId));
         deal(address(token), address(vaultWithdrawalProcessor), 3 ether);
 
         assertEq(token.balanceOf(recipient), 0, "Recipient should start with zero balance");
@@ -285,7 +284,7 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
         accountVerifier.setShouldVerify(true);
         vaultVerifier.setShouldVerify(true);
 
-        uint256 expectedAmount = vaultWithdrawalProcessor.getMappedAssetQuantum(fixVaultEscapes[2].vault.assetId)
+        uint256 expectedAmount = vaultWithdrawalProcessor.getAssetQuantum(fixVaultEscapes[2].vault.assetId)
             * fixVaultEscapes[2].vault.quantizedAmount;
 
         vm.expectRevert(abi.encodeWithSelector(Errors.InsufficientBalance.selector, 0, expectedAmount));
@@ -339,7 +338,7 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
             vaultVerifier,
             address(this),
             address(this),
-            new TokenMappings.AssetDetails[](0),
+            new TokenMappings.AssetMapping[](0),
             initRoles,
             false
         );
