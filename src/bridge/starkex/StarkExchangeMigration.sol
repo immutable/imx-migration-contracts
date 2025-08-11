@@ -14,10 +14,11 @@ import {Addresses} from "./libraries/Common.sol";
 
 /**
  * @title StarkExchangeMigration
- * @notice This contract is used to initiate the migration of funds and key vault state information for Immutable X to Immutable zkEVM.
+ * @notice This contract enables the migration of remaining funds from the Immutable X StarkExchange bridge to Immutable zkEVM.
  * @dev The contract performs the following functions:
- *      - Enables communicating the vault root to Immutable zkEVM through Axelar GMP.
- *      - Enables an authorised entity to transfer ERC20 tokens and ETH from the contract the Immutable zkEVM bridge.
+ *      - Enables communicating the latest vaults Merkle root data to a designated contract on Immutable zkEVM, which enables the correct and trust-less disbursal of funds to the intended recipients.
+ *      - Enables an authorised entity to migrate ERC-20 tokens and ETH held by the StarkExchange bridge to Immutable zkEVM, for trust-less disbursal to their intended recipients.
+ *      - Continues to allow the processing of pending withdrawals.
  */
 contract StarkExchangeMigration is MainStorage, Initializable, IStarkExchangeMigration {
     using Addresses for address;
@@ -62,7 +63,6 @@ contract StarkExchangeMigration is MainStorage, Initializable, IStarkExchangeMig
 
     function migrateVaultState() external payable override onlyMigrationInitiator {
         require(msg.value > 0, ZeroBridgeFee());
-        //TODO: Consider externalising gas refund receipient
         vaultRootSender.sendVaultRoot{value: msg.value}(vaultRoot, msg.sender);
         emit VaultStateMigrationInitiated(vaultRoot, msg.sender);
     }
