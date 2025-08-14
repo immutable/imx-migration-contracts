@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import "../../../../src/assets/TokenMappings.sol";
-import "../../../../src/withdrawals/VaultWithdrawalProcessor.sol";
-import {AccountProofVerifier} from "../../../../src/verifiers/accounts/AccountProofVerifier.sol";
+import "@src/assets/TokenRegistry.sol";
+import "@src/withdrawals/VaultWithdrawalProcessor.sol";
+import {VaultEscapeProofVerifier} from "@src/verifiers/vaults/VaultEscapeProofVerifier.sol";
+import {VaultRootReceiver} from "@src/bridge/messaging/VaultRootReceiver.sol";
+import {AccountProofVerifier} from "@src/verifiers/accounts/AccountProofVerifier.sol";
 import {FixtureLookupTables} from "../../../common/FixtureLookupTables.sol";
 import {MockAxelarGateway} from "../../../common/MockAxelarGateway.sol";
 import {ProofUtils} from "../../../common/ProofUtils.sol";
 import {Test} from "forge-std/Test.sol";
-import {VaultEscapeProofVerifier} from "../../../../src/verifiers/vaults/VaultEscapeProofVerifier.sol";
-import {VaultRootReceiver} from "../../../../src/bridge/messaging/VaultRootReceiver.sol";
 import {FixtureAssets} from "../../../common/FixtureAssets.sol";
 import {FixtureVaultEscapes} from "../../../common/FixtureVaultEscapes.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {FixtureAccounts} from "../../../common/FixtureAccounts.sol";
+import {console} from "forge-std/console.sol";
 /**
  * VaultWithdrawalProcessorIntegrationTest.sol
  * - Create a set of account associations and a merkle root.
@@ -36,7 +37,6 @@ contract VaultWithdrawalProcessorIntegrationTest is
     FixtureAccounts,
     FixtureLookupTables
 {
-    AccountProofVerifier private accountVerifier;
     VaultEscapeProofVerifier private vaultVerifier;
     VaultRootReceiver private vaultRootReceiver;
 
@@ -53,23 +53,23 @@ contract VaultWithdrawalProcessorIntegrationTest is
         axelarGateway = new MockAxelarGateway(true);
         // Create account associations and compute the merkle root
 
-        accountVerifier = new AccountProofVerifier(address(this), true);
-        accountVerifier.setAccountRoot(accountsRoot);
-
         rootReceiver = new VaultRootReceiver("ethereum", rootProviderContract, address(this), address(axelarGateway));
 
         vaultVerifier = new VaultEscapeProofVerifier(ZKEVM_MAINNET_LOOKUP_TABLES);
 
-        operators = VaultWithdrawalProcessor.Operators({
+        operators = ProcessorAccessControl.Operators({
             pauser: address(this),
             unpauser: address(this),
             disburser: address(this),
-            defaultAdmin: address(this)
+            defaultAdmin: address(this),
+            accountRootManager: address(this),
+            vaultRootManager: address(this),
+            tokenMappingManager: address(this)
         });
 
-        vaultProcessor = new VaultWithdrawalProcessor(
-            accountVerifier, vaultVerifier, address(rootReceiver), address(this), fixAssets, operators, true
-        );
+        vaultProcessor = new VaultWithdrawalProcessor(address(vaultVerifier), operators, true);
+
+        vaultProcessor.setAccountRoot(accountsRoot);
 
         // Configure the vault root store in the root receiver
         rootReceiver.setVaultRootStore(VaultRootStore(address(vaultProcessor)));

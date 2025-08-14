@@ -5,125 +5,89 @@ pragma solidity ^0.8.27;
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {TokenMappings} from "@src/assets/TokenMappings.sol";
-import {IAccountProofVerifier} from "@src/verifiers/accounts/IAccountProofVerifier.sol";
+import {TokenRegistry} from "@src/assets/TokenRegistry.sol";
 import {IVaultProofVerifier} from "@src/verifiers/vaults/IVaultProofVerifier.sol";
-import {VaultRootStore} from "./VaultRootStore.sol";
+import {VaultRootStore} from "../verifiers/vaults/VaultRootStore.sol";
 import {IVaultWithdrawalProcessor} from "./IVaultWithdrawalProcessor.sol";
-import {ProcessedWithdrawalsRegistry} from "./ProcessedWithdrawalsRegistry.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {console} from "forge-std/console.sol";
+import {AccountProofVerifier} from "../verifiers/accounts/AccountProofVerifier.sol";
+import {ProcessorAccessControl} from "./ProcessorAccessControl.sol";
+import {AccountRootStore} from "../verifiers/accounts/AccountRootStore.sol";
 
-/**
- * @title VaultEscapeProcessor
- * @notice This contract is used to process vault escape claims and disburse funds to the owner of the vault.
- * It performs the following steps:
- * 1. Given a vault escape proof and an account proof.
- * 2. Verify the account proof using the account proof verifier.
- * 3. Verify the vault root using the vault proof verifier.
- * 4. Register the processed claim using the vault claims registry.
- * 5. Disburse the funds to the recipient.
- * TODO: Optimization: consider inheriting vault escape proof verifier and account proof verifier contracts instead of using them as dependencies, to reduce gas costs.
- */
 contract VaultWithdrawalProcessor is
     IVaultWithdrawalProcessor,
-    VaultRootStore,
-    TokenMappings,
-    ProcessedWithdrawalsRegistry,
     ReentrancyGuard,
-    Pausable,
-    AccessControl
+    ProcessorAccessControl,
+    VaultRootStore,
+    AccountRootStore,
+    AccountProofVerifier,
+    TokenRegistry
 {
     using SafeERC20 for IERC20;
     using Address for address payable;
 
-    struct Operators {
-        address defaultAdmin;
-        address disburser;
-        address pauser;
-        address unpauser;
-    }
+    uint256 public constant ACCOUNT_PROOF_LENGTH = 27;
+    uint256 public constant VAULT_PROOF_LENGTH = 68;
 
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
-    bytes32 public constant DISBURSER_ROLE = keccak256("DISBURSER_ROLE");
+    /// @dev Upper bound for valid Stark keys (2^251 + 17 * 2^192 + 1)
+    uint256 internal constant STARK_KEY_UPPER_BOUND = 0x800000000000011000000000000000000000000000000000000000000000001;
 
-    IAccountProofVerifier public immutable accountVerifier;
-    IVaultProofVerifier public immutable vaultVerifier;
+    /// @notice The vault proof verifier contract
+    IVaultProofVerifier public immutable vaultProofVerifier;
 
-    address public immutable vaultRootProvider;
-    address public immutable vaultFundProvider;
-
+    /// @notice Flag indicating whether the vault root can be overridden after initial setting
     bool public rootOverrideAllowed = false;
-    /*
-     * @notice constructor
-     * @param _accountVerifier The address of the account proof verifier contract.
-     * @param _vaultVerifier The address of the vault proof verifier contract.
-     * @param _vaultRoot The root of the vault to verify proofs against.
-     * @param assets The mapping of assets on Immutable X to zkEVM assets.
+
+    /**
+     * @notice Constructs the VaultWithdrawalProcessor contract
+     * @param _vaultProofVerifier The address of the vault proof verifier contract
+     * @param _operators The operator addresses for different roles
+     * @param _rootOverrideAllowed Whether the vault and account roots can be overridden after initial setting
      */
-    // FIXME: Remove _vaultFundProvider
+    constructor(address _vaultProofVerifier, Operators memory _operators, bool _rootOverrideAllowed) {
+        require(_vaultProofVerifier != address(0), ZeroAddress());
+        _validateOperators(_operators);
 
-    constructor(
-        IAccountProofVerifier _accountVerifier,
-        IVaultProofVerifier _vaultVerifier,
-        address _vaultRootProvider,
-        address _vaultFundProvider,
-        AssetMapping[] memory _assets,
-        Operators memory _operators,
-        bool _rootOverrideAllowed
-    ) {
-        require(address(_accountVerifier) != address(0), ZeroAddress());
-        require(address(_vaultVerifier) != address(0), ZeroAddress());
-        require(_vaultRootProvider != address(0), ZeroAddress());
-        require(_vaultFundProvider != address(0), ZeroAddress());
-
-        accountVerifier = _accountVerifier;
-        vaultVerifier = _vaultVerifier;
-        vaultRootProvider = _vaultRootProvider;
-        vaultFundProvider = _vaultFundProvider;
-
-        _grantRole(PAUSER_ROLE, _operators.pauser);
-        _grantRole(UNPAUSER_ROLE, _operators.unpauser);
-        _grantRole(DISBURSER_ROLE, _operators.disburser);
-        _grantRole(DEFAULT_ADMIN_ROLE, _operators.defaultAdmin);
-
-        _registerTokenMappings(_assets);
+        vaultProofVerifier = IVaultProofVerifier(_vaultProofVerifier);
+        _grantOperatorRoles(_operators);
         rootOverrideAllowed = _rootOverrideAllowed;
     }
 
-    /*
-     * @notice verifyAndProcessWithdrawal
-     * @dev This function only disburses full amounts for a vault and not partial claims.
-     * @param ethAddress The Ethereum address of the vault owner. This is the address that will receive the funds, and should be the same as the one provable in the account proof.
-     * @param accountProof The account proof to verify. This is the proof that the vault owner's stark key maps to the provided eth address.
-     * @param vaultProof The vault proof to verify. This is the proof that the vault is valid.
-     * @return bool Returns true if the proof is valid.
-     * TODO: Make this function permissionless, so that anyone can process a withdrawal for a vault, as long as they provide the correct proofs.
+    /**
+     * @notice Verifies proofs and processes a withdrawal for a vault
+     * @dev This function only disburses full amounts for a vault and not partial claims
+     * @param receiver The Ethereum address of the vault owner that will receive the funds
+     * @param accountProof The account proof to verify that the vault owner's stark key maps to the provided eth address
+     * @param vaultProof The vault proof to verify that the vault is valid
      */
     function verifyAndProcessWithdrawal(
-        address receiverAddress,
+        address receiver,
         bytes32[] calldata accountProof,
         uint256[] calldata vaultProof
-    ) external onlyRole(DISBURSER_ROLE) whenNotPaused returns (bool) {
-        require(receiverAddress != address(0), ZeroAddress());
-        require(accountProof.length > 0, IAccountProofVerifier.InvalidAccountProof("Account proof is empty"));
-        require(vaultProof.length > 0, IVaultProofVerifier.InvalidVaultProof("Vault proof is empty"));
+    ) external override onlyRole(DISBURSER_ROLE) nonReentrant whenNotPaused {
+        // Check that the processor is configured with valid roots, to process withdrawals
+        require(vaultRoot != 0, VaultRootNotSet());
+        require(accountRoot != bytes32(0), AccountRootNotSet());
 
-        // Get the vault and vault root information from the submitted proof
-        (IVaultProofVerifier.Vault memory vault, uint256 root) = vaultVerifier.extractLeafAndRootFromProof(vaultProof);
+        require(receiver != address(0), ZeroAddress());
+        require(accountProof.length == ACCOUNT_PROOF_LENGTH, InvalidAccountProof("Invalid account proof length"));
+        require(
+            vaultProof.length == VAULT_PROOF_LENGTH, IVaultProofVerifier.InvalidVaultProof("Invalid vault proof length")
+        );
 
-        // the submitted proof is not a proof against the known vault root
-        require(root == vaultRoot, IVaultProofVerifier.InvalidVaultProof("Invalid root"));
+        // Extract the vault and vault root information from the submitted proof
+        (IVaultProofVerifier.Vault memory vault, uint256 _vaultRoot) =
+            vaultProofVerifier.extractVaultAndRootFromProof(vaultProof);
 
-        // withdrawals can only be processed for vaults with a non-zero balance
-        require(vault.quantizedAmount != 0, IVaultProofVerifier.InvalidVaultProof("Invalid quantized amount"));
+        // Basic validation of the vault structure
+        _validateVault(vault);
 
-        // withdrawals can only be processed for known assets
-        address assetAddress = assetMappings[vault.assetId].tokenOnZKEVM;
-        require(assetAddress != address(0), AssetNotRegistered(vault.assetId));
+        // withdrawals can only be processed for registered assets
+        address token = assetMappings[vault.assetId].tokenOnZKEVM;
+        require(token != address(0), AssetNotRegistered(vault.assetId));
+
+        // the submitted proof is not a proof against the stored vault root
+        require(_vaultRoot == vaultRoot, IVaultProofVerifier.InvalidVaultProof("Invalid vault root"));
 
         // Ensure that this vault hasn't already been withdrawn/processed.
         require(
@@ -131,56 +95,81 @@ contract VaultWithdrawalProcessor is
             WithdrawalAlreadyProcessed(vault.starkKey, vault.assetId)
         );
 
-        // Verify the stark key and eth address association proof
-        require(
-            accountVerifier.verifyAccountProof(vault.starkKey, receiverAddress, accountProof),
-            IAccountProofVerifier.InvalidAccountProof("Proof verification failed")
-        );
+        _verifyAccountProof(vault.starkKey, receiver, accountRoot, accountProof);
 
         // Verify the vault escape proof
         require(
-            vaultVerifier.verifyVaultProof(vaultProof), IVaultProofVerifier.InvalidVaultProof("Invalid vault proof")
+            vaultProofVerifier.verifyVaultProof(vaultProof),
+            IVaultProofVerifier.InvalidVaultProof("Proof verification failed")
         );
 
         _registerProcessedWithdrawal(vault.starkKey, vault.assetId);
 
+        uint256 transferredAmount = _transferFunds(receiver, vault.assetId, token, vault.quantizedBalance);
+        emit WithdrawalProcessed(vault.starkKey, vault.assetId, receiver, transferredAmount, token);
+    }
+
+    /**
+     * @notice Sets the vault root hash for proof verification
+     * @dev Only the vault root provider can call this function
+     * @dev The vault root can only be set once unless rootOverrideAllowed is true
+     * @param newRoot The new vault root hash
+     */
+    function setVaultRoot(uint256 newRoot) external override onlyRole(VAULT_ROOT_MANAGER_ROLE) {
+        _setVaultRoot(newRoot, rootOverrideAllowed);
+    }
+
+    /**
+     * @notice Sets the account root hash for proof verification
+     * @dev Only the owner can call this function
+     * @dev The account root can only be set once unless rootOverrideAllowed is true
+     * @param newRoot The new Merkle root hash for account associations
+     */
+    function setAccountRoot(bytes32 newRoot) external override onlyRole(ACCOUNT_ROOT_MANAGER_ROLE) {
+        _setAccountRoot(newRoot, rootOverrideAllowed);
+    }
+
+    function setRootOverrideAllowed(bool allowed) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        rootOverrideAllowed = allowed;
+    }
+
+    function registerTokenMappings(TokenAssociation[] memory assets)
+        external
+        override
+        onlyRole(TOKEN_MAPPING_MANAGER)
+    {
+        _registerTokenMappings(assets);
+    }
+
+    /**
+     * @notice Receive function to accept native IMX funds
+     * @dev Only the vault fund provider can send funds to this contract
+     */
+    receive() external payable {}
+
+    function _transferFunds(address recipient, uint256 assetId, address asset, uint256 quantizedBalance)
+        internal
+        returns (uint256)
+    {
         // de-quantize the amount
-        uint256 assetQuantum = assetMappings[vault.assetId].tokenOnIMX.quantum;
-        uint256 amountToTransfer = vault.quantizedAmount * assetQuantum;
+        uint256 transferAmount = quantizedBalance * assetMappings[assetId].tokenOnIMX.quantum;
 
-        _processFundTransfer(receiverAddress, assetAddress, amountToTransfer);
-        emit WithdrawalProcessed(vault.starkKey, vault.assetId, receiverAddress, amountToTransfer, assetAddress);
-        return true;
-    }
-
-    function setVaultRoot(uint256 newRoot) external override whenNotPaused {
-        require(msg.sender == vaultRootProvider, "Unauthorized: Only vault root provider can set the root");
-        // Vault root should only be set once
-        // TODO: Consider whether we want to enforce this invariant here or elsewhere
-        require(vaultRoot == 0 || rootOverrideAllowed, VaultRootOverrideNotAllowed());
-        // TODO: Additional validation on vault root
-
-        _setVaultRoot(newRoot);
-    }
-
-    function pause() external onlyRole(PAUSER_ROLE) {
-        _pause();
-    }
-
-    function unpause() external onlyRole(UNPAUSER_ROLE) {
-        _unpause();
-    }
-
-    function _processFundTransfer(address recipient, address asset, uint256 amount) internal nonReentrant {
         if (asset == NATIVE_IMX_ADDRESS) {
-            Address.sendValue(payable(recipient), amount);
+            Address.sendValue(payable(recipient), transferAmount);
         } else {
             IERC20 token = IERC20(asset);
-            token.safeTransfer(recipient, amount);
+            token.safeTransfer(recipient, transferAmount);
         }
+
+        return transferAmount;
     }
 
-    receive() external payable {
-        require(msg.sender == vaultFundProvider, "Unauthorized: Only vault fund provider can send funds");
+    function _validateVault(IVaultProofVerifier.Vault memory vault) internal pure {
+        require(
+            vault.starkKey != 0 && vault.starkKey < STARK_KEY_UPPER_BOUND,
+            IVaultProofVerifier.InvalidVaultProof("Invalid stark key")
+        );
+        require(vault.assetId != 0, IVaultProofVerifier.InvalidVaultProof("Invalid asset ID"));
+        require(vault.quantizedBalance > 0, IVaultProofVerifier.InvalidVaultProof("Invalid quantized balance"));
     }
 }

@@ -296,7 +296,7 @@ contract VaultEscapeProofVerifier is IVaultProofVerifier {
     /**
      * @inheritdoc IVaultProofVerifier
      */
-    function extractLeafAndRootFromProof(uint256[] calldata escapeProof)
+    function extractVaultAndRootFromProof(uint256[] calldata escapeProof)
         external
         pure
         override

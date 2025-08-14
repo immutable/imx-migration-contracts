@@ -4,7 +4,7 @@ pragma solidity ^0.8.27;
 
 import {AxelarExecutable} from "@axelar-gmp-sdk-solidity/executable/AxelarExecutable.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import "@src/withdrawals/VaultRootStore.sol";
+import "../../verifiers/vaults/VaultRootStore.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**

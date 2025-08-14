@@ -3,8 +3,7 @@
 pragma solidity ^0.8.27;
 
 import "forge-std/Test.sol";
-import "@src/assets/TokenMappings.sol";
-import "@src/verifiers/accounts/IAccountProofVerifier.sol";
+import "@src/assets/TokenRegistry.sol";
 import "@src/verifiers/vaults/VaultEscapeProofVerifier.sol";
 import "@src/withdrawals/IVaultWithdrawalProcessor.sol";
 import "@src/withdrawals/VaultWithdrawalProcessor.sol";
@@ -12,15 +11,16 @@ import "../../common/FixtureVaultEscapes.sol";
 import "../../common/FixtureAssets.sol";
 import "../../common/FixtureLookupTables.sol";
 import {Errors} from "@openzeppelin/contracts/utils/Errors.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 
-contract MockAccountVerifier is IAccountProofVerifier {
+contract MockAccountVerifier is AccountProofVerifier {
     bool public shouldVerify;
 
     function setShouldVerify(bool _shouldVerify) external {
         shouldVerify = _shouldVerify;
     }
 
-    function verifyAccountProof(uint256, address, bytes32[] calldata) external view override returns (bool) {
+    function verifyAccountProof(uint256, address, bytes32[] calldata) external view returns (bool) {
         return shouldVerify;
     }
 }
@@ -43,11 +43,14 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
     VaultWithdrawalProcessor private vaultWithdrawalProcessor;
     MockAccountVerifier private accountVerifier;
     MockVaultVerifier private vaultVerifier;
-    VaultWithdrawalProcessor.Operators private initRoles = VaultWithdrawalProcessor.Operators({
+    ProcessorAccessControl.Operators private initRoles = ProcessorAccessControl.Operators({
         pauser: address(this),
         unpauser: address(this),
         disburser: address(this),
-        defaultAdmin: address(this)
+        defaultAdmin: address(this),
+        vaultRootManager: address(this),
+        accountRootManager: address(this),
+        tokenMappingManager: address(this)
     });
 
     uint256[] private invalidProofBadKey;
@@ -61,21 +64,18 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
         accountVerifier = new MockAccountVerifier();
         vaultVerifier = new MockVaultVerifier(ZKEVM_MAINNET_LOOKUP_TABLES);
 
-        vaultWithdrawalProcessor = new VaultWithdrawalProcessor(
-            accountVerifier, vaultVerifier, address(this), address(this), fixAssets, initRoles, false
-        );
+        vaultWithdrawalProcessor = new VaultWithdrawalProcessor(address(vaultVerifier), initRoles, false);
         vaultWithdrawalProcessor.setVaultRoot(fixVaultEscapes[0].root);
     }
 
     function test_Constructor() public view {
-        assertEq(address(vaultWithdrawalProcessor.accountVerifier()), address(accountVerifier));
-        assertEq(address(vaultWithdrawalProcessor.vaultVerifier()), address(vaultVerifier));
+        assertEq(address(vaultWithdrawalProcessor.vaultProofVerifier()), address(vaultVerifier));
         assertEq(vaultWithdrawalProcessor.vaultRoot(), fixVaultEscapes[0].root);
 
         for (uint256 i = 0; i < fixAssets.length; i++) {
             uint256 id = fixAssets[i].tokenOnIMX.id;
-            assertEq(vaultWithdrawalProcessor.getZKEVMAddress(id), fixAssets[i].tokenOnZKEVM);
-            assertEq(vaultWithdrawalProcessor.getAssetMapping(id).tokenOnIMX.quantum, fixAssets[i].tokenOnIMX.quantum);
+            assertEq(vaultWithdrawalProcessor.getZKEVMToken(id), fixAssets[i].tokenOnZKEVM);
+            assertEq(vaultWithdrawalProcessor.getTokenMapping(id).tokenOnIMX.quantum, fixAssets[i].tokenOnIMX.quantum);
         }
     }
 
@@ -84,15 +84,14 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
         accountVerifier.setShouldVerify(true);
         vaultVerifier.setShouldVerify(true);
 
-        uint256 expectedTransfer = vaultWithdrawalProcessor.getAssetQuantum(fixVaultEscapes[2].vault.assetId)
-            * fixVaultEscapes[2].vault.quantizedAmount;
+        uint256 expectedTransfer = vaultWithdrawalProcessor.getTokenQuantum(fixVaultEscapes[2].vault.assetId)
+            * fixVaultEscapes[2].vault.quantizedBalance;
 
         vm.deal(address(vaultWithdrawalProcessor), 1 ether);
         assertEq(recipient.balance, 0 ether, "Recipient should start with zero balance");
-        bool success =
-            vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, accountProof, fixVaultEscapes[2].proof);
 
-        assertTrue(success, "Withdrawal should be processed successfully");
+        vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, accountProof, fixVaultEscapes[2].proof);
+
         assertTrue(
             vaultWithdrawalProcessor.isWithdrawalProcessed(
                 fixVaultEscapes[2].vault.starkKey, fixVaultEscapes[2].vault.assetId
@@ -111,16 +110,14 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
         uint256 assetId = testVaultWithProof.vault.assetId;
 
         uint256 expectedTransfer =
-            vaultWithdrawalProcessor.getAssetQuantum(assetId) * testVaultWithProof.vault.quantizedAmount;
+            vaultWithdrawalProcessor.getTokenQuantum(assetId) * testVaultWithProof.vault.quantizedBalance;
 
-        IERC20 token = IERC20(vaultWithdrawalProcessor.getZKEVMAddress(assetId));
+        IERC20 token = IERC20(vaultWithdrawalProcessor.getZKEVMToken(assetId));
         deal(address(token), address(vaultWithdrawalProcessor), 3 ether);
 
         assertEq(token.balanceOf(recipient), 0, "Recipient should start with zero balance");
-        bool success =
-            vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, accountProof, testVaultWithProof.proof);
+        vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, accountProof, testVaultWithProof.proof);
 
-        assertTrue(success, "Withdrawal should be processed successfully");
         assertTrue(
             vaultWithdrawalProcessor.isWithdrawalProcessed(
                 testVaultWithProof.vault.starkKey, testVaultWithProof.vault.assetId
@@ -213,7 +210,7 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
         vaultVerifier.setShouldVerify(true);
 
         vm.expectRevert(
-            abi.encodeWithSelector(IAccountProofVerifier.InvalidAccountProof.selector, "Account proof is empty")
+            abi.encodeWithSelector(AccountProofVerifier.InvalidAccountProof.selector, "Account proof is empty")
         );
         vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, emptyProof, fixVaultEscapes[0].proof);
     }
@@ -233,7 +230,7 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
         vaultVerifier.setShouldVerify(true);
 
         vm.expectRevert(
-            abi.encodeWithSelector(IAccountProofVerifier.InvalidAccountProof.selector, "Proof verification failed")
+            abi.encodeWithSelector(AccountProofVerifier.InvalidAccountProof.selector, "Proof verification failed")
         );
         vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, accountProof, fixVaultEscapes[0].proof);
     }
@@ -258,7 +255,7 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                ProcessedWithdrawalsRegistry.WithdrawalAlreadyProcessed.selector,
+                IVaultWithdrawalProcessor.WithdrawalAlreadyProcessed.selector,
                 fixVaultEscapes[2].vault.starkKey,
                 fixVaultEscapes[2].vault.assetId
             )
@@ -275,7 +272,7 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
         // TODO: this modification of asset id is not quite right, given packing of escape proof
         proofWithUnregisteredAsset[1] = proofWithUnregisteredAsset[1] << 1; // Modify the assetId to an unregistered one
 
-        vm.expectPartialRevert(IVaultWithdrawalProcessor.AssetNotRegistered.selector);
+        vm.expectPartialRevert(TokenRegistry.AssetNotRegistered.selector);
         vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, accountProof, proofWithUnregisteredAsset);
     }
 
@@ -284,8 +281,8 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
         accountVerifier.setShouldVerify(true);
         vaultVerifier.setShouldVerify(true);
 
-        uint256 expectedAmount = vaultWithdrawalProcessor.getAssetQuantum(fixVaultEscapes[2].vault.assetId)
-            * fixVaultEscapes[2].vault.quantizedAmount;
+        uint256 expectedAmount = vaultWithdrawalProcessor.getTokenQuantum(fixVaultEscapes[2].vault.assetId)
+            * fixVaultEscapes[2].vault.quantizedBalance;
 
         vm.expectRevert(abi.encodeWithSelector(Errors.InsufficientBalance.selector, 0, expectedAmount));
         vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, accountProof, fixVaultEscapes[2].proof);
@@ -305,43 +302,12 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
 
     function test_RevertIf_Constructor_ZeroVaultRootProvider() public {
         vm.expectRevert(IVaultWithdrawalProcessor.ZeroAddress.selector);
-        new VaultWithdrawalProcessor(
-            accountVerifier, vaultVerifier, address(0), address(this), fixAssets, initRoles, true
-        );
-    }
-
-    function test_RevertIf_Constructor_ZeroVaultFundProvider() public {
-        vm.expectRevert(IVaultWithdrawalProcessor.ZeroAddress.selector);
-        new VaultWithdrawalProcessor(
-            accountVerifier, vaultVerifier, address(this), address(0), fixAssets, initRoles, true
-        );
-    }
-
-    function test_RevertIf_Constructor_ZeroAccountVerifier() public {
-        vm.expectRevert(IVaultWithdrawalProcessor.ZeroAddress.selector);
-        new VaultWithdrawalProcessor(
-            IAccountProofVerifier(address(0)), vaultVerifier, address(this), address(this), fixAssets, initRoles, true
-        );
+        new VaultWithdrawalProcessor(address(vaultVerifier), initRoles, true);
     }
 
     function test_RevertIf_Constructor_ZeroVaultVerifier() public {
         vm.expectRevert(IVaultWithdrawalProcessor.ZeroAddress.selector);
-        new VaultWithdrawalProcessor(
-            accountVerifier, IVaultProofVerifier(address(0)), address(this), address(this), fixAssets, initRoles, true
-        );
-    }
-
-    function test_RevertIf_Constructor_EmptyAssets() public {
-        vm.expectRevert(abi.encodeWithSelector(TokenMappings.InvalidAssetDetails.selector, "No assets to register"));
-        new VaultWithdrawalProcessor(
-            accountVerifier,
-            vaultVerifier,
-            address(this),
-            address(this),
-            new TokenMappings.AssetMapping[](0),
-            initRoles,
-            false
-        );
+        new VaultWithdrawalProcessor(address(0), initRoles, true);
     }
 
     function test_SetVaultRoot() public view {
@@ -357,7 +323,7 @@ contract VaultWithdrawalProcessorTest is Test, FixtureVaultEscapes, FixtureAsset
 
     function test_RevertIf_SetVaultRoot_AlreadySet() public {
         uint256 newRoot = 0x123;
-        vm.expectRevert(abi.encodeWithSelector(IVaultWithdrawalProcessor.VaultRootOverrideNotAllowed.selector));
+        vm.expectRevert(abi.encodeWithSelector(VaultRootStore.VaultRootOverrideNotAllowed.selector));
         vaultWithdrawalProcessor.setVaultRoot(newRoot);
     }
 

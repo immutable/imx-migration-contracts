@@ -4,21 +4,24 @@ pragma solidity ^0.8.27;
 
 import "./GovernanceStorage.sol";
 
-/*
-  Holds the Proxy-specific state variables.
-  This contract is inherited by the GovernanceStorage (and indirectly by MainStorage)
-  to prevent collision hazard.
-*/
+/**
+ * @title ProxyStorage
+ * @notice Contract that holds Proxy-specific state variables
+ * @dev This contract is inherited by the GovernanceStorage (and indirectly by MainStorage)
+ *      to prevent collision hazard between different storage contracts
+ */
 contract ProxyStorage is GovernanceStorage {
-    // NOLINTNEXTLINE: naming-convention uninitialized-state.
+    /// @notice DEPRECATED: Mapping of addresses to initialization hashes
+    /// @dev NOLINTNEXTLINE: naming-convention uninitialized-state - this is intentional as it's a storage contract
     mapping(address => bytes32) internal initializationHash_DEPRECATED;
 
-    // The time after which we can switch to the implementation.
-    // Hash(implementation, data, finalize) => time.
+    /// @notice Mapping of implementation hashes to their enabled time
+    /// @dev The time after which we can switch to the implementation
+    /// @dev Hash(implementation, data, finalize) => time
     mapping(bytes32 => uint256) internal enabledTime;
 
-    // A central storage of the flags whether implementation has been initialized.
-    // Note - it can be used flexibly enough to accommodate multiple levels of initialization
-    // (i.e. using different key salting schemes for different initialization levels).
+    /// @notice Central storage of flags indicating whether implementations have been initialized
+    /// @dev Can be used flexibly enough to accommodate multiple levels of initialization
+    ///      (i.e. using different key salting schemes for different initialization levels)
     mapping(bytes32 => bool) internal initialized;
 }

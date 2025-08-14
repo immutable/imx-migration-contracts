@@ -2,16 +2,25 @@
 // SPDX-License-Identifier: Apache-2.0.
 pragma solidity ^0.8.27;
 
+/**
+ * @notice Struct containing governance information for a specific entity
+ * @param effectiveGovernors Mapping of addresses to their governor status
+ * @param candidateGovernor Address of the candidate governor waiting to be confirmed
+ * @param initialized Flag indicating whether the governance has been initialized
+ */
 struct GovernanceInfoStruct {
     mapping(address => bool) effectiveGovernors;
     address candidateGovernor;
     bool initialized;
 }
 
-/*
-  Holds the governance slots for ALL entities, including proxy and the main contract.
-*/
+/**
+ * @title GovernanceStorage
+ * @notice Contract that holds governance slots for all entities, including proxy and main contracts
+ * @dev This contract provides a centralized storage for governance information across multiple entities
+ */
 contract GovernanceStorage {
-    // A map from a Governor tag to its own GovernanceInfoStruct.
-    mapping(string => GovernanceInfoStruct) internal governanceInfo; //NOLINT uninitialized-state.
+    /// @notice Mapping from governor tag to its corresponding GovernanceInfoStruct
+    /// @dev NOLINT uninitialized-state - this is intentional as it's a storage contract
+    mapping(string => GovernanceInfoStruct) internal governanceInfo;
 }

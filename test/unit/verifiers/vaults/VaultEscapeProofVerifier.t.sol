@@ -80,7 +80,7 @@ contract VaultEscapeProofVerifierTest is Test, FixtureVaultEscapes, FixtureLooku
         IVaultProofVerifier.Vault memory expectedVault = fixVaultEscapes[0].vault;
         assertEq(vault.starkKey, expectedVault.starkKey);
         assertEq(vault.assetId, expectedVault.assetId);
-        assertEq(vault.quantizedAmount, expectedVault.quantizedAmount);
+        assertEq(vault.quantizedBalance, expectedVault.quantizedBalance);
     }
 
     function test_ExtractRootFromProof() public view {
@@ -90,14 +90,14 @@ contract VaultEscapeProofVerifierTest is Test, FixtureVaultEscapes, FixtureLooku
 
     function test_ExtractLeafAndRootFromProof() public view {
         (IVaultProofVerifier.Vault memory vault, uint256 root) =
-            verifier.extractLeafAndRootFromProof(fixVaultEscapes[0].proof);
+            verifier.extractVaultAndRootFromProof(fixVaultEscapes[0].proof);
 
         IVaultProofVerifier.Vault memory expectedVault = fixVaultEscapes[0].vault;
         uint256 expectedRoot = fixVaultEscapes[0].root;
 
         assertEq(vault.starkKey, expectedVault.starkKey);
         assertEq(vault.assetId, expectedVault.assetId);
-        assertEq(vault.quantizedAmount, expectedVault.quantizedAmount);
+        assertEq(vault.quantizedBalance, expectedVault.quantizedBalance);
         assertEq(root, expectedRoot);
     }
 
@@ -113,6 +113,6 @@ contract VaultEscapeProofVerifierTest is Test, FixtureVaultEscapes, FixtureLooku
 
     function test_RevertIf_ExtractLeafAndRootFromInvalidProof() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Proof too short."));
-        verifier.extractLeafAndRootFromProof(new uint256[](67));
+        verifier.extractVaultAndRootFromProof(new uint256[](67));
     }
 }

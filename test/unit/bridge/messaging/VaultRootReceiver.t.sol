@@ -3,13 +3,13 @@ pragma solidity ^0.8.27;
 
 import "forge-std/Test.sol";
 import "@src/bridge/messaging/VaultRootReceiver.sol";
-import "@src/withdrawals/VaultRootStore.sol";
+import "../../../../src/verifiers/vaults/VaultRootStore.sol";
 import "../../../common/MockAxelarGateway.sol";
 import {IAxelarExecutable} from "@axelar-gmp-sdk-solidity/interfaces/IAxelarExecutable.sol";
 
 contract MockVaultRootStore is VaultRootStore {
     function setVaultRoot(uint256 _vaultRoot) external override {
-        _setVaultRoot(_vaultRoot);
+        _setVaultRoot(_vaultRoot, true);
     }
 }
 

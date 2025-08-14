@@ -26,9 +26,9 @@ contract VaultRootSenderTest is Test {
     }
 
     function test_Constructor() public view {
-        assertEq(sender.starkExBridge(), L1_STARKEX_BRIDGE);
-        assertEq(sender.zkEVMVaultReceiver(), L2_VAULT_RECEIVER);
-        assertEq(sender.zkEVMChainId(), L2_CHAIN_ID);
+        assertEq(sender.vaultRootSource(), L1_STARKEX_BRIDGE);
+        assertEq(sender.destinationReceiver(), L2_VAULT_RECEIVER);
+        assertEq(sender.destinationChain(), L2_CHAIN_ID);
         assertEq(address(sender.axelarGasService()), gasService);
         assertEq(address(sender.gateway()), gateway);
     }
