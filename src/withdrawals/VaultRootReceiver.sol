@@ -3,14 +3,14 @@
 pragma solidity ^0.8.27;
 
 /**
- * @title VaultRootStore
+ * @title VaultRootReceiver
  * @notice Abstract contract for storing and managing vault root hashes
  * @dev This contract provides a base implementation for storing Merkle root hashes
  *      that represent the state of vaults in the Immutable X system
  * @dev TODO: One possible optimisation to consider is having multiple intermediate roots
  *      in the main merkle tree, stored and used to prove against
  */
-abstract contract VaultRootStore {
+abstract contract VaultRootReceiver {
     /// @notice Thrown when attempting to set an invalid vault root (zero value)
     error InvalidVaultRoot();
     error VaultRootNotSet();

@@ -4,7 +4,7 @@ pragma solidity ^0.8.27;
 import "@src/bridge/starkex/StarkExchangeMigration.sol";
 import "forge-std/Test.sol";
 import {IStarkExchangeMigration} from "../../../../src/bridge/starkex/IStarkExchangeMigration.sol";
-import {MockVaultRootSender} from "../../../common/MockVaultRootSender.sol";
+import {MockVaultRootSenderAdapter} from "../../../common/MockVaultRootSenderAdapter.sol";
 
 interface IStarkExchangeProxy is IStarkExchangeMigration {
     event ImplementationAdded(address indexed implementation, bytes initData, bool finalize);
@@ -41,7 +41,7 @@ contract StarkExchangeMigrationTest is Test {
     function setUp() public {
         string memory RPC_URL = vm.envString("ETH_RPC_URL");
         vm.createSelectFork(RPC_URL);
-        mockVaultRootSender = address(new MockVaultRootSender());
+        mockVaultRootSender = address(new MockVaultRootSenderAdapter());
     }
 
     function _upgradeStarkExchange() internal returns (address) {
@@ -142,7 +142,7 @@ contract StarkExchangeMigrationTest is Test {
 
         vm.expectCall(
             mockVaultRootSender,
-            abi.encodeCall(VaultRootSender(mockVaultRootSender).sendVaultRoot, (vaultRoot, migrationInitiator))
+            abi.encodeCall(VaultRootSenderAdapter(mockVaultRootSender).sendVaultRoot, (vaultRoot, migrationInitiator))
         );
         starkExProxy.migrateVaultState{value: bridgeFee}();
 

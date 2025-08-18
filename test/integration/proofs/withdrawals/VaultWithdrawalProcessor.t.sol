@@ -4,7 +4,7 @@ pragma solidity ^0.8.27;
 import "@src/assets/TokenRegistry.sol";
 import "@src/withdrawals/VaultWithdrawalProcessor.sol";
 import {VaultEscapeProofVerifier} from "@src/verifiers/vaults/VaultEscapeProofVerifier.sol";
-import {VaultRootReceiver} from "@src/bridge/messaging/VaultRootReceiver.sol";
+import {VaultRootReceiverAdapter} from "@src/bridge/messaging/VaultRootReceiverAdapter.sol";
 import {AccountProofVerifier} from "@src/verifiers/accounts/AccountProofVerifier.sol";
 import {FixtureLookupTables} from "../../../common/FixtureLookupTables.sol";
 import {MockAxelarGateway} from "../../../common/MockAxelarGateway.sol";
@@ -15,6 +15,7 @@ import {FixtureVaultEscapes} from "../../../common/FixtureVaultEscapes.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {FixtureAccounts} from "../../../common/FixtureAccounts.sol";
 import {console} from "forge-std/console.sol";
+
 /**
  * VaultWithdrawalProcessorIntegrationTest.sol
  * - Create a set of account associations and a merkle root.
@@ -28,7 +29,6 @@ import {console} from "forge-std/console.sol";
  *   - Claim Withdrawal
  * - Gas Estimation
  */
-
 contract VaultWithdrawalProcessorIntegrationTest is
     Test,
     ProofUtils,
@@ -38,10 +38,10 @@ contract VaultWithdrawalProcessorIntegrationTest is
     FixtureLookupTables
 {
     VaultEscapeProofVerifier private vaultVerifier;
-    VaultRootReceiver private vaultRootReceiver;
+    VaultRootReceiverAdapter private vaultRootReceiver;
 
     MockAxelarGateway private axelarGateway;
-    VaultRootReceiver private rootReceiver;
+    VaultRootReceiverAdapter private rootReceiver;
     VaultWithdrawalProcessor private vaultProcessor;
     VaultWithdrawalProcessor.Operators private operators;
     string private rootProviderContract = "0x1234567890123456789012345678901234567890";
@@ -53,34 +53,37 @@ contract VaultWithdrawalProcessorIntegrationTest is
         axelarGateway = new MockAxelarGateway(true);
         // Create account associations and compute the merkle root
 
-        rootReceiver = new VaultRootReceiver("ethereum", rootProviderContract, address(this), address(axelarGateway));
-
         vaultVerifier = new VaultEscapeProofVerifier(ZKEVM_MAINNET_LOOKUP_TABLES);
+
+        rootReceiver = new VaultRootReceiverAdapter(address(this), address(axelarGateway));
 
         operators = ProcessorAccessControl.Operators({
             pauser: address(this),
             unpauser: address(this),
             disburser: address(this),
             defaultAdmin: address(this),
-            accountRootManager: address(this),
-            vaultRootManager: address(this),
+            accountRootProvider: address(this),
+            vaultRootProvider: address(rootReceiver),
             tokenMappingManager: address(this)
         });
 
         vaultProcessor = new VaultWithdrawalProcessor(address(vaultVerifier), operators, true);
 
         vaultProcessor.setAccountRoot(accountsRoot);
+        vaultProcessor.registerTokenMappings(fixAssets);
+
+        rootReceiver.setVaultRootSource("ethereum", rootProviderContract);
 
         // Configure the vault root store in the root receiver
-        rootReceiver.setVaultRootStore(VaultRootStore(address(vaultProcessor)));
+        rootReceiver.setVaultRootReceiver(VaultRootReceiver(address(vaultProcessor)));
     }
 
     function test_ProcessVaultWithdrawal_IMX() public {
         // Set the vault root. In practice this would be done through a cross-chain message from an L1 contract using Axelar
         vm.expectEmit(true, true, true, true);
-        emit VaultRootStore.VaultRootSet(0, fixVaultEscapes[0].root);
+        emit VaultRootReceiver.VaultRootSet(0, fixVaultEscapes[0].root);
         vm.expectEmit(true, true, true, true);
-        emit VaultRootReceiver.VaultRootReceived(fixVaultEscapes[0].root);
+        emit VaultRootReceiverAdapter.VaultRootReceived(fixVaultEscapes[0].root);
         rootReceiver.execute(
             keccak256("set-vault-root"), "ethereum", rootProviderContract, abi.encode(fixVaultEscapes[0].root)
         );
@@ -98,9 +101,6 @@ contract VaultWithdrawalProcessorIntegrationTest is
 
         uint256[] memory vaultProof = fixVaultEscapes[2].proof;
         uint256 vaultBalance = 546024000000000;
-
-        console.log("User 1 stark key: %s", account.starkKey);
-        console.log("Proof extracted stark key: %s", vaultVerifier.extractLeafFromProof(vaultProof).starkKey);
 
         vm.startSnapshotGas("ProcessVaultWithdrawal_NativeAsset");
         bytes32[] memory accProof = _getMerkleProof(account.starkKey);
@@ -120,9 +120,9 @@ contract VaultWithdrawalProcessorIntegrationTest is
     function test_ProcessVaultWithdrawal_USDC() public {
         // Set the vault root. In practice this would be done through a cross-chain message from an L1 contract using Axelar
         vm.expectEmit(true, true, true, true);
-        emit VaultRootStore.VaultRootSet(0, fixVaultEscapes[1].root);
+        emit VaultRootReceiver.VaultRootSet(0, fixVaultEscapes[1].root);
         vm.expectEmit(true, true, true, true);
-        emit VaultRootReceiver.VaultRootReceived(fixVaultEscapes[1].root);
+        emit VaultRootReceiverAdapter.VaultRootReceived(fixVaultEscapes[1].root);
         rootReceiver.execute(
             keccak256("set-vault-root"), "ethereum", rootProviderContract, abi.encode(fixVaultEscapes[1].root)
         );

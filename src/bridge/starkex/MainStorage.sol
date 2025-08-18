@@ -4,7 +4,7 @@ pragma solidity ^0.8.27;
 
 import "./ProxyStorage.sol";
 import "./libraries/Common.sol";
-import {VaultRootSender} from "../messaging/VaultRootSender.sol";
+import {VaultRootSenderAdapter} from "../messaging/VaultRootSenderAdapter.sol";
 
 /**
  * @title MainStorage
@@ -118,7 +118,7 @@ contract MainStorage is ProxyStorage {
     /// @notice Address of the migration initiator
     address public migrationInitiator; // NOLINT: constable-states uninitialized-state.
     /// @notice The vault root sender contract for cross-chain messaging
-    VaultRootSender public vaultRootSender; // NOLINT: constable-states uninitialized-state.
+    VaultRootSenderAdapter public vaultRootSender; // NOLINT: constable-states uninitialized-state.
 
     /// @notice Reserved storage space for Extensibility
     /// @dev Every added variable MUST be added above the end gap, and the __endGap size must be reduced accordingly

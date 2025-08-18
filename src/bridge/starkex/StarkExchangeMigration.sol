@@ -8,7 +8,7 @@ import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.s
 import {IRootERC20Bridge} from "../zkEVM/IRootERC20Bridge.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IStarkExchangeMigration} from "./IStarkExchangeMigration.sol";
-import {VaultRootSender} from "../messaging/VaultRootSender.sol";
+import {VaultRootSenderAdapter} from "../messaging/VaultRootSenderAdapter.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Addresses} from "./libraries/Common.sol";
 
@@ -70,7 +70,7 @@ contract StarkExchangeMigration is MainStorage, Initializable, IStarkExchangeMig
         migrationInitiator = _migrationInitiator;
         zkEVMBridge = _zkEVMBridge;
         zkEVMVaultProcessor = _l2VaultProcessor;
-        vaultRootSender = VaultRootSender(_vaultRootSender);
+        vaultRootSender = VaultRootSenderAdapter(_vaultRootSender);
     }
 
     /**

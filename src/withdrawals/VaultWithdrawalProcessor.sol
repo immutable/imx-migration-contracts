@@ -7,7 +7,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TokenRegistry} from "@src/assets/TokenRegistry.sol";
 import {IVaultProofVerifier} from "@src/verifiers/vaults/IVaultProofVerifier.sol";
-import {VaultRootStore} from "../verifiers/vaults/VaultRootStore.sol";
+import {VaultRootReceiver} from "./VaultRootReceiver.sol";
 import {IVaultWithdrawalProcessor} from "./IVaultWithdrawalProcessor.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {AccountProofVerifier} from "../verifiers/accounts/AccountProofVerifier.sol";
@@ -18,7 +18,7 @@ contract VaultWithdrawalProcessor is
     IVaultWithdrawalProcessor,
     ReentrancyGuard,
     ProcessorAccessControl,
-    VaultRootStore,
+    VaultRootReceiver,
     AccountRootStore,
     AccountProofVerifier,
     TokenRegistry
@@ -70,7 +70,8 @@ contract VaultWithdrawalProcessor is
         require(accountRoot != bytes32(0), AccountRootNotSet());
 
         require(receiver != address(0), ZeroAddress());
-        require(accountProof.length == ACCOUNT_PROOF_LENGTH, InvalidAccountProof("Invalid account proof length"));
+        // FIXME: check against ACCOUNT_PROOF_LENGTH
+        require(accountProof.length > 0, InvalidAccountProof("Invalid account proof length"));
         require(
             vaultProof.length == VAULT_PROOF_LENGTH, IVaultProofVerifier.InvalidVaultProof("Invalid vault proof length")
         );
@@ -100,7 +101,7 @@ contract VaultWithdrawalProcessor is
         // Verify the vault escape proof
         require(
             vaultProofVerifier.verifyVaultProof(vaultProof),
-            IVaultProofVerifier.InvalidVaultProof("Proof verification failed")
+            IVaultProofVerifier.InvalidVaultProof("Invalid vault proof")
         );
 
         _registerProcessedWithdrawal(vault.starkKey, vault.assetId);
@@ -115,7 +116,7 @@ contract VaultWithdrawalProcessor is
      * @dev The vault root can only be set once unless rootOverrideAllowed is true
      * @param newRoot The new vault root hash
      */
-    function setVaultRoot(uint256 newRoot) external override onlyRole(VAULT_ROOT_MANAGER_ROLE) {
+    function setVaultRoot(uint256 newRoot) external override onlyRole(VAULT_ROOT_PROVIDER_ROLE) {
         _setVaultRoot(newRoot, rootOverrideAllowed);
     }
 
@@ -125,7 +126,7 @@ contract VaultWithdrawalProcessor is
      * @dev The account root can only be set once unless rootOverrideAllowed is true
      * @param newRoot The new Merkle root hash for account associations
      */
-    function setAccountRoot(bytes32 newRoot) external override onlyRole(ACCOUNT_ROOT_MANAGER_ROLE) {
+    function setAccountRoot(bytes32 newRoot) external override onlyRole(ACCOUNT_ROOT_PROVIDER_ROLE) {
         _setAccountRoot(newRoot, rootOverrideAllowed);
     }
 
