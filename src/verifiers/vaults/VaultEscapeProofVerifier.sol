@@ -5,14 +5,78 @@ pragma solidity ^0.8.27;
 import {IVaultProofVerifier} from "./IVaultProofVerifier.sol";
 
 /**
- * @notice VaultEscapeProofVerifier is a contract that verifies vault escape proofs, against a given vault root.
- * @dev (starkKey, assetId, quantizedAmount) is the leaf in index leafIndex of a vaults Merkle tree with
- *      specific height and root. The leaf index can be deduced from vaultId, see :sol:mod:`Escapes` for details.
+ * @notice VaultEscapeProofVerifier is a contract that verifies vault proofs, against a given vault root.
+ * @dev The implementation reuses the existing EscapeProofVerifier contract found [here](https://github.com/starkware-libs/starkex-contracts/blob/master/scalable-dex/contracts/src/starkex/components/EscapeVerifier.soll)
+ *      One notable difference is that this contract does not maintain state about proven vault escapes.
+ * @dev A vault information consists of a starkKey, assetId, and quantized balance.
+ *
+ *  @dev The Merkle commitment uses the Pedersen hash variation described next:
+ *
+ *   - **Hash constants:** A sequence :math:`p_i` of 504 points on an elliptic curve and an additional :math:`ec_{shift}` point
+ *   - **Input:** A vector of 504 bits :math:`b_i`
+ *   - **Output:** The 252 bits x coordinate of :math:`(ec_{shift} + \sum_i b_i*p_i)`
+ *
+ *   The following table describes the expected `escapeProof` format. Note that unlike a standard
+ *   Merkle proof, the `escapeProof` contains both the nodes along the Merkle path and their
+ *   siblings. The proof ends with the expected root and the leaf index of the vault for which the
+ *   proof is submitted (which implies the location of the nodes within the Merkle tree).
+ *
+ *       +-------------------------------+---------------------------+-----------+
+ *       | starkKey (252)                | assetId (252)             | zeros (8) |
+ *       +-------------------------------+---------------------------+-----------+
+ *       | hash(starkKey, assetId) (252) | quantizedAmount (252)     | zeros (8) |
+ *       +-------------------------------+---------------------------+-----------+
+ *       | left_node_0 (252)             | right_node_0 (252)        | zeros (8) |
+ *       +-------------------------------+---------------------------+-----------+
+ *       | ...                                                                   |
+ *       +-------------------------------+---------------------------+-----------+
+ *       | left_node_n (252)             | right_node_n (252)        | zeros (8) |
+ *       +-------------------------------+-----------+---------------+-----------+
+ *       | root (252)                    | zeros(4) | leafIndex(248) | zeros (8) |
+ *       +-------------------------------+-----------+---------------+-----------+
+ *
+ *   Implementation details:
+ *   The EC sum required for the hash computation is computed using lookup tables and EC additions.
+ *   There are 63 lookup tables and each table contains all the possible subset sums of the
+ *   corresponding 8 EC points in the hash definition.
+ *
+ *   Both the full subset sum and the tables are shifted to avoid a special case for the 0 point.
+ *   lookupTables[0] uses the offset 2^62*ec_shift and lookupTables[k] for k > 0 uses
+ *   the offset 2^(62-k)*(-ec_shift).
+ *   Note that the sum of the shifts of all the tables is exactly the shift required for the
+ *   hash. Moreover, the partial sums of those shifts are never 0.
+ *
+ *   The calls to the lookup table contracts are batched to save on gas cost.
+ *   We allocate a table of N_HASHES by N_TABLES EC elements.
+ *   Fill the i'th row by calling the i'th lookup contract to lookup the i'th byte in each hash and
+ *   then compute the j'th hash by summing the j'th column.
+ *
+ *               N_HASHES
+ *           --------------
+ *           |            |
+ *           |            |
+ *           |            |
+ *           |            | N_TABLES
+ *           |            |
+ *           |            |
+ *           |            |
+ *           |            |
+ *           --------------
+ *
+ *   The batched lookup is facilitated by the fact that the escapeProof includes nodes along the
+ *   Merkle path.
+ *   However having this redundant information requires us to do consistency checks
+ *   to ensure we indeed verify a coherent authentication path:
+ *
+ *       hash((left_node_{i-1}, right_node_{i-1})) ==
+ *         (leafIndex & (1<<i)) == 0 ? left_node_i : right_node_i.
+ *
  */
 contract VaultEscapeProofVerifier is IVaultProofVerifier {
     // number of lookup tables used in the escape proof verification.
     uint256 internal constant N_TABLES = 63;
     uint256 internal constant K_MODULUS = 0x800000000000011000000000000000000000000000000000000000000000001;
+    uint256 public constant VAULT_PROOF_LENGTH = 68;
 
     address[N_TABLES] public lookupTables;
 
@@ -32,69 +96,10 @@ contract VaultEscapeProofVerifier is IVaultProofVerifier {
 
     /*
      * @notice verifyProof verifies the escape proof for a vault.
-     * @param proof The proof to be verified, which includes the vault information, the root and the Merkle proof.
+     * @param proof The proof to be verified, which includes the vault information, and the vault root it is being proven against.
+     *        Note that the proof has a specific encoding structure (see contract-level comments), and also differs from standard Merkle proofs in that it contains all nodes along the Merkle path.
+     *        Note that the Merkle commitment use a variation of the Pedersen hash function.
      * @return bool Returns true if the proof is valid. The function reverts with an `InvalidVaultProof` error if the proof is invalid.
-     *
-     *   The Merkle commitment uses the Pedersen hash variation described next:
-     *
-     *   - **Hash constants:** A sequence :math:`p_i` of 504 points on an elliptic curve and an additional :math:`ec_{shift}` point
-     *   - **Input:** A vector of 504 bits :math:`b_i`
-     *   - **Output:** The 252 bits x coordinate of :math:`(ec_{shift} + \sum_i b_i*p_i)`
-     *
-     *   The following table describes the expected `escapeProof` format. Note that unlike a standard
-     *   Merkle proof, the `escapeProof` contains both the nodes along the Merkle path and their
-     *   siblings. The proof ends with the expected root and the leaf index of the vault for which the
-     *   proof is submitted (which implies the location of the nodes within the Merkle tree).
-     *
-     *       +-------------------------------+---------------------------+-----------+
-     *       | starkKey (252)                | assetId (252)             | zeros (8) |
-     *       +-------------------------------+---------------------------+-----------+
-     *       | hash(starkKey, assetId) (252) | quantizedAmount (252)     | zeros (8) |
-     *       +-------------------------------+---------------------------+-----------+
-     *       | left_node_0 (252)             | right_node_0 (252)        | zeros (8) |
-     *       +-------------------------------+---------------------------+-----------+
-     *       | ...                                                                   |
-     *       +-------------------------------+---------------------------+-----------+
-     *       | left_node_n (252)             | right_node_n (252)        | zeros (8) |
-     *       +-------------------------------+-----------+---------------+-----------+
-     *       | root (252)                    | zeros(4) | leafIndex(248) | zeros (8) |
-     *       +-------------------------------+-----------+---------------+-----------+
-     *
-     *   Implementation details:
-     *   The EC sum required for the hash computation is computed using lookup tables and EC additions.
-     *   There are 63 lookup tables and each table contains all the possible subset sums of the
-     *   corresponding 8 EC points in the hash definition.
-     *
-     *   Both the full subset sum and the tables are shifted to avoid a special case for the 0 point.
-     *   lookupTables[0] uses the offset 2^62*ec_shift and lookupTables[k] for k > 0 uses
-     *   the offset 2^(62-k)*(-ec_shift).
-     *   Note that the sum of the shifts of all the tables is exactly the shift required for the
-     *   hash. Moreover, the partial sums of those shifts are never 0.
-     *
-     *   The calls to the lookup table contracts are batched to save on gas cost.
-     *   We allocate a table of N_HASHES by N_TABLES EC elements.
-     *   Fill the i'th row by calling the i'th lookup contract to lookup the i'th byte in each hash and
-     *   then compute the j'th hash by summing the j'th column.
-     *
-     *               N_HASHES
-     *           --------------
-     *           |            |
-     *           |            |
-     *           |            |
-     *           |            | N_TABLES
-     *           |            |
-     *           |            |
-     *           |            |
-     *           |            |
-     *           --------------
-     *
-     *   The batched lookup is facilitated by the fact that the escapeProof includes nodes along the
-     *   Merkle path.
-     *   However having this redundant information requires us to do consistency checks
-     *   to ensure we indeed verify a coherent authentication path:
-     *
-     *       hash((left_node_{i-1}, right_node_{i-1})) ==
-     *         (leafIndex & (1<<i)) == 0 ? left_node_i : right_node_i.
      */
     function verifyVaultProof(uint256[] calldata escapeProof) external view virtual override returns (bool) {
         _validateProofStructure(escapeProof);
@@ -338,7 +343,7 @@ contract VaultEscapeProofVerifier is IVaultProofVerifier {
         // 1. 2 word pairs representing the vault contents + one hash of the 1st pair.
         // 2. 31  word pairs representing the authentication path.
         // 3. 1 word pair representing the root and the leaf index.
-        require(proofLength >= 68, InvalidVaultProof("Proof too short."));
+        require(proofLength >= VAULT_PROOF_LENGTH, InvalidVaultProof("Proof too short."));
 
         // The contract supports verification paths of lengths up to 97 in a 200 word representation as described above.
         // This limitation is imposed in order to avoid potential attacks.

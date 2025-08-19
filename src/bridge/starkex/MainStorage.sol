@@ -114,11 +114,11 @@ contract MainStorage is ProxyStorage {
     /// @notice Address of the zkEVM bridge contract
     address public zkEVMBridge; // NOLINT: constable-states uninitialized-state.
     /// @notice Address of the zkEVM vault processor contract
-    address public zkEVMVaultProcessor; // NOLINT: constable-states uninitialized-state.
+    address public zkEVMWithdrawalProcessor; // NOLINT: constable-states uninitialized-state.
     /// @notice Address of the migration initiator
-    address public migrationInitiator; // NOLINT: constable-states uninitialized-state.
+    address public migrationManager; // NOLINT: constable-states uninitialized-state.
     /// @notice The vault root sender contract for cross-chain messaging
-    VaultRootSenderAdapter public vaultRootSender; // NOLINT: constable-states uninitialized-state.
+    VaultRootSenderAdapter public rootSenderAdapter; // NOLINT: constable-states uninitialized-state.
 
     /// @notice Reserved storage space for Extensibility
     /// @dev Every added variable MUST be added above the end gap, and the __endGap size must be reduced accordingly

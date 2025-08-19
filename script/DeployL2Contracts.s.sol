@@ -16,7 +16,7 @@ contract DeployL2Contracts is Script {
     address private vaultVerifier;
     address[63] private lookupTables;
     VaultWithdrawalProcessor private withdrawalProcessor;
-    VaultWithdrawalProcessor.Operators private operators;
+    VaultWithdrawalProcessor.RoleOperators private operators;
     TokenRegistry.TokenAssociation[] private assetMappings;
 
     function setUp() external {
@@ -28,7 +28,7 @@ contract DeployL2Contracts is Script {
 
         vaultVerifier = vm.parseJsonAddress(config, "$.vault_verifier");
 
-        operators = abi.decode(vm.parseJson(config, "$.operators"), (ProcessorAccessControl.Operators));
+        operators = abi.decode(vm.parseJson(config, "$.operators"), (ProcessorAccessControl.RoleOperators));
 
         address[] memory _lookupTables = vm.parseJsonAddressArray(config, "$.lookup_tables");
         require(_lookupTables.length == 63, "Lookup tables should contain exactly 63 addresses");

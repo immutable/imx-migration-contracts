@@ -43,7 +43,7 @@ contract VaultWithdrawalProcessorIntegrationTest is
     MockAxelarGateway private axelarGateway;
     VaultRootReceiverAdapter private rootReceiver;
     VaultWithdrawalProcessor private vaultProcessor;
-    VaultWithdrawalProcessor.Operators private operators;
+    VaultWithdrawalProcessor.RoleOperators private operators;
     string private rootProviderContract = "0x1234567890123456789012345678901234567890";
 
     function setUp() public {
@@ -57,7 +57,7 @@ contract VaultWithdrawalProcessorIntegrationTest is
 
         rootReceiver = new VaultRootReceiverAdapter(address(this), address(axelarGateway));
 
-        operators = ProcessorAccessControl.Operators({
+        operators = ProcessorAccessControl.RoleOperators({
             pauser: address(this),
             unpauser: address(this),
             disburser: address(this),
@@ -85,7 +85,10 @@ contract VaultWithdrawalProcessorIntegrationTest is
         vm.expectEmit(true, true, true, true);
         emit VaultRootReceiverAdapter.VaultRootReceived(fixVaultEscapes[0].root);
         rootReceiver.execute(
-            keccak256("set-vault-root"), "ethereum", rootProviderContract, abi.encode(fixVaultEscapes[0].root)
+            keccak256("set-vault-root"),
+            "ethereum",
+            rootProviderContract,
+            abi.encode(rootReceiver.SET_VAULT_ROOT(), fixVaultEscapes[0].root)
         );
 
         address vaultProcessorAddr = address(vaultProcessor);
@@ -124,7 +127,10 @@ contract VaultWithdrawalProcessorIntegrationTest is
         vm.expectEmit(true, true, true, true);
         emit VaultRootReceiverAdapter.VaultRootReceived(fixVaultEscapes[1].root);
         rootReceiver.execute(
-            keccak256("set-vault-root"), "ethereum", rootProviderContract, abi.encode(fixVaultEscapes[1].root)
+            keccak256("set-vault-root"),
+            "ethereum",
+            rootProviderContract,
+            abi.encode(rootReceiver.SET_VAULT_ROOT(), fixVaultEscapes[1].root)
         );
 
         address vaultProcessorAddr = address(vaultProcessor);

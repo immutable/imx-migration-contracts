@@ -8,26 +8,25 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {Hashes} from "@openzeppelin/contracts/utils/cryptography/Hashes.sol";
 
 /**
- * @title Account Association Proof Verifier
- * @notice Verifies that a proof of account associations is correct against a stored Merkle root.
- * @dev An account association, refers to a Stark key <> Ethereum address mapping. A Merkle tree of such account associations is stored off-chain.
- * @dev Given an Merkle root of the off-chain tree, and a Merkle proof of an association (Stark key and ETH address), this contract can verify that the association is valid.
+ * @title Account Proof Verifier
+ * @notice Verifies that a Merkle proof for a Stark key to Ethereum address association is valid, given a Merkle root of an account associations tree.
+ * @dev This contract does not maintain an account root itself, but rather provides a function to verify proofs against a provided Merkle root.
  */
 abstract contract AccountProofVerifier {
     /// @notice Thrown when the provided account proof is invalid or malformed
-    /// @param message A descriptive error message explaining the proof validation failure
+    /// @param message A message describing the specific reason
     error InvalidAccountProof(string message);
 
+    uint256 public constant ACCOUNT_PROOF_LENGTH = 27;
+
     /**
-     * @notice Verifies a cryptographic proof linking a StarkNet stark key to an Ethereum address
-     * @param starkKey The StarkNet account's stark key to verify
-     * @param ethAddress The Ethereum address that should be linked to the stark key
-     * @param accountRoot The Merkle root of the account associations tree
-     * @param proof The cryptographic proof array that establishes the relationship
-     * @dev The proof should be a valid Merkle proof that demonstrates the stark key and
-     *      Ethereum address are correctly linked in the account state tree
-     * @dev Reverts with InvalidAccountProof if the proof is invalid
-     * @dev This function assumes that all basic parameter validations are performed by the caller.
+     * @notice Verifies a Merkle proof of a Stark key to an Ethereum address association, against a provided Merkle root of an account associations tree.
+     * @param starkKey The user's Stark key
+     * @param ethAddress The Ethereum address associated with the Stark key
+     * @param accountRoot The Merkle root of the account associations tree stored off-chain
+     * @param proof The Merkle proof array that establishes the relationship
+     * @dev Reverts with InvalidAccountProof if the proof is invalid or malformed.
+     * @dev NOTE: For efficiency, this function assumes that all basic parameter validations are performed by the caller beforehand.
      */
     function _verifyAccountProof(uint256 starkKey, address ethAddress, bytes32 accountRoot, bytes32[] calldata proof)
         internal

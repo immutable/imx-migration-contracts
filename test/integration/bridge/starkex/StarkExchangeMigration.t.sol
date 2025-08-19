@@ -15,7 +15,6 @@ interface IStarkExchangeProxy is IStarkExchangeMigration {
     function upgradeTo(address newImplementation, bytes calldata initData, bool finalized) external payable;
     function implementation() external view returns (address implementation);
 }
-// TODO: significantly improve the test coverage for the StarkExchangeMigration contract
 
 contract StarkExchangeMigrationTest is Test {
     IStarkExchangeProxy public constant starkExProxy = IStarkExchangeProxy(0x5FDCCA53617f4d2b9134B29090C87D01058e27e9);
@@ -74,7 +73,7 @@ contract StarkExchangeMigrationTest is Test {
         assertEq(vaultRoot, initialVaultRoot, "Vault root should remain the same after upgrade");
     }
 
-    function test_migrateAllETHHoldings() public {
+    function test_migrate_ETHHoldings() public {
         uint256 initStarkExBal = address(starkExProxy).balance;
         console.log("Initial ETH balance on StarkEx bridge: %s", initStarkExBal);
         assertGt(initStarkExBal, 0, "Initial ETH balance should be greater than zero");
@@ -90,7 +89,10 @@ contract StarkExchangeMigrationTest is Test {
 
         uint256 bridgeFee = 0.001 ether; // Example bridge fee
         vm.deal(migrationInitiator, bridgeFee);
-        starkExProxy.migrateETHHoldings{value: bridgeFee}(migrateAmount);
+        IStarkExchangeMigration.AssetHolding[] memory asset = new IStarkExchangeMigration.AssetHolding[](1);
+        asset[0] = IStarkExchangeMigration.AssetHolding({token: address(0xeee), amount: migrateAmount});
+
+        starkExProxy.migrateHoldings{value: bridgeFee}(asset);
 
         uint256 finStarkExBal = address(starkExProxy).balance;
         assertEq(finStarkExBal, 0, "Final ETH balance on StarkEx bridge should be zero after migration");
@@ -100,7 +102,7 @@ contract StarkExchangeMigrationTest is Test {
         vm.stopPrank();
     }
 
-    function test_migrateAllERC20Holdings() public {
+    function test_migrate_ERC20Holdings() public {
         _upgradeStarkExchange();
         vm.startPrank(migrationInitiator);
 
@@ -117,7 +119,10 @@ contract StarkExchangeMigrationTest is Test {
             uint256 initzkEVMBal = token.balanceOf(zkEVMBridge);
             console.log("Initial balance of %s on zkEVM bridge: %s", tokens[i], initzkEVMBal);
 
-            starkExProxy.migrateERC20Holdings{value: bridgeFee}(token, initStarkExBal);
+            IStarkExchangeMigration.AssetHolding[] memory assets = new IStarkExchangeMigration.AssetHolding[](1);
+            assets[0] = IStarkExchangeMigration.AssetHolding({token: address(token), amount: initStarkExBal});
+
+            starkExProxy.migrateHoldings{value: bridgeFee}(assets);
 
             uint256 finStarkExBal = token.balanceOf(address(starkExProxy));
             assertEq(finStarkExBal, 0, "Final balance on StarkEx bridge should be zero after migration");
@@ -144,7 +149,7 @@ contract StarkExchangeMigrationTest is Test {
             mockVaultRootSender,
             abi.encodeCall(VaultRootSenderAdapter(mockVaultRootSender).sendVaultRoot, (vaultRoot, migrationInitiator))
         );
-        starkExProxy.migrateVaultState{value: bridgeFee}();
+        starkExProxy.migrateVaultRoot{value: bridgeFee}();
 
         uint256 newVaultRoot = starkExProxy.vaultRoot();
         assertEq(newVaultRoot, vaultRoot, "Vault root should remain the same after migration");

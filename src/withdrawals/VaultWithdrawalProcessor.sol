@@ -12,25 +12,23 @@ import {IVaultWithdrawalProcessor} from "./IVaultWithdrawalProcessor.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {AccountProofVerifier} from "../verifiers/accounts/AccountProofVerifier.sol";
 import {ProcessorAccessControl} from "./ProcessorAccessControl.sol";
-import {AccountRootStore} from "../verifiers/accounts/AccountRootStore.sol";
+import {AccountRootReceiver} from "./AccountRootReceiver.sol";
 
 contract VaultWithdrawalProcessor is
     IVaultWithdrawalProcessor,
     ReentrancyGuard,
     ProcessorAccessControl,
     VaultRootReceiver,
-    AccountRootStore,
+    AccountRootReceiver,
     AccountProofVerifier,
     TokenRegistry
 {
     using SafeERC20 for IERC20;
-    using Address for address payable;
-
-    uint256 public constant ACCOUNT_PROOF_LENGTH = 27;
-    uint256 public constant VAULT_PROOF_LENGTH = 68;
 
     /// @dev Upper bound for valid Stark keys (2^251 + 17 * 2^192 + 1)
     uint256 internal constant STARK_KEY_UPPER_BOUND = 0x800000000000011000000000000000000000000000000000000000000000001;
+
+    uint256 public constant VAULT_PROOF_LENGTH = 68;
 
     /// @notice The vault proof verifier contract
     IVaultProofVerifier public immutable vaultProofVerifier;
@@ -41,24 +39,20 @@ contract VaultWithdrawalProcessor is
     /**
      * @notice Constructs the VaultWithdrawalProcessor contract
      * @param _vaultProofVerifier The address of the vault proof verifier contract
-     * @param _operators The operator addresses for different roles
+     * @param _operators The list of addresses to be granted specific roles
      * @param _rootOverrideAllowed Whether the vault and account roots can be overridden after initial setting
      */
-    constructor(address _vaultProofVerifier, Operators memory _operators, bool _rootOverrideAllowed) {
+    constructor(address _vaultProofVerifier, RoleOperators memory _operators, bool _rootOverrideAllowed) {
         require(_vaultProofVerifier != address(0), ZeroAddress());
         _validateOperators(_operators);
 
         vaultProofVerifier = IVaultProofVerifier(_vaultProofVerifier);
-        _grantOperatorRoles(_operators);
+        _grantRoleOperators(_operators);
         rootOverrideAllowed = _rootOverrideAllowed;
     }
 
     /**
-     * @notice Verifies proofs and processes a withdrawal for a vault
-     * @dev This function only disburses full amounts for a vault and not partial claims
-     * @param receiver The Ethereum address of the vault owner that will receive the funds
-     * @param accountProof The account proof to verify that the vault owner's stark key maps to the provided eth address
-     * @param vaultProof The vault proof to verify that the vault is valid
+     * @inheritdoc IVaultWithdrawalProcessor
      */
     function verifyAndProcessWithdrawal(
         address receiver,
@@ -67,7 +61,7 @@ contract VaultWithdrawalProcessor is
     ) external override onlyRole(DISBURSER_ROLE) nonReentrant whenNotPaused {
         // Check that the processor is configured with valid roots, to process withdrawals
         require(vaultRoot != 0, VaultRootNotSet());
-        require(accountRoot != bytes32(0), AccountRootNotSet());
+        require(accountRoot != 0, AccountRootNotSet());
 
         require(receiver != address(0), ZeroAddress());
         // FIXME: check against ACCOUNT_PROOF_LENGTH
@@ -107,7 +101,7 @@ contract VaultWithdrawalProcessor is
         _registerProcessedWithdrawal(vault.starkKey, vault.assetId);
 
         uint256 transferredAmount = _transferFunds(receiver, vault.assetId, token, vault.quantizedBalance);
-        emit WithdrawalProcessed(vault.starkKey, vault.assetId, receiver, transferredAmount, token);
+        emit WithdrawalProcessed(vault.starkKey, receiver, vault.assetId, token, transferredAmount);
     }
 
     /**

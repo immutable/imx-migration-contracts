@@ -38,7 +38,7 @@ contract VaultWithdrawalProcessorTest is
 {
     VaultWithdrawalProcessor private vaultWithdrawalProcessor;
     MockVaultVerifier private vaultVerifier;
-    ProcessorAccessControl.Operators private initRoles = ProcessorAccessControl.Operators({
+    ProcessorAccessControl.RoleOperators private initRoles = ProcessorAccessControl.RoleOperators({
         pauser: address(this),
         unpauser: address(this),
         disburser: address(this),

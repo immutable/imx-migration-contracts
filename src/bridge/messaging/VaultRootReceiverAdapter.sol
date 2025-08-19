@@ -97,13 +97,12 @@ contract VaultRootReceiverAdapter is AxelarExecutable, Ownable {
         internal
         override
     {
-        // Ensure that the VaultRootReceiver and the root sender details are set
         require(address(rootReceiver) != address(0), VaultRootReceiverNotSet());
         require(bytes(rootSenderChain).length != 0 && bytes(rootSenderAddress).length != 0, VaultRootSourceNotSet());
+        require(_payload.length > 32, InvalidMessage());
 
         require(Strings.equal(_sourceChain, rootSenderChain), UnauthorizedMessageSender());
         require(Strings.equal(_sourceAddress, rootSenderAddress), UnauthorizedMessageSender());
-        require(_payload.length > 32, InvalidMessage());
 
         (bytes32 sig, uint256 vaultRoot) = abi.decode(_payload, (bytes32, uint256));
 

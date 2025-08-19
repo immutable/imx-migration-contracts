@@ -13,7 +13,7 @@ pragma solidity ^0.8.27;
 abstract contract VaultRootReceiver {
     /// @notice Thrown when attempting to set an invalid vault root (zero value)
     error InvalidVaultRoot();
-    error VaultRootNotSet();
+
     /// @notice Thrown when attempting to override an existing vault root without proper authorization
     error VaultRootOverrideNotAllowed();
 
@@ -31,10 +31,11 @@ abstract contract VaultRootReceiver {
      * @notice Internal function to set a new vault root hash
      * @dev This function validates that the new root is not zero and emits an event
      * @param _newRoot The new vault root hash to set
+     * @param _overrideExisting Whether to allow overriding an existing vault root
      */
-    function _setVaultRoot(uint256 _newRoot, bool _rootOverrideAllowed) internal virtual {
+    function _setVaultRoot(uint256 _newRoot, bool _overrideExisting) internal virtual {
         require(_newRoot != 0, InvalidVaultRoot());
-        require(vaultRoot == 0 || _rootOverrideAllowed, VaultRootOverrideNotAllowed());
+        require(vaultRoot == 0 || _overrideExisting, VaultRootOverrideNotAllowed());
         emit VaultRootSet(vaultRoot, _newRoot);
         vaultRoot = _newRoot;
     }
