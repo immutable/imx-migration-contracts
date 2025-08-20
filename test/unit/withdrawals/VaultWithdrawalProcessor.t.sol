@@ -51,6 +51,7 @@ contract VaultWithdrawalProcessorTest is
     uint256[] private invalidProofBadKey;
     uint256[] private invalidProofBadPath;
     address private recipient = address(0xA123);
+    AccountAssociation private sampleAccount;
 
     function setUp() public {
         string memory ZKEVM_RPC_URL = vm.envString("ZKEVM_RPC_URL");
@@ -62,6 +63,8 @@ contract VaultWithdrawalProcessorTest is
         vaultWithdrawalProcessor.setVaultRoot(fixVaultEscapes[0].root);
         vaultWithdrawalProcessor.setAccountRoot(accountsRoot);
         vaultWithdrawalProcessor.registerTokenMappings(fixAssets);
+
+        sampleAccount = fixAccounts[1414930096151095810604649355863564842445074775977418556334494265558852329642];
     }
 
     function test_Constructor() public view {
@@ -75,6 +78,22 @@ contract VaultWithdrawalProcessorTest is
         }
     }
 
+    function test_Constants() public view {
+        assertEq(vaultWithdrawalProcessor.VAULT_PROOF_LENGTH(), 68, "VAULT_PROOF_LENGTH should be 68");
+        assertEq(vaultWithdrawalProcessor.rootOverrideAllowed(), true, "rootOverrideAllowed should be true initially");
+    }
+
+    function test_Constructor_RootOverrideAllowed() public {
+        // Test with rootOverrideAllowed = false
+        VaultWithdrawalProcessor processorWithOverrideDisabled =
+            new VaultWithdrawalProcessor(address(vaultVerifier), initRoles, false);
+        assertEq(
+            processorWithOverrideDisabled.rootOverrideAllowed(),
+            false,
+            "rootOverrideAllowed should be false when set in constructor"
+        );
+    }
+
     function test_ProcessValidEscapeClaim_IMX() public {
         vaultVerifier.setShouldVerify(true);
         VaultWithProof memory v = fixVaultEscapes[2];
@@ -84,6 +103,15 @@ contract VaultWithdrawalProcessorTest is
 
         vm.deal(address(vaultWithdrawalProcessor), 3 ether);
         uint256 initialBalance = _recipient.balance;
+
+        vm.expectEmit(true, true, true, true);
+        emit IVaultWithdrawalProcessor.WithdrawalProcessed(
+            v.vault.starkKey,
+            _recipient,
+            v.vault.assetId,
+            vaultWithdrawalProcessor.NATIVE_IMX_ADDRESS(),
+            expectedTransfer
+        );
 
         vaultWithdrawalProcessor.verifyAndProcessWithdrawal(_recipient, fixAccounts[v.vault.starkKey].proof, v.proof);
 
@@ -109,6 +137,12 @@ contract VaultWithdrawalProcessorTest is
         deal(address(token), address(vaultWithdrawalProcessor), 3 ether);
 
         uint256 initialBalance = token.balanceOf(_recipient.ethAddress);
+
+        vm.expectEmit(true, true, true, true);
+        emit IVaultWithdrawalProcessor.WithdrawalProcessed(
+            testVaultWithProof.vault.starkKey, _recipient.ethAddress, assetId, address(token), expectedTransfer
+        );
+
         vaultWithdrawalProcessor.verifyAndProcessWithdrawal(
             _recipient.ethAddress, _recipient.proof, testVaultWithProof.proof
         );
@@ -209,11 +243,24 @@ contract VaultWithdrawalProcessorTest is
         vm.expectRevert(
             abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid vault proof length")
         );
-        vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, new bytes32[](1), emptyProof);
+        vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, sampleAccount.proof, emptyProof);
+    }
+
+    function test_RevertIf_VaultProofWrongLength() public {
+        // Create a proof with wrong length (not 68)
+        uint256[] memory wrongLengthProof = new uint256[](67);
+        for (uint256 i = 0; i < 67; i++) {
+            wrongLengthProof[i] = i;
+        }
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid vault proof length")
+        );
+        vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, sampleAccount.proof, wrongLengthProof);
     }
 
     function test_RevertIf_InvalidAccountProof() public {
-        bytes32[] memory accountProof = new bytes32[](2);
+        bytes32[] memory accountProof = new bytes32[](25);
         vaultVerifier.setShouldVerify(true);
 
         vm.expectRevert(
@@ -251,15 +298,13 @@ contract VaultWithdrawalProcessorTest is
     }
 
     function test_RevertIf_UnregisteredAsset() public {
-        bytes32[] memory accountProof = new bytes32[](2);
         vaultVerifier.setShouldVerify(true);
 
         uint256[] memory proofWithUnregisteredAsset = fixVaultEscapes[1].proof;
-        // TODO: this modification of asset id is not quite right, given packing of escape proof
-        proofWithUnregisteredAsset[1] = proofWithUnregisteredAsset[1] << 1; // Modify the assetId to an unregistered one
+        proofWithUnregisteredAsset[1] = proofWithUnregisteredAsset[1] << 1;
 
         vm.expectPartialRevert(TokenRegistry.AssetNotRegistered.selector);
-        vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, accountProof, proofWithUnregisteredAsset);
+        vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, sampleAccount.proof, proofWithUnregisteredAsset);
     }
 
     function test_RevertIf_InsufficientBalance() public {
@@ -278,6 +323,111 @@ contract VaultWithdrawalProcessorTest is
     function test_RevertIf_Constructor_ZeroVaultVerifier() public {
         vm.expectRevert(IVaultWithdrawalProcessor.ZeroAddress.selector);
         new VaultWithdrawalProcessor(address(0), initRoles, true);
+    }
+
+    function test_RevertIf_Constructor_InvalidPauserOperator() public {
+        ProcessorAccessControl.RoleOperators memory invalidRoles = ProcessorAccessControl.RoleOperators({
+            pauser: address(0), // Invalid: zero address
+            unpauser: address(this),
+            disburser: address(this),
+            defaultAdmin: address(this),
+            vaultRootProvider: address(this),
+            accountRootProvider: address(this),
+            tokenMappingManager: address(this)
+        });
+
+        vm.expectRevert(ProcessorAccessControl.InvalidOperatorAddress.selector);
+        new VaultWithdrawalProcessor(address(vaultVerifier), invalidRoles, true);
+    }
+
+    function test_RevertIf_Constructor_InvalidUnpauserOperator() public {
+        ProcessorAccessControl.RoleOperators memory invalidRoles = ProcessorAccessControl.RoleOperators({
+            pauser: address(this),
+            unpauser: address(0), // Invalid: zero address
+            disburser: address(this),
+            defaultAdmin: address(this),
+            vaultRootProvider: address(this),
+            accountRootProvider: address(this),
+            tokenMappingManager: address(this)
+        });
+
+        vm.expectRevert(ProcessorAccessControl.InvalidOperatorAddress.selector);
+        new VaultWithdrawalProcessor(address(vaultVerifier), invalidRoles, true);
+    }
+
+    function test_RevertIf_Constructor_InvalidDisburserOperator() public {
+        ProcessorAccessControl.RoleOperators memory invalidRoles = ProcessorAccessControl.RoleOperators({
+            pauser: address(this),
+            unpauser: address(this),
+            disburser: address(0), // Invalid: zero address
+            defaultAdmin: address(this),
+            vaultRootProvider: address(this),
+            accountRootProvider: address(this),
+            tokenMappingManager: address(this)
+        });
+
+        vm.expectRevert(ProcessorAccessControl.InvalidOperatorAddress.selector);
+        new VaultWithdrawalProcessor(address(vaultVerifier), invalidRoles, true);
+    }
+
+    function test_RevertIf_Constructor_InvalidDefaultAdminOperator() public {
+        ProcessorAccessControl.RoleOperators memory invalidRoles = ProcessorAccessControl.RoleOperators({
+            pauser: address(this),
+            unpauser: address(this),
+            disburser: address(this),
+            defaultAdmin: address(0), // Invalid: zero address
+            vaultRootProvider: address(this),
+            accountRootProvider: address(this),
+            tokenMappingManager: address(this)
+        });
+
+        vm.expectRevert(ProcessorAccessControl.InvalidOperatorAddress.selector);
+        new VaultWithdrawalProcessor(address(vaultVerifier), invalidRoles, true);
+    }
+
+    function test_RevertIf_Constructor_InvalidVaultRootProviderOperator() public {
+        ProcessorAccessControl.RoleOperators memory invalidRoles = ProcessorAccessControl.RoleOperators({
+            pauser: address(this),
+            unpauser: address(this),
+            disburser: address(this),
+            defaultAdmin: address(this),
+            vaultRootProvider: address(0), // Invalid: zero address
+            accountRootProvider: address(this),
+            tokenMappingManager: address(this)
+        });
+
+        vm.expectRevert(ProcessorAccessControl.InvalidOperatorAddress.selector);
+        new VaultWithdrawalProcessor(address(vaultVerifier), invalidRoles, true);
+    }
+
+    function test_RevertIf_Constructor_InvalidAccountRootProviderOperator() public {
+        ProcessorAccessControl.RoleOperators memory invalidRoles = ProcessorAccessControl.RoleOperators({
+            pauser: address(this),
+            unpauser: address(this),
+            disburser: address(this),
+            defaultAdmin: address(this),
+            vaultRootProvider: address(this),
+            accountRootProvider: address(0), // Invalid: zero address
+            tokenMappingManager: address(this)
+        });
+
+        vm.expectRevert(ProcessorAccessControl.InvalidOperatorAddress.selector);
+        new VaultWithdrawalProcessor(address(vaultVerifier), invalidRoles, true);
+    }
+
+    function test_RevertIf_Constructor_InvalidTokenMappingManagerOperator() public {
+        ProcessorAccessControl.RoleOperators memory invalidRoles = ProcessorAccessControl.RoleOperators({
+            pauser: address(this),
+            unpauser: address(this),
+            disburser: address(this),
+            defaultAdmin: address(this),
+            vaultRootProvider: address(this),
+            accountRootProvider: address(this),
+            tokenMappingManager: address(0) // Invalid: zero address
+        });
+
+        vm.expectRevert(ProcessorAccessControl.InvalidOperatorAddress.selector);
+        new VaultWithdrawalProcessor(address(vaultVerifier), invalidRoles, true);
     }
 
     function test_SetVaultRoot() public view {
@@ -302,6 +452,94 @@ contract VaultWithdrawalProcessorTest is
         uint256 newRoot = 0x123;
         vm.expectRevert(abi.encodeWithSelector(VaultRootReceiver.VaultRootOverrideNotAllowed.selector));
         vaultWithdrawalProcessor.setVaultRoot(newRoot);
+    }
+
+    function test_SetAccountRoot() public {
+        bytes32 newAccountRoot = keccak256("new-account-root");
+        vaultWithdrawalProcessor.setAccountRoot(newAccountRoot);
+        assertEq(vaultWithdrawalProcessor.accountRoot(), newAccountRoot);
+    }
+
+    function test_RevertIf_SetAccountRoot_Unauthorized() public {
+        bytes32 newAccountRoot = keccak256("new-account-root");
+        vm.startPrank(address(0x123));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(0x123),
+                vaultWithdrawalProcessor.ACCOUNT_ROOT_PROVIDER_ROLE()
+            )
+        );
+        vaultWithdrawalProcessor.setAccountRoot(newAccountRoot);
+    }
+
+    function test_SetRootOverrideAllowed() public {
+        vaultWithdrawalProcessor.setRootOverrideAllowed(false);
+        assertEq(vaultWithdrawalProcessor.rootOverrideAllowed(), false, "rootOverrideAllowed should be set to false");
+
+        vaultWithdrawalProcessor.setRootOverrideAllowed(true);
+        assertEq(vaultWithdrawalProcessor.rootOverrideAllowed(), true, "rootOverrideAllowed should be set to true");
+    }
+
+    function test_RevertIf_SetRootOverrideAllowed_Unauthorized() public {
+        vm.startPrank(address(0x123));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(0x123),
+                vaultWithdrawalProcessor.DEFAULT_ADMIN_ROLE()
+            )
+        );
+        vaultWithdrawalProcessor.setRootOverrideAllowed(false);
+    }
+
+    function test_RegisterTokenMappings() public {
+        TokenRegistry.TokenAssociation[] memory newAssets = new TokenRegistry.TokenAssociation[](1);
+        newAssets[0] = TokenRegistry.TokenAssociation(TokenRegistry.ImmutableXToken(999, 18), address(0x999));
+
+        vaultWithdrawalProcessor.registerTokenMappings(newAssets);
+        assertEq(vaultWithdrawalProcessor.getZKEVMToken(999), address(0x999), "New asset should be registered");
+    }
+
+    function test_RevertIf_RegisterTokenMappings_Unauthorized() public {
+        TokenRegistry.TokenAssociation[] memory newAssets = new TokenRegistry.TokenAssociation[](1);
+        newAssets[0] = TokenRegistry.TokenAssociation(TokenRegistry.ImmutableXToken(999, 18), address(0x999));
+
+        vm.startPrank(address(0x123));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(0x123),
+                vaultWithdrawalProcessor.TOKEN_MAPPING_MANAGER()
+            )
+        );
+        vaultWithdrawalProcessor.registerTokenMappings(newAssets);
+    }
+
+    function test_RevertIf_VaultRootNotSet() public {
+        // Create a new processor without setting vault root
+        VaultWithdrawalProcessor newProcessor = new VaultWithdrawalProcessor(address(vaultVerifier), initRoles, true);
+        newProcessor.setAccountRoot(accountsRoot);
+        newProcessor.registerTokenMappings(fixAssets);
+
+        bytes32[] memory accountProof = new bytes32[](2);
+        vaultVerifier.setShouldVerify(true);
+
+        vm.expectRevert(IVaultWithdrawalProcessor.VaultRootNotSet.selector);
+        newProcessor.verifyAndProcessWithdrawal(recipient, accountProof, fixVaultEscapes[0].proof);
+    }
+
+    function test_RevertIf_AccountRootNotSet() public {
+        // Create a new processor without setting account root
+        VaultWithdrawalProcessor newProcessor = new VaultWithdrawalProcessor(address(vaultVerifier), initRoles, true);
+        newProcessor.setVaultRoot(fixVaultEscapes[0].root);
+        newProcessor.registerTokenMappings(fixAssets);
+
+        bytes32[] memory accountProof = new bytes32[](2);
+        vaultVerifier.setShouldVerify(true);
+
+        vm.expectRevert(AccountRootReceiver.AccountRootNotSet.selector);
+        newProcessor.verifyAndProcessWithdrawal(recipient, accountProof, fixVaultEscapes[0].proof);
     }
 
     function test_Receive() public {

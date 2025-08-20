@@ -29,6 +29,7 @@ contract VaultWithdrawalProcessor is
     uint256 internal constant STARK_KEY_UPPER_BOUND = 0x800000000000011000000000000000000000000000000000000000000000001;
 
     uint256 public constant VAULT_PROOF_LENGTH = 68;
+    uint256 public constant ACCOUNT_PROOF_LENGTH = 25;
 
     /// @notice The vault proof verifier contract
     IVaultProofVerifier public immutable vaultProofVerifier;
@@ -64,8 +65,7 @@ contract VaultWithdrawalProcessor is
         require(accountRoot != 0, AccountRootNotSet());
 
         require(receiver != address(0), ZeroAddress());
-        // FIXME: check against ACCOUNT_PROOF_LENGTH
-        require(accountProof.length > 0, InvalidAccountProof("Invalid account proof length"));
+        require(accountProof.length == ACCOUNT_PROOF_LENGTH, InvalidAccountProof("Invalid account proof length"));
         require(
             vaultProof.length == VAULT_PROOF_LENGTH, IVaultProofVerifier.InvalidVaultProof("Invalid vault proof length")
         );

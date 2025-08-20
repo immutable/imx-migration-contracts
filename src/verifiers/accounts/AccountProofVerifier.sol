@@ -17,8 +17,6 @@ abstract contract AccountProofVerifier {
     /// @param message A message describing the specific reason
     error InvalidAccountProof(string message);
 
-    uint256 public constant ACCOUNT_PROOF_LENGTH = 27;
-
     /**
      * @notice Verifies a Merkle proof of a Stark key to an Ethereum address association, against a provided Merkle root of an account associations tree.
      * @param starkKey The user's Stark key
