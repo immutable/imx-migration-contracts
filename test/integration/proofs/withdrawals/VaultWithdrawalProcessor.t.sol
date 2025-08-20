@@ -93,31 +93,23 @@ contract VaultWithdrawalProcessorIntegrationTest is
 
         address vaultProcessorAddr = address(vaultProcessor);
 
-        // Fund the vault processor. In practice this would be done by the bridging of funds through the native bridge
-        // Fund some IMX
-        deal(vaultProcessorAddr, 1 ether);
-
-        assertEq(vaultProcessorAddr.balance, 1 ether);
         AccountAssociation memory account = fixAccounts[fixVaultEscapes[2].vault.starkKey];
-
-        assertEq(account.ethAddress.balance, 0);
+        uint256 initUserBal = account.ethAddress.balance;
 
         uint256[] memory vaultProof = fixVaultEscapes[2].proof;
-        uint256 vaultBalance = 546024000000000;
+        uint256 vaultBalance = fixVaultEscapes[2].vault.quantizedBalance * fixAssets[0].tokenOnIMX.quantum;
 
-        vm.startSnapshotGas("ProcessVaultWithdrawal_NativeAsset");
+        deal(vaultProcessorAddr, vaultBalance);
+
         bytes32[] memory accProof = _getMerkleProof(account.starkKey);
         vaultProcessor.verifyAndProcessWithdrawal(account.ethAddress, accProof, vaultProof);
-        vm.stopSnapshotGas();
 
         assertEq(
-            account.ethAddress.balance, vaultBalance, "Post-withdrawal user's IMX balance did not match expected value"
+            account.ethAddress.balance,
+            vaultBalance + initUserBal,
+            "Post-withdrawal user's IMX balance did not match expected value"
         );
-        assertEq(
-            vaultProcessorAddr.balance,
-            1 ether - vaultBalance,
-            "Post-withdrawal vault processor's IMX balance did not match expected"
-        );
+        assertEq(vaultProcessorAddr.balance, 0, "Post-withdrawal vault processor's IMX balance did not match expected");
     }
 
     function test_ProcessVaultWithdrawal_USDC() public {
@@ -146,11 +138,9 @@ contract VaultWithdrawalProcessorIntegrationTest is
 
         bytes32[] memory accProof = _getMerkleProof(account.starkKey);
         uint256[] memory vaultProof = fixVaultEscapes[1].proof;
-        uint256 vaultBalance = 76;
+        uint256 vaultBalance = 16;
 
-        vm.startSnapshotGas("ProcessVaultWithdrawal_ERC20");
         vaultProcessor.verifyAndProcessWithdrawal(account.ethAddress, accProof, vaultProof);
-        vm.stopSnapshotGas();
 
         assertEq(
             usdc.balanceOf(account.ethAddress), vaultBalance, "Post-withdrawal user USDC balance did not match expected"

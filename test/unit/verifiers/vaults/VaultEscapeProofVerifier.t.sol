@@ -28,8 +28,9 @@ contract VaultEscapeProofVerifierTest is Test, FixtureVaultEscapes, FixtureLooku
             invalidProofBadKey[i] = validEscapeProof[i];
             invalidProofBadPath[i] = validEscapeProof[i];
         }
-        invalidProofBadKey[0] = invalidProofBadKey[0] << 5; // Invalid starkKey
-        invalidProofBadPath[10] = 0xffff << 4; // Invalid path element
+
+        invalidProofBadKey[0] = invalidProofBadKey[0] >> 9; // Invalid starkKey
+        invalidProofBadPath[10] = 0x1; // Invalid path element
     }
 
     function test_Constructor() public view {

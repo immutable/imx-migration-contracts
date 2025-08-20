@@ -29,7 +29,7 @@ contract VaultWithdrawalProcessor is
     uint256 internal constant STARK_KEY_UPPER_BOUND = 0x800000000000011000000000000000000000000000000000000000000000001;
 
     uint256 public constant VAULT_PROOF_LENGTH = 68;
-    uint256 public constant ACCOUNT_PROOF_LENGTH = 25;
+    uint256 public constant ACCOUNT_PROOF_LENGTH = 27;
 
     /// @notice The vault proof verifier contract
     IVaultProofVerifier public immutable vaultProofVerifier;

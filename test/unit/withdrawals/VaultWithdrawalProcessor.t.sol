@@ -64,7 +64,7 @@ contract VaultWithdrawalProcessorTest is
         vaultWithdrawalProcessor.setAccountRoot(accountsRoot);
         vaultWithdrawalProcessor.registerTokenMappings(fixAssets);
 
-        sampleAccount = fixAccounts[1414930096151095810604649355863564842445074775977418556334494265558852329642];
+        sampleAccount = fixAccounts[79411809110095984468032809253690107888721902246953260848891387903178601];
     }
 
     function test_Constructor() public view {
@@ -101,7 +101,7 @@ contract VaultWithdrawalProcessorTest is
 
         uint256 expectedTransfer = vaultWithdrawalProcessor.getTokenQuantum(v.vault.assetId) * v.vault.quantizedBalance;
 
-        vm.deal(address(vaultWithdrawalProcessor), 3 ether);
+        vm.deal(address(vaultWithdrawalProcessor), expectedTransfer);
         uint256 initialBalance = _recipient.balance;
 
         vm.expectEmit(true, true, true, true);
@@ -260,13 +260,12 @@ contract VaultWithdrawalProcessorTest is
     }
 
     function test_RevertIf_InvalidAccountProof() public {
-        bytes32[] memory accountProof = new bytes32[](25);
         vaultVerifier.setShouldVerify(true);
 
         vm.expectRevert(
             abi.encodeWithSelector(AccountProofVerifier.InvalidAccountProof.selector, "Invalid merkle proof")
         );
-        vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, accountProof, fixVaultEscapes[0].proof);
+        vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, sampleAccount.proof, fixVaultEscapes[0].proof);
     }
 
     function test_RevertIf_InvalidVaultProof() public {
@@ -285,7 +284,8 @@ contract VaultWithdrawalProcessorTest is
         address _recipient = fixAccounts[v.vault.starkKey].ethAddress;
         vaultVerifier.setShouldVerify(true);
 
-        vm.deal(address(vaultWithdrawalProcessor), 1 ether);
+        uint256 vaultBalance = fixVaultEscapes[2].vault.quantizedBalance * fixAssets[0].tokenOnIMX.quantum;
+        vm.deal(address(vaultWithdrawalProcessor), vaultBalance);
 
         vaultWithdrawalProcessor.verifyAndProcessWithdrawal(_recipient, accountProof, v.proof);
 
