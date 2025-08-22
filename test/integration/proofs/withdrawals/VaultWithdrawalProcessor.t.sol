@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import "@src/assets/TokenRegistry.sol";
+import "@src/assets/BridgedTokenMapping.sol";
 import "@src/withdrawals/VaultWithdrawalProcessor.sol";
 import {VaultEscapeProofVerifier} from "@src/verifiers/vaults/VaultEscapeProofVerifier.sol";
 import {VaultRootReceiverAdapter} from "@src/bridge/messaging/VaultRootReceiverAdapter.sol";

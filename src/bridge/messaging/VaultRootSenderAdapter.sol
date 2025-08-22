@@ -7,16 +7,16 @@ import {AxelarExecutable} from "@axelar-gmp-sdk-solidity/executable/AxelarExecut
 import {IAxelarGateway} from "@axelar-gmp-sdk-solidity/interfaces/IAxelarGateway.sol";
 
 /**
- * @title VaultRootSenderAdapter
- * @notice This contract serves as an adapter to send vault root hashes from the StarkExchange bridge contract on Ethereum to a designated vault receiver contract on zkEVM using Axelar's cross-chain messaging protocol.
- * @dev The contract relies on Axelar messaging protocol to send vault root hashes to a specified destination chain and receiver contract.
- * @dev Only the configured StarkExchange bridge contract is authorized to send vault root hashes through this adapter.
+ * @title Vault Root Sender Adapter
+ * @notice Sends vault root hashes to a designated vault receiver contract on zkEVM.
+ * @dev This contract relies on the Axelar GMP to send the vault root hash across chains.
+ * @dev Only the configured vault root sender is authorized to send vault root hashes through this adapter. The sender is the StarkEx bridge contract on Ethereum.
  */
 contract VaultRootSenderAdapter is AxelarExecutable {
     bytes32 public constant SET_VAULT_ROOT = keccak256("SET_VAULT_ROOT");
 
     /// @notice The StarkEx bridge contract address that is authorized to send vault roots through this adapter
-    address public immutable vaultRootSource;
+    address public immutable vaultRootSender;
 
     /// @notice The Axelar gas service contract that handles gas payments for cross-chain transactions
     IAxelarGasService public immutable axelarGasService;
@@ -40,8 +40,8 @@ contract VaultRootSenderAdapter is AxelarExecutable {
     /// @notice Thrown when an invalid chain ID is provided for the vault root destination.
     error InvalidChainId();
 
-    /// @notice Thrown when any entity other than the authorised `vaultRootSource` attempts to send a vault root through this adapter
-    error UnauthorizedCaller();
+    /// @notice Thrown when any entity other than the authorised `vaultRootSender` attempts to send a vault root through this adapter
+    error UnauthorizedRootSender();
 
     /// @notice Thrown when no destination gas fee is provided for the cross-chain transaction
     error NoBridgeFee();
@@ -51,27 +51,27 @@ contract VaultRootSenderAdapter is AxelarExecutable {
 
     /**
      * @notice Constructs the VaultRootSender contract
-     * @param _vaultRootSource The address of the StarkEx bridge contract that can send vault roots
+     * @param _vaultRootSender The address of the StarkEx bridge contract that can send vault roots
      * @param _rootReceiver The address of the vault receiver contract on the destination zkEVM chain
      * @param _rootReceiverChain The chain ID of the destination zkEVM chain
      * @param _axelarGasService The address of the Axelar gas service contract
      * @param _axelarGateway The address of the Axelar gateway contract
      */
     constructor(
-        address _vaultRootSource,
+        address _vaultRootSender,
         string memory _rootReceiver,
         string memory _rootReceiverChain,
         address _axelarGasService,
         address _axelarGateway
     ) AxelarExecutable(_axelarGateway) {
-        require(_axelarGasService != address(0), InvalidAddress());
         require(bytes(_rootReceiverChain).length > 0, InvalidChainId());
         require(bytes(_rootReceiver).length > 0, InvalidAddress());
-        require(_vaultRootSource != address(0), InvalidAddress());
+        require(_vaultRootSender != address(0), InvalidAddress());
+        require(_axelarGasService != address(0), InvalidAddress());
 
-        vaultRootSource = _vaultRootSource;
-        rootReceiver = _rootReceiver;
         rootReceiverChain = _rootReceiverChain;
+        rootReceiver = _rootReceiver;
+        vaultRootSender = _vaultRootSender;
         axelarGasService = IAxelarGasService(_axelarGasService);
     }
 
@@ -80,24 +80,26 @@ contract VaultRootSenderAdapter is AxelarExecutable {
      * @dev Only the StarkEx bridge contract can call this function
      * @dev Requires a bridge fee to be sent with the transaction for gas payment
      * @param vaultRoot The vault root hash to send
-     * @param gasRefundReceiver The address that will receive any unused gas fees
+     * @param gasRefundReceiver The address that will receive any unused destination gas fee
      */
     function sendVaultRoot(uint256 vaultRoot, address gasRefundReceiver) external payable {
-        require(msg.sender == vaultRootSource, UnauthorizedCaller());
-        require(msg.value > 0, NoBridgeFee());
-        require(gasRefundReceiver != address(0), InvalidAddress());
-        require(vaultRoot != 0, InvalidVaultRoot());
+        require(msg.sender == vaultRootSender, UnauthorizedRootSender());
 
-        string memory _rootReceiver = rootReceiver;
-        string memory _rootReceiverChain = rootReceiverChain;
-        bytes memory vaultRootPayload = abi.encode(SET_VAULT_ROOT, vaultRoot);
+        require(vaultRoot != 0, InvalidVaultRoot());
+        require(gasRefundReceiver != address(0), InvalidAddress());
+        require(msg.value > 0, NoBridgeFee());
+
+        string memory _receiverChain = rootReceiverChain;
+        string memory _receiverAddr = rootReceiver;
+        bytes memory payload = abi.encode(SET_VAULT_ROOT, vaultRoot);
 
         axelarGasService.payNativeGasForContractCall{value: msg.value}(
-            address(this), _rootReceiverChain, _rootReceiver, vaultRootPayload, gasRefundReceiver
+            address(this), _receiverChain, _receiverAddr, payload, gasRefundReceiver
         );
 
-        IAxelarGateway(gatewayAddress).callContract(_rootReceiverChain, _rootReceiver, vaultRootPayload);
-        emit VaultRootSent(_rootReceiverChain, _rootReceiver, vaultRootPayload);
+        IAxelarGateway(gatewayAddress).callContract(_receiverChain, _receiverAddr, payload);
+
+        emit VaultRootSent(_receiverChain, _receiverAddr, payload);
     }
 
     function _execute(bytes32, string calldata, string calldata, bytes calldata) internal pure override {

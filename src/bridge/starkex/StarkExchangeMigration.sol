@@ -3,7 +3,6 @@
 pragma solidity ^0.8.27;
 
 import {MainStorage} from "./MainStorage.sol";
-import "forge-std/console.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {IRootERC20Bridge} from "../zkEVM/IRootERC20Bridge.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -13,6 +12,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Addresses} from "./libraries/Common.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {LegacyStarkExchangeBridge} from "./LegacyStarkExchangeBridge.sol";
+
 /**
  * @title StarkExchangeMigration
  * @notice This contract facilitates the migration of ETH and ERC-20 assets held by the StarkExchange bridge to Immutable zkEVM.
@@ -21,7 +21,6 @@ import {LegacyStarkExchangeBridge} from "./LegacyStarkExchangeBridge.sol";
  *      2. Enables an authorised entity to migrate ERC-20 tokens and ETH held by the StarkExchange bridge to Immutable zkEVM.
  *      3. Enables users who had already initiated a withdrawal from Immutable X, prior to this contract upgrade taking effect, to finalise their pending withdrawal.
  */
-
 contract StarkExchangeMigration is
     IStarkExchangeMigration,
     LegacyStarkExchangeBridge,

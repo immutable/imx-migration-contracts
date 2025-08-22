@@ -33,16 +33,8 @@ contract VaultRootReceiverTest is Test {
 
     function test_Constructor() public view {
         assertEq(adapter.owner(), owner);
-    }
+        assertEq(address(adapter.gateway()), address(axelarGateway));
 
-    function test_Constants() public view {
-        assertEq(
-            adapter.SET_VAULT_ROOT(), keccak256("SET_VAULT_ROOT"), "SET_VAULT_ROOT constant should match expected value"
-        );
-    }
-
-    function test_InitialState() public view {
-        // Check initial state after construction
         assertEq(address(adapter.rootReceiver()), address(0), "rootReceiver should be zero initially");
         assertEq(adapter.rootSenderChain(), "", "rootSenderChain should be empty initially");
         assertEq(adapter.rootSenderAddress(), "", "rootSenderAddress should be empty initially");
@@ -62,9 +54,9 @@ contract VaultRootReceiverTest is Test {
     }
 
     function test_RevertIf_SetVaultRootReceiver_Unauthorized() public {
-        address unauthProvider = address(0x789);
-        vm.prank(unauthProvider);
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, unauthProvider));
+        address notOwner = address(0x789);
+        vm.prank(notOwner);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, notOwner));
         adapter.setVaultRootReceiver(vaultRootReceiver);
     }
 
@@ -85,9 +77,9 @@ contract VaultRootReceiverTest is Test {
     }
 
     function test_RevertIf_SetVaultRootSource_Unauthorized() public {
-        address unauthProvider = address(0x789);
-        vm.prank(unauthProvider);
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, unauthProvider));
+        address notOwner = address(0x789);
+        vm.prank(notOwner);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, notOwner));
         adapter.setVaultRootSource(rootProviderChain, rootProviderContract);
     }
 
@@ -157,21 +149,20 @@ contract VaultRootReceiverTest is Test {
         adapter.execute(commandId, rootProviderChain, rootProviderContract, shortPayload);
     }
 
-    function test_RevertIf_Execute_InvalidMessageSignature() public {
+    function test_RevertIf_Execute_InvalidMessageCommand() public {
         adapter.setVaultRootSource(rootProviderChain, rootProviderContract);
         adapter.setVaultRootReceiver(vaultRootReceiver);
         uint256 newRoot = 0x123;
 
-        // Use wrong signature
-        bytes32 wrongSignature = keccak256("WRONG_SIGNATURE");
-        bytes memory payload = abi.encode(wrongSignature, newRoot);
+        bytes32 wrongCmd = keccak256("WRONG_COMMAND");
+        bytes memory payload = abi.encode(wrongCmd, newRoot);
         bytes32 commandId = keccak256("test-command");
 
         vm.expectRevert(VaultRootReceiverAdapter.InvalidMessage.selector);
         adapter.execute(commandId, rootProviderChain, rootProviderContract, payload);
     }
 
-    function test_RevertIf_Execute_VaultRootSourcePartiallySet() public {
+    function test_RevertIf_Execute_AdapterStatePartiallySet() public {
         // Test when only receiver is set but source chain/address are not set
         adapter.setVaultRootReceiver(vaultRootReceiver);
         uint256 newRoot = 0x123;

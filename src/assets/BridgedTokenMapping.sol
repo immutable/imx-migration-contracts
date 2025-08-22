@@ -3,14 +3,16 @@
 pragma solidity ^0.8.27;
 
 /**
- * @title Token Mapping Registry
- * @notice This contract maintains a registry of token mappings of Immutable X tokens to their corresponding tokens on Immutable zkEVM (e.g. USDC on Immutable X to USDC on Immutable zkEVM).
+ * @title Map Immutable X and Immutable zkEVM Tokens
+ * @notice This contract maintains a mappings of Immutable X tokens to their corresponding Immutable zkEVM tokens (e.g. USDC on Immutable X to USDC on Immutable zkEVM).
+ * @dev The tokens on both networks are bridged versions of the same original asset on Ethereum.
  * @dev While a token on Immutable zkEVM is identified by an address, the token on Immutable X is represented by a token ID and a quantum.
- * @dev Note that two different assets on Immutable X, with different IDs, can be mapped to the same address on Immutable zkEVM. The OMI token is the only known example of this case, in mainnet.
- * @dev The contract is optimised for fetching asset details by Immutable X asset ID.
+ * @dev The same token on Ethereum, could have multiple bridged versions with different IDs and quanta on Immutable X.
+ *      This is not the case on Immutable zkEVM, where each token is represented by a single address.
+ *      Hence, multiple Immutable X assets can be mapped to a single Immutable zkEVM token address.
  * @dev An asset can only be registered once, and the contract will throw an error if an attempt is made to register an already registered asset.
  */
-abstract contract TokenRegistry {
+abstract contract BridgedTokenMapping {
     /**
      * @dev Encapsulates details of an Immutable X ERC-20 asset.
      */
@@ -22,30 +24,30 @@ abstract contract TokenRegistry {
     /**
      * @dev Encapsulates details of an asset as its represented on Immutable X and Immutable zkEVM.
      */
-    struct TokenAssociation {
+    struct TokenMapping {
         ImmutableXToken tokenOnIMX;
         address tokenOnZKEVM;
     }
 
     /**
-     * @dev Emitted when a new asset mapping is registered.
+     * @dev Emitted when a new token mapping is registered.
      * @param idOnX The token ID of the asset on Immutable X.
      * @param quantumOnX The quantum of the asset on Immutable X.
      * @param addressOnZKEVM The corresponding address of the asset on Immutable zkEVM.
      */
-    event AssetMapped(uint256 indexed idOnX, uint256 indexed quantumOnX, address indexed addressOnZKEVM);
+    event TokenMappingAdded(uint256 indexed idOnX, uint256 indexed quantumOnX, address indexed addressOnZKEVM);
 
     /**
-     * @notice Thrown when provided details of an asset are invalid, during registration.
+     * @notice Thrown when the details provided when registering an asset are invalid.
      * @param reason The specific reason for the failure.
      */
-    error InvalidAssetDetails(string reason);
+    error InvalidTokenDetails(string reason);
 
     /**
      * @notice Thrown when an asset, as identified by its token ID on Immutable X, is already registered.
      * @dev An Immutable X asset can only be registered once. However, a token on Immutable zkEVM can correspond to multiple Immutable X assets, as long as they have different IDs.
      */
-    error AssetAlreadyRegistered();
+    error TokenAlreadyMapped();
 
     /// @notice Thrown when an asset is not registered in the system
     /// @param assetId The identifier of the asset on Immutable X
@@ -59,7 +61,7 @@ abstract contract TokenRegistry {
     address public constant NATIVE_IMX_ADDRESS = address(0xfff);
 
     /// @notice Mapping of Immutable X asset IDs to their corresponding asset details
-    mapping(uint256 idOnX => TokenAssociation) public assetMappings;
+    mapping(uint256 idOnX => TokenMapping) public assetMappings;
 
     /**
      * @notice Checks if a given Immutable X asset ID is mapped to an asset on Immutable zkEVM.
@@ -75,7 +77,7 @@ abstract contract TokenRegistry {
      * @param assetId The Immutable X ID of the asset.
      * @return The details of the asset association if it exists; otherwise, returns an empty TokenAssociation struct.
      */
-    function getTokenMapping(uint256 assetId) public view returns (TokenAssociation memory) {
+    function getTokenMapping(uint256 assetId) public view returns (TokenMapping memory) {
         return assetMappings[assetId];
     }
 
@@ -84,7 +86,7 @@ abstract contract TokenRegistry {
      * @param assetId The Immutable X ID of the asset.
      * @return The address of the asset on Immutable zkEVM, if it exists; otherwise, returns the zero address.
      */
-    function getZKEVMToken(uint256 assetId) public view returns (address) {
+    function getZKEVMAddress(uint256 assetId) public view returns (address) {
         return assetMappings[assetId].tokenOnZKEVM;
     }
 
@@ -93,28 +95,25 @@ abstract contract TokenRegistry {
      * @param assetId The Immutable X ID of the asset.
      * @return The quantum of the asset on Immutable X, if it exists; otherwise, returns zero.
      */
-    function getTokenQuantum(uint256 assetId) public view returns (uint256) {
+    function getQuantum(uint256 assetId) public view returns (uint256) {
         return assetMappings[assetId].tokenOnIMX.quantum;
     }
 
     /**
      * @notice Registers a new asset mapping.
      * @dev This function is internal and can be called by derived contracts to register a new asset mapping.
-     * @param assetDetails The details of the asset to register, including its Immutable X ID, quantum, and corresponding zkEVM address.
+     * @param tokenMapping The details of the asset to register, including its Immutable X ID, quantum, and corresponding zkEVM address.
      */
-    function _registerAssetMapping(TokenAssociation memory assetDetails) internal {
-        ImmutableXToken memory immutableXAsset = assetDetails.tokenOnIMX;
+    function _registerTokenMapping(TokenMapping memory tokenMapping) internal {
+        ImmutableXToken memory tokenOnX = tokenMapping.tokenOnIMX;
 
-        require(immutableXAsset.id != 0, InvalidAssetDetails("Asset ID cannot be zero"));
-        require(
-            immutableXAsset.quantum != 0 && immutableXAsset.quantum < QUANTUM_UPPER_BOUND,
-            InvalidAssetDetails("Invalid quantum")
-        );
-        require(assetDetails.tokenOnZKEVM != address(0), InvalidAssetDetails("Asset address cannot be zero"));
-        require(assetMappings[immutableXAsset.id].tokenOnZKEVM == address(0), AssetAlreadyRegistered());
+        require(tokenOnX.id != 0, InvalidTokenDetails("Asset ID cannot be zero"));
+        require(tokenOnX.quantum != 0 && tokenOnX.quantum < QUANTUM_UPPER_BOUND, InvalidTokenDetails("Invalid quantum"));
+        require(tokenMapping.tokenOnZKEVM != address(0), InvalidTokenDetails("Asset address cannot be zero"));
+        require(assetMappings[tokenOnX.id].tokenOnZKEVM == address(0), TokenAlreadyMapped());
 
-        assetMappings[immutableXAsset.id] = assetDetails;
-        emit AssetMapped(immutableXAsset.id, immutableXAsset.quantum, assetDetails.tokenOnZKEVM);
+        assetMappings[tokenOnX.id] = tokenMapping;
+        emit TokenMappingAdded(tokenOnX.id, tokenOnX.quantum, tokenMapping.tokenOnZKEVM);
     }
 
     /**
@@ -122,13 +121,13 @@ abstract contract TokenRegistry {
      * @dev This function is internal and can be called by derived contracts to register multiple asset mappings at once.
      * @param assets An array of TokenAssociation structs containing the details of the assets to register.
      */
-    function _registerTokenMappings(TokenAssociation[] memory assets) internal {
-        require(assets.length > 0, InvalidAssetDetails("No assets to register"));
+    function _registerTokenMappings(TokenMapping[] memory assets) internal {
+        require(assets.length > 0, InvalidTokenDetails("No assets to register"));
 
         for (uint256 i = 0; i < assets.length; i++) {
-            _registerAssetMapping(assets[i]);
+            _registerTokenMapping(assets[i]);
         }
     }
 
-    function registerTokenMappings(TokenAssociation[] memory assetsDetails) external virtual;
+    function registerTokenMappings(TokenMapping[] memory assetsDetails) external virtual;
 }

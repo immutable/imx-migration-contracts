@@ -6,14 +6,15 @@ import {AxelarExecutable} from "@axelar-gmp-sdk-solidity/executable/AxelarExecut
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import "../../withdrawals/VaultRootReceiver.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import "forge-std/console.sol";
 
 /**
- * @title VaultRootReceiverAdapter
- * @notice Receives a cross-chain message containing the latest vault root hash, from the StarkExchange contract on Ethereum, and forwards it to the registered VaultRootReceiver contract.
- * @dev This contract relies on the Axelar cross-chain messaging protocol to receive messages from the StarkExchange contract on Ethereum.
- * @dev The contract owner can set the VaultRootReceiver and the source chain and contract that are authorised to send the vault root hash.
- * @dev Once key security parameters are configured, it is expected that the owner of this contract will renounce ownership to prevent further changes.
+ * @title Vault Root Receiver Adapter
+ * @notice Receives vault root hash from the StarkEx bridge on Ethereum, through a cross-chain message, which it then forwards to a VaultRootReceiver.
+ * @dev This contract relies on the Axelar GMP to receive cross-chain messages from the StarkEx bridge on Ethereum.
+ * @dev The contract's owner can:
+ *     - Set details of the source of the vault root hash, as identified by the chain ID and contract address.
+ *     - Set the VaultRootReceiver contract that the vault root hash will be forwarded to.
+ * @dev The contract does not process messages if the VaultRootReceiver and the source of the vault root hash are not yet configured.
  */
 contract VaultRootReceiverAdapter is AxelarExecutable, Ownable {
     /// @notice Thrown when an invalid chain ID is provided for the vault root source.
@@ -97,18 +98,22 @@ contract VaultRootReceiverAdapter is AxelarExecutable, Ownable {
         internal
         override
     {
+        // Ensure the adapter is in a valid state to process messages.
         require(address(rootReceiver) != address(0), VaultRootReceiverNotSet());
         require(bytes(rootSenderChain).length != 0 && bytes(rootSenderAddress).length != 0, VaultRootSourceNotSet());
-        require(_payload.length > 32, InvalidMessage());
 
+        // Validate the sender
         require(Strings.equal(_sourceChain, rootSenderChain), UnauthorizedMessageSender());
         require(Strings.equal(_sourceAddress, rootSenderAddress), UnauthorizedMessageSender());
 
+        // Decode the payload and ensure it is structurally valid.
+        require(_payload.length > 32, InvalidMessage());
         (bytes32 sig, uint256 vaultRoot) = abi.decode(_payload, (bytes32, uint256));
-
         require(sig == SET_VAULT_ROOT, InvalidMessage());
 
+        // Forward the vault root to the VaultRootReceiver contract.
         rootReceiver.setVaultRoot(vaultRoot);
+
         emit VaultRootReceived(vaultRoot);
     }
 }

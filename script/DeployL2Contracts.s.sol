@@ -7,7 +7,7 @@ import "../src/verifiers/vaults/VaultEscapeProofVerifier.sol";
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
 import {VaultWithdrawalProcessor} from "../src/withdrawals/VaultWithdrawalProcessor.sol";
-import {TokenRegistry} from "../src/assets/TokenRegistry.sol";
+import {BridgedTokenMapping} from "../src/assets/BridgedTokenMapping.sol";
 import {ProcessorAccessControl} from "@src/withdrawals/ProcessorAccessControl.sol";
 
 contract DeployL2Contracts is Script {
@@ -17,7 +17,7 @@ contract DeployL2Contracts is Script {
     address[63] private lookupTables;
     VaultWithdrawalProcessor private withdrawalProcessor;
     VaultWithdrawalProcessor.RoleOperators private operators;
-    TokenRegistry.TokenAssociation[] private assetMappings;
+    BridgedTokenMapping.TokenMapping[] private assetMappings;
 
     function setUp() external {
         string memory config = vm.readFile(vm.envString("DEPLOYMENT_CONFIG_FILE"));
@@ -36,24 +36,23 @@ contract DeployL2Contracts is Script {
             lookupTables[i] = _lookupTables[i];
         }
 
-        assetMappings = abi.decode(vm.parseJson(config, "$.asset_mappings"), (TokenRegistry.TokenAssociation[]));
+        assetMappings = abi.decode(vm.parseJson(config, "$.asset_mappings"), (BridgedTokenMapping.TokenMapping[]));
         require(assetMappings.length > 0, "At least one asset mapping must be provided");
     }
 
     // NOTE: Make sure to use either --slow or -batch-size 1 when running this script for Tenderly to avoid out of order deployments of contracts and incorrect addresses.
     function run() external {
         // Deploy vault verifier if not provided
+        vm.startBroadcast();
         if (vaultVerifier == address(0)) {
-            vm.broadcast();
             vaultVerifier = address(new VaultEscapeProofVerifier(lookupTables));
         }
 
-        vm.broadcast();
         withdrawalProcessor = new VaultWithdrawalProcessor(vaultVerifier, operators, allowRootOverride);
-
         withdrawalProcessor.registerTokenMappings(assetMappings);
 
         _logDeploymentDetails();
+        vm.stopBroadcast();
     }
 
     function _logDeploymentDetails() private view {

@@ -3,7 +3,7 @@
 pragma solidity ^0.8.27;
 
 import "forge-std/Test.sol";
-import "@src/assets/TokenRegistry.sol";
+import "@src/assets/BridgedTokenMapping.sol";
 import "@src/verifiers/vaults/VaultEscapeProofVerifier.sol";
 import "@src/withdrawals/IVaultWithdrawalProcessor.sol";
 import "@src/withdrawals/VaultWithdrawalProcessor.sol";
@@ -73,7 +73,7 @@ contract VaultWithdrawalProcessorTest is
 
         for (uint256 i = 0; i < fixAssets.length; i++) {
             uint256 id = fixAssets[i].tokenOnIMX.id;
-            assertEq(vaultWithdrawalProcessor.getZKEVMToken(id), fixAssets[i].tokenOnZKEVM);
+            assertEq(vaultWithdrawalProcessor.getZKEVMAddress(id), fixAssets[i].tokenOnZKEVM);
             assertEq(vaultWithdrawalProcessor.getTokenMapping(id).tokenOnIMX.quantum, fixAssets[i].tokenOnIMX.quantum);
         }
     }
@@ -99,7 +99,7 @@ contract VaultWithdrawalProcessorTest is
         VaultWithProof memory v = fixVaultEscapes[2];
         address _recipient = fixAccounts[v.vault.starkKey].ethAddress;
 
-        uint256 expectedTransfer = vaultWithdrawalProcessor.getTokenQuantum(v.vault.assetId) * v.vault.quantizedBalance;
+        uint256 expectedTransfer = vaultWithdrawalProcessor.getQuantum(v.vault.assetId) * v.vault.quantizedBalance;
 
         vm.deal(address(vaultWithdrawalProcessor), expectedTransfer);
         uint256 initialBalance = _recipient.balance;
@@ -131,9 +131,9 @@ contract VaultWithdrawalProcessorTest is
         uint256 assetId = testVaultWithProof.vault.assetId;
 
         uint256 expectedTransfer =
-            vaultWithdrawalProcessor.getTokenQuantum(assetId) * testVaultWithProof.vault.quantizedBalance;
+            vaultWithdrawalProcessor.getQuantum(assetId) * testVaultWithProof.vault.quantizedBalance;
 
-        IERC20 token = IERC20(vaultWithdrawalProcessor.getZKEVMToken(assetId));
+        IERC20 token = IERC20(vaultWithdrawalProcessor.getZKEVMAddress(assetId));
         deal(address(token), address(vaultWithdrawalProcessor), 3 ether);
 
         uint256 initialBalance = token.balanceOf(_recipient.ethAddress);
@@ -303,7 +303,7 @@ contract VaultWithdrawalProcessorTest is
         uint256[] memory proofWithUnregisteredAsset = fixVaultEscapes[1].proof;
         proofWithUnregisteredAsset[1] = proofWithUnregisteredAsset[1] << 1;
 
-        vm.expectPartialRevert(TokenRegistry.AssetNotRegistered.selector);
+        vm.expectPartialRevert(BridgedTokenMapping.AssetNotRegistered.selector);
         vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, sampleAccount.proof, proofWithUnregisteredAsset);
     }
 
@@ -313,7 +313,7 @@ contract VaultWithdrawalProcessorTest is
         address _recipient = fixAccounts[v.vault.starkKey].ethAddress;
         vaultVerifier.setShouldVerify(true);
 
-        uint256 expectedAmount = vaultWithdrawalProcessor.getTokenQuantum(fixVaultEscapes[2].vault.assetId)
+        uint256 expectedAmount = vaultWithdrawalProcessor.getQuantum(fixVaultEscapes[2].vault.assetId)
             * fixVaultEscapes[2].vault.quantizedBalance;
 
         vm.expectRevert(abi.encodeWithSelector(Errors.InsufficientBalance.selector, 0, expectedAmount));
@@ -494,16 +494,16 @@ contract VaultWithdrawalProcessorTest is
     }
 
     function test_RegisterTokenMappings() public {
-        TokenRegistry.TokenAssociation[] memory newAssets = new TokenRegistry.TokenAssociation[](1);
-        newAssets[0] = TokenRegistry.TokenAssociation(TokenRegistry.ImmutableXToken(999, 18), address(0x999));
+        BridgedTokenMapping.TokenMapping[] memory newAssets = new BridgedTokenMapping.TokenMapping[](1);
+        newAssets[0] = BridgedTokenMapping.TokenMapping(BridgedTokenMapping.ImmutableXToken(999, 18), address(0x999));
 
         vaultWithdrawalProcessor.registerTokenMappings(newAssets);
-        assertEq(vaultWithdrawalProcessor.getZKEVMToken(999), address(0x999), "New asset should be registered");
+        assertEq(vaultWithdrawalProcessor.getZKEVMAddress(999), address(0x999), "New asset should be registered");
     }
 
     function test_RevertIf_RegisterTokenMappings_Unauthorized() public {
-        TokenRegistry.TokenAssociation[] memory newAssets = new TokenRegistry.TokenAssociation[](1);
-        newAssets[0] = TokenRegistry.TokenAssociation(TokenRegistry.ImmutableXToken(999, 18), address(0x999));
+        BridgedTokenMapping.TokenMapping[] memory newAssets = new BridgedTokenMapping.TokenMapping[](1);
+        newAssets[0] = BridgedTokenMapping.TokenMapping(BridgedTokenMapping.ImmutableXToken(999, 18), address(0x999));
 
         vm.startPrank(address(0x123));
         vm.expectRevert(

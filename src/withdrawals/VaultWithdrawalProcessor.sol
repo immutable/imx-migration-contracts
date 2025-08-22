@@ -5,7 +5,7 @@ pragma solidity ^0.8.27;
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {TokenRegistry} from "@src/assets/TokenRegistry.sol";
+import {BridgedTokenMapping} from "@src/assets/BridgedTokenMapping.sol";
 import {IVaultProofVerifier} from "@src/verifiers/vaults/IVaultProofVerifier.sol";
 import {VaultRootReceiver} from "./VaultRootReceiver.sol";
 import {IVaultWithdrawalProcessor} from "./IVaultWithdrawalProcessor.sol";
@@ -21,7 +21,7 @@ contract VaultWithdrawalProcessor is
     VaultRootReceiver,
     AccountRootReceiver,
     AccountProofVerifier,
-    TokenRegistry
+    BridgedTokenMapping
 {
     using SafeERC20 for IERC20;
 
@@ -128,11 +128,7 @@ contract VaultWithdrawalProcessor is
         rootOverrideAllowed = allowed;
     }
 
-    function registerTokenMappings(TokenAssociation[] memory assets)
-        external
-        override
-        onlyRole(TOKEN_MAPPING_MANAGER)
-    {
+    function registerTokenMappings(TokenMapping[] memory assets) external override onlyRole(TOKEN_MAPPING_MANAGER) {
         _registerTokenMappings(assets);
     }
 
