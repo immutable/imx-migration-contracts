@@ -32,7 +32,7 @@ contract VaultWithdrawalProcessor is
     uint256 public constant ACCOUNT_PROOF_LENGTH = 27;
 
     /// @notice The vault proof verifier contract
-    IVaultProofVerifier public immutable vaultProofVerifier;
+    IVaultProofVerifier public immutable VAULT_PROOF_VERIFIER;
 
     /// @notice Flag indicating whether the vault root can be overridden after initial setting
     bool public rootOverrideAllowed = false;
@@ -47,7 +47,7 @@ contract VaultWithdrawalProcessor is
         require(_vaultProofVerifier != address(0), ZeroAddress());
         _validateOperators(_operators);
 
-        vaultProofVerifier = IVaultProofVerifier(_vaultProofVerifier);
+        VAULT_PROOF_VERIFIER = IVaultProofVerifier(_vaultProofVerifier);
         _grantRoleOperators(_operators);
         rootOverrideAllowed = _rootOverrideAllowed;
     }
@@ -72,7 +72,7 @@ contract VaultWithdrawalProcessor is
 
         // Extract the vault and vault root information from the submitted proof
         (IVaultProofVerifier.Vault memory vault, uint256 _vaultRoot) =
-            vaultProofVerifier.extractVaultAndRootFromProof(vaultProof);
+            VAULT_PROOF_VERIFIER.extractVaultAndRootFromProof(vaultProof);
 
         // Basic validation of the vault structure
         _validateVault(vault);
@@ -94,7 +94,7 @@ contract VaultWithdrawalProcessor is
 
         // Verify the vault escape proof
         require(
-            vaultProofVerifier.verifyVaultProof(vaultProof),
+            VAULT_PROOF_VERIFIER.verifyVaultProof(vaultProof),
             IVaultProofVerifier.InvalidVaultProof("Invalid vault proof")
         );
 

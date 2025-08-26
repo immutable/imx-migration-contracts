@@ -68,7 +68,7 @@ contract VaultWithdrawalProcessorTest is
     }
 
     function test_Constructor() public view {
-        assertEq(address(vaultWithdrawalProcessor.vaultProofVerifier()), address(vaultVerifier));
+        assertEq(address(vaultWithdrawalProcessor.VAULT_PROOF_VERIFIER()), address(vaultVerifier));
         assertEq(vaultWithdrawalProcessor.vaultRoot(), fixVaultEscapes[0].root);
 
         for (uint256 i = 0; i < fixAssets.length; i++) {

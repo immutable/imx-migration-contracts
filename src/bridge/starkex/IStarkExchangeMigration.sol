@@ -2,20 +2,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-
 /**
  * @title IStarkExchangeMigration
  * @notice Defines the interface for migrating holdings from Immutable X to zkEVM
  */
 interface IStarkExchangeMigration {
-    struct AssetHolding {
+    struct TokenMigrationDetails {
         address token;
         uint256 amount;
+        uint256 bridgeFee;
     }
 
     /// @notice Thrown when no assets are provided for migration
-    error NoAssetsProvided();
+    error NoMigrationDetails();
 
     /// @notice Thrown when a zero address is provided
     error InvalidAddress();
@@ -25,6 +24,12 @@ interface IStarkExchangeMigration {
 
     /// @notice Thrown if the bridge does not have sufficient funds of the token to perform the specified migration amount
     error AmountExceedsBalance();
+
+    /// @notice Thrown when the bridge fee provided is insufficient to cover the cost of bridging the assets to zkEVM
+    error InsufficientBridgeFee();
+
+    /// @notice Thrown when the bridge fee provided exceeds the required amount
+    error ExcessBridgeFeeProvided();
 
     /// @notice Thrown when an unauthorized account attempts to initiate migration process
     error UnauthorizedMigrationInitiator();
@@ -53,7 +58,7 @@ interface IStarkExchangeMigration {
      * @param assets The list of assets to migrate, each containing the token address and amount. ETH is represented by the address(0xeee)
      * @dev Requires a bridge fee to be sent with this transaction.
      */
-    function migrateHoldings(AssetHolding[] calldata assets) external payable;
+    function migrateHoldings(TokenMigrationDetails[] calldata assets) external payable;
 
     /**
      * @notice Sends the latest vault root data stored in this contract to the configured withdrawal processor contract on zkEVM.

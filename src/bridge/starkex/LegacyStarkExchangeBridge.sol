@@ -3,14 +3,8 @@
 pragma solidity ^0.8.27;
 
 import {MainStorage} from "./MainStorage.sol";
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import {IRootERC20Bridge} from "../zkEVM/IRootERC20Bridge.sol";
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {IStarkExchangeMigration} from "./IStarkExchangeMigration.sol";
-import {VaultRootSenderAdapter} from "../messaging/VaultRootSenderAdapter.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Addresses} from "./libraries/Common.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title Legacy StarkExchange Bridge

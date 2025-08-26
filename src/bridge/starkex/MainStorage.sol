@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0.
 pragma solidity ^0.8.27;
 
-import "./ProxyStorage.sol";
-import "./libraries/Common.sol";
+import {ProxyStorage} from "./ProxyStorage.sol";
+import {StarkExTypes} from "./libraries/Common.sol";
 import {VaultRootSenderAdapter} from "../messaging/VaultRootSenderAdapter.sol";
 
 /**

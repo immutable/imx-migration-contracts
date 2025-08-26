@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import "@axelar-gmp-sdk-solidity/interfaces/IAxelarGasService.sol";
+import {IAxelarGasService} from "@axelar-gmp-sdk-solidity/interfaces/IAxelarGasService.sol";
 import {AxelarExecutable} from "@axelar-gmp-sdk-solidity/executable/AxelarExecutable.sol";
 import {IAxelarGateway} from "@axelar-gmp-sdk-solidity/interfaces/IAxelarGateway.sol";
 
@@ -16,10 +16,10 @@ contract VaultRootSenderAdapter is AxelarExecutable {
     bytes32 public constant SET_VAULT_ROOT = keccak256("SET_VAULT_ROOT");
 
     /// @notice The StarkEx bridge contract address that is authorized to send vault roots through this adapter
-    address public immutable vaultRootSender;
+    address public immutable VAULT_ROOT_SENDER;
 
     /// @notice The Axelar gas service contract that handles gas payments for cross-chain transactions
-    IAxelarGasService public immutable axelarGasService;
+    IAxelarGasService public immutable AXELAR_GAS_SERVICE;
 
     /// @notice The chain ID to which the vault root will be sent
     /// @dev This is a string representation of the chain name, as used by Axelar
@@ -71,8 +71,8 @@ contract VaultRootSenderAdapter is AxelarExecutable {
 
         rootReceiverChain = _rootReceiverChain;
         rootReceiver = _rootReceiver;
-        vaultRootSender = _vaultRootSender;
-        axelarGasService = IAxelarGasService(_axelarGasService);
+        VAULT_ROOT_SENDER = _vaultRootSender;
+        AXELAR_GAS_SERVICE = IAxelarGasService(_axelarGasService);
     }
 
     /**
@@ -83,7 +83,7 @@ contract VaultRootSenderAdapter is AxelarExecutable {
      * @param gasRefundReceiver The address that will receive any unused destination gas fee
      */
     function sendVaultRoot(uint256 vaultRoot, address gasRefundReceiver) external payable {
-        require(msg.sender == vaultRootSender, UnauthorizedRootSender());
+        require(msg.sender == VAULT_ROOT_SENDER, UnauthorizedRootSender());
 
         require(vaultRoot != 0, InvalidVaultRoot());
         require(gasRefundReceiver != address(0), InvalidAddress());
@@ -93,7 +93,7 @@ contract VaultRootSenderAdapter is AxelarExecutable {
         string memory _receiverAddr = rootReceiver;
         bytes memory payload = abi.encode(SET_VAULT_ROOT, vaultRoot);
 
-        axelarGasService.payNativeGasForContractCall{value: msg.value}(
+        AXELAR_GAS_SERVICE.payNativeGasForContractCall{value: msg.value}(
             address(this), _receiverChain, _receiverAddr, payload, gasRefundReceiver
         );
 

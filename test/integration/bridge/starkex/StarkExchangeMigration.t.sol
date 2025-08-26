@@ -17,19 +17,15 @@ interface IStarkExchangeProxy is IStarkExchangeMigration {
 }
 
 contract StarkExchangeMigrationTest is Test {
+    uint256 private constant BRIDGE_FEE = 0.001 ether;
     IStarkExchangeProxy public constant starkExProxy = IStarkExchangeProxy(0x5FDCCA53617f4d2b9134B29090C87D01058e27e9);
-    address private constant zkEVMBridge = 0xBa5E35E26Ae59c7aea6F029B68c6460De2d13eB6; // Bridge address
-    address private constant proxyOwner = 0xD2C37fC6fD89563187f3679304975655e448D192;
-    address private constant l2VaultProcessor = 0x5Ffb1b3C4D6E8B7A9c1E8d3f2b5e6f7a8B9C0d1E; // L2 Vault Processor address
-    address private constant migrationInitiator = proxyOwner;
+    address private constant ZKEVM_BRIDGE = 0xBa5E35E26Ae59c7aea6F029B68c6460De2d13eB6; // Bridge address
+    address private constant STARKEX_PROXY_OWNER = 0xD2C37fC6fD89563187f3679304975655e448D192;
+    address private constant L2VAULT_PROCESSOR = 0x5Ffb1b3C4D6E8B7A9c1E8d3f2b5e6f7a8B9C0d1E; // L2 Vault Processor address
+    address private constant STARKEX_MIGRATION_MANAGER = STARKEX_PROXY_OWNER;
 
     address private mockVaultRootSender;
 
-    // TODO: Include the below tokens once they are mapped to the zkEVM bridge
-    //        0x7E77dCb127F99ECe88230a64Db8d595F31F1b068, // SILV2
-    //        0x767FE9EDC9E0dF98E07454847909b5E959D7ca0E, // ILV
-    //        0x90685e300A4c4532EFCeFE91202DfE1Dfd572F47, // CTA
-    //        0xeD35af169aF46a02eE13b9d79Eb57d6D68C1749e // OMI
     address[] private tokens = [
         0xF57e7e7C23978C3cAEC3C3548E3D615c346e79fF, // IMX
         0xccC8cb5229B0ac8069C51fd58367Fd1e622aFD97, // GODS
@@ -44,9 +40,10 @@ contract StarkExchangeMigrationTest is Test {
     }
 
     function _upgradeStarkExchange() internal returns (address) {
-        vm.startPrank(proxyOwner);
+        vm.startPrank(STARKEX_PROXY_OWNER);
         address starkExchange = address(new StarkExchangeMigration());
-        bytes memory initData = abi.encode(migrationInitiator, zkEVMBridge, mockVaultRootSender, l2VaultProcessor);
+        bytes memory initData =
+            abi.encode(STARKEX_MIGRATION_MANAGER, ZKEVM_BRIDGE, mockVaultRootSender, L2VAULT_PROCESSOR);
 
         vm.expectEmit(true, true, true, true);
         emit IStarkExchangeProxy.ImplementationAdded(starkExchange, initData, false);
@@ -78,36 +75,41 @@ contract StarkExchangeMigrationTest is Test {
         console.log("Initial ETH balance on StarkEx bridge: %s", initStarkExBal);
         assertGt(initStarkExBal, 0, "Initial ETH balance should be greater than zero");
 
-        uint256 initzkEVMBal = zkEVMBridge.balance;
+        uint256 initzkEVMBal = ZKEVM_BRIDGE.balance;
         console.log("Initial ETH balance on zkEVM bridge: %s", initzkEVMBal);
         assertGt(initzkEVMBal, 0, "Initial ETH balance should be greater than zero");
 
         _upgradeStarkExchange();
 
-        vm.startPrank(migrationInitiator);
+        vm.startPrank(STARKEX_MIGRATION_MANAGER);
         uint256 migrateAmount = initStarkExBal;
 
         uint256 bridgeFee = 0.001 ether; // Example bridge fee
-        vm.deal(migrationInitiator, bridgeFee);
-        IStarkExchangeMigration.AssetHolding[] memory asset = new IStarkExchangeMigration.AssetHolding[](1);
-        asset[0] = IStarkExchangeMigration.AssetHolding({token: address(0xeee), amount: migrateAmount});
+        vm.deal(STARKEX_MIGRATION_MANAGER, bridgeFee);
+        IStarkExchangeMigration.TokenMigrationDetails[] memory asset =
+            new IStarkExchangeMigration.TokenMigrationDetails[](1);
+        asset[0] = IStarkExchangeMigration.TokenMigrationDetails({
+            token: address(0xeee),
+            amount: migrateAmount,
+            bridgeFee: BRIDGE_FEE
+        });
 
         starkExProxy.migrateHoldings{value: bridgeFee}(asset);
 
         uint256 finStarkExBal = address(starkExProxy).balance;
         assertEq(finStarkExBal, 0, "Final ETH balance on StarkEx bridge should be zero after migration");
 
-        uint256 finzkEVMBal = address(zkEVMBridge).balance;
+        uint256 finzkEVMBal = address(ZKEVM_BRIDGE).balance;
         assertEq(finzkEVMBal, initzkEVMBal + migrateAmount, "Final ETH balance on zkEVM bridge does not match expected");
         vm.stopPrank();
     }
 
     function test_migrate_ERC20Holdings() public {
         _upgradeStarkExchange();
-        vm.startPrank(migrationInitiator);
+        vm.startPrank(STARKEX_MIGRATION_MANAGER);
 
         uint256 bridgeFee = 0.001 ether;
-        vm.deal(migrationInitiator, bridgeFee * tokens.length);
+        vm.deal(STARKEX_MIGRATION_MANAGER, bridgeFee * tokens.length);
 
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20Metadata token = IERC20Metadata(tokens[i]);
@@ -116,18 +118,23 @@ contract StarkExchangeMigrationTest is Test {
             console.log("Initial balance of %s on StarkEx bridge: %s", tokens[i], initStarkExBal);
             assertGt(initStarkExBal, 0, "Initial balance should be greater than zero");
 
-            uint256 initzkEVMBal = token.balanceOf(zkEVMBridge);
+            uint256 initzkEVMBal = token.balanceOf(ZKEVM_BRIDGE);
             console.log("Initial balance of %s on zkEVM bridge: %s", tokens[i], initzkEVMBal);
 
-            IStarkExchangeMigration.AssetHolding[] memory assets = new IStarkExchangeMigration.AssetHolding[](1);
-            assets[0] = IStarkExchangeMigration.AssetHolding({token: address(token), amount: initStarkExBal});
+            IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
+                new IStarkExchangeMigration.TokenMigrationDetails[](1);
+            assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
+                token: address(token),
+                amount: initStarkExBal,
+                bridgeFee: bridgeFee
+            });
 
             starkExProxy.migrateHoldings{value: bridgeFee}(assets);
 
             uint256 finStarkExBal = token.balanceOf(address(starkExProxy));
             assertEq(finStarkExBal, 0, "Final balance on StarkEx bridge should be zero after migration");
 
-            uint256 finzkEVMBal = token.balanceOf(zkEVMBridge);
+            uint256 finzkEVMBal = token.balanceOf(ZKEVM_BRIDGE);
             assertEq(
                 finzkEVMBal, initzkEVMBal + initStarkExBal, "Final balance on zkEVM bridge does not match expected"
             );
@@ -137,17 +144,19 @@ contract StarkExchangeMigrationTest is Test {
 
     function test_migrateVaultState() public {
         _upgradeStarkExchange();
-        vm.startPrank(migrationInitiator);
+        vm.startPrank(STARKEX_MIGRATION_MANAGER);
 
         uint256 vaultRoot = starkExProxy.vaultRoot();
         assertGt(vaultRoot, 0, "Vault root should be greater than zero");
 
         uint256 bridgeFee = 0.001 ether; // Example bridge fee
-        vm.deal(migrationInitiator, bridgeFee);
+        vm.deal(STARKEX_MIGRATION_MANAGER, bridgeFee);
 
         vm.expectCall(
             mockVaultRootSender,
-            abi.encodeCall(VaultRootSenderAdapter(mockVaultRootSender).sendVaultRoot, (vaultRoot, migrationInitiator))
+            abi.encodeCall(
+                VaultRootSenderAdapter(mockVaultRootSender).sendVaultRoot, (vaultRoot, STARKEX_MIGRATION_MANAGER)
+            )
         );
         starkExProxy.migrateVaultRoot{value: bridgeFee}();
 

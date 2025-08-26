@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0.
 pragma solidity ^0.8.27;
 
-import "./GovernanceStorage.sol";
+import {GovernanceStorage} from "./GovernanceStorage.sol";
 
 /**
  * @title ProxyStorage

@@ -26,10 +26,10 @@ contract VaultRootSenderAdapterTest is Test {
     }
 
     function test_Constructor() public view {
-        assertEq(sender.vaultRootSender(), L1_STARKEX_BRIDGE);
+        assertEq(sender.VAULT_ROOT_SENDER(), L1_STARKEX_BRIDGE);
         assertEq(sender.rootReceiver(), L2_VAULT_RECEIVER);
         assertEq(sender.rootReceiverChain(), L2_CHAIN_ID);
-        assertEq(address(sender.axelarGasService()), gasService);
+        assertEq(address(sender.AXELAR_GAS_SERVICE()), gasService);
         assertEq(address(sender.gateway()), gateway);
     }
 

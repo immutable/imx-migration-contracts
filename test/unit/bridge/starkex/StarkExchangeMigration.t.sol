@@ -45,13 +45,15 @@ contract MockRootERC20Bridge is IRootERC20Bridge {
 
     function deposit(IERC20Metadata rootToken, uint256 amount) external payable override {
         deposits[rootToken] += amount;
-        rootToken.transferFrom(msg.sender, address(this), amount);
+        bool success = rootToken.transferFrom(msg.sender, address(this), amount);
+        require(success, "Transfer failed");
         emit DepositCalled(rootToken, amount);
     }
 
     function depositTo(IERC20Metadata rootToken, address receiver, uint256 amount) external payable override {
         deposits[rootToken] += amount;
-        rootToken.transferFrom(msg.sender, address(this), amount);
+        bool success = rootToken.transferFrom(msg.sender, address(this), amount);
+        require(success, "Transfer failed");
         emit DepositToCalled(rootToken, receiver, amount);
     }
 
@@ -87,58 +89,35 @@ contract MockVaultRootSenderAdapter {
     }
 }
 
-/**
- * @title TestStarkExchangeMigration
- * @notice Concrete implementation of StarkExchangeMigration for testing
- */
-contract TestStarkExchangeMigration is StarkExchangeMigration {
-    constructor() {
-        // Initialize vaultRoot for testing
-        vaultRoot = 0x1234567890123456789012345678901234567890123456789012345678901234;
-    }
-
-    function setVaultRoot(uint256 _vaultRoot) external {
-        vaultRoot = _vaultRoot;
-    }
-
-    function getBalance() external view returns (uint256) {
-        return address(this).balance;
-    }
-
-    function getTokenBalance(address token) external view returns (uint256) {
-        return IERC20(token).balanceOf(address(this));
-    }
-
-    // Allow receiving ETH
-    receive() external payable {}
-}
-
 contract StarkExchangeMigrationTest is Test {
-    TestStarkExchangeMigration public migration;
+    StarkExchangeMigration public starkExBridge;
     MockRootERC20Bridge public mockBridge;
     MockVaultRootSenderAdapter public mockSenderAdapter;
     MockERC20 public testToken;
 
-    address constant MIGRATION_MANAGER = 0x1234567890123456789012345678901234567890;
-    address constant WITHDRAWAL_PROCESSOR = 0x9999999999999999999999999999999999999999;
-    address constant UNAUTHORIZED_ADDRESS = 0x8888888888888888888888888888888888888888;
+    address private constant MIGRATION_MANAGER = 0x1234567890123456789012345678901234567890;
+    address private constant WITHDRAWAL_PROCESSOR = 0x9999999999999999999999999999999999999999;
+    address private constant UNAUTHORIZED_ADDRESS = 0x8888888888888888888888888888888888888888;
 
-    uint256 constant TEST_VAULT_ROOT = 0x1234567890123456789012345678901234567890123456789012345678901234;
-    uint256 constant BRIDGE_FEE = 0.001 ether;
+    uint256 private constant TEST_VAULT_ROOT = 0x1234567890123456789012345678901234567890123456789012345678901234;
+    uint256 private constant BRIDGE_FEE = 0.001 ether;
 
     function setUp() public {
-        migration = new TestStarkExchangeMigration();
+        starkExBridge = new StarkExchangeMigration();
         mockBridge = new MockRootERC20Bridge();
         mockSenderAdapter = new MockVaultRootSenderAdapter();
         testToken = new MockERC20("Test Token", "TEST", 18);
 
-        // Fund the migration contract
-        vm.deal(address(migration), 10 ether);
-        testToken.transfer(address(migration), 1000 * 10 ** 18);
+        bytes memory initData =
+            abi.encode(MIGRATION_MANAGER, address(mockBridge), address(mockSenderAdapter), WITHDRAWAL_PROCESSOR);
+        starkExBridge.initialize(initData);
+
+        vm.store(address(starkExBridge), bytes32(uint256(13)), bytes32(TEST_VAULT_ROOT));
+        vm.deal(MIGRATION_MANAGER, 10 ether);
     }
 
     function test_Initialize_ValidParameters() public {
-        TestStarkExchangeMigration newMigration = new TestStarkExchangeMigration();
+        StarkExchangeMigration newMigration = new StarkExchangeMigration();
 
         bytes memory initData =
             abi.encode(MIGRATION_MANAGER, address(mockBridge), address(mockSenderAdapter), WITHDRAWAL_PROCESSOR);
@@ -154,7 +133,7 @@ contract StarkExchangeMigrationTest is Test {
     }
 
     function test_RevertIf_Initialize_InvalidMigrationManager() public {
-        TestStarkExchangeMigration newMigration = new TestStarkExchangeMigration();
+        StarkExchangeMigration newMigration = new StarkExchangeMigration();
 
         bytes memory initData = abi.encode(
             address(0), // Invalid migration manager
@@ -168,7 +147,7 @@ contract StarkExchangeMigrationTest is Test {
     }
 
     function test_RevertIf_Initialize_InvalidZkEVMBridge() public {
-        TestStarkExchangeMigration newMigration = new TestStarkExchangeMigration();
+        StarkExchangeMigration newMigration = new StarkExchangeMigration();
 
         bytes memory initData = abi.encode(
             MIGRATION_MANAGER,
@@ -182,7 +161,7 @@ contract StarkExchangeMigrationTest is Test {
     }
 
     function test_RevertIf_Initialize_InvalidRootSenderAdapter() public {
-        TestStarkExchangeMigration newMigration = new TestStarkExchangeMigration();
+        StarkExchangeMigration newMigration = new StarkExchangeMigration();
 
         bytes memory initData = abi.encode(
             MIGRATION_MANAGER,
@@ -196,7 +175,7 @@ contract StarkExchangeMigrationTest is Test {
     }
 
     function test_RevertIf_Initialize_InvalidWithdrawalProcessor() public {
-        TestStarkExchangeMigration newMigration = new TestStarkExchangeMigration();
+        StarkExchangeMigration newMigration = new StarkExchangeMigration();
 
         bytes memory initData = abi.encode(
             MIGRATION_MANAGER,
@@ -210,7 +189,7 @@ contract StarkExchangeMigrationTest is Test {
     }
 
     function test_RevertIf_Initialize_Twice() public {
-        TestStarkExchangeMigration newMigration = new TestStarkExchangeMigration();
+        StarkExchangeMigration newMigration = new StarkExchangeMigration();
 
         bytes memory initData =
             abi.encode(MIGRATION_MANAGER, address(mockBridge), address(mockSenderAdapter), WITHDRAWAL_PROCESSOR);
@@ -222,18 +201,8 @@ contract StarkExchangeMigrationTest is Test {
     }
 
     function test_MigrateVaultRoot() public {
-        // Initialize the migration contract
-        bytes memory initData =
-            abi.encode(MIGRATION_MANAGER, address(mockBridge), address(mockSenderAdapter), WITHDRAWAL_PROCESSOR);
-        migration.initialize(initData);
-
-        // Set vault root
-        migration.setVaultRoot(TEST_VAULT_ROOT);
-
         vm.prank(MIGRATION_MANAGER);
-        vm.deal(MIGRATION_MANAGER, 1 ether);
-
-        migration.migrateVaultRoot{value: BRIDGE_FEE}();
+        starkExBridge.migrateVaultRoot{value: BRIDGE_FEE}();
 
         assertEq(mockSenderAdapter.lastVaultRoot(), TEST_VAULT_ROOT, "Vault root should be sent");
         assertEq(mockSenderAdapter.lastRefundAddress(), MIGRATION_MANAGER, "Refund address should be migration manager");
@@ -241,55 +210,51 @@ contract StarkExchangeMigrationTest is Test {
     }
 
     function test_RevertIf_MigrateVaultRoot_Unauthorized() public {
-        // Initialize the migration contract
-        bytes memory initData =
-            abi.encode(MIGRATION_MANAGER, address(mockBridge), address(mockSenderAdapter), WITHDRAWAL_PROCESSOR);
-        migration.initialize(initData);
-
         vm.deal(UNAUTHORIZED_ADDRESS, 1 ether);
         vm.prank(UNAUTHORIZED_ADDRESS);
         vm.expectRevert(IStarkExchangeMigration.UnauthorizedMigrationInitiator.selector);
-        migration.migrateVaultRoot{value: BRIDGE_FEE}();
+        starkExBridge.migrateVaultRoot{value: BRIDGE_FEE}();
     }
 
     function test_MigrateHoldings_ETH() public {
-        // Initialize the migration contract
-        bytes memory initData =
-            abi.encode(MIGRATION_MANAGER, address(mockBridge), address(mockSenderAdapter), WITHDRAWAL_PROCESSOR);
-        migration.initialize(initData);
-
         uint256 ethAmount = 1 ether;
-        IStarkExchangeMigration.AssetHolding[] memory assets = new IStarkExchangeMigration.AssetHolding[](1);
-        assets[0] = IStarkExchangeMigration.AssetHolding({token: migration.NATIVE_ETH(), amount: ethAmount});
+        IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
+            new IStarkExchangeMigration.TokenMigrationDetails[](1);
+        assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
+            token: starkExBridge.NATIVE_ETH(),
+            amount: ethAmount,
+            bridgeFee: BRIDGE_FEE
+        });
 
-        vm.deal(MIGRATION_MANAGER, ethAmount + BRIDGE_FEE);
-        vm.prank(MIGRATION_MANAGER);
+        vm.deal(address(starkExBridge), ethAmount);
         vm.expectEmit(true, true, true, true);
         emit IStarkExchangeMigration.ETHHoldingsMigration(ethAmount, WITHDRAWAL_PROCESSOR, MIGRATION_MANAGER);
 
-        migration.migrateHoldings{value: ethAmount + BRIDGE_FEE}(assets);
+        vm.prank(MIGRATION_MANAGER);
+        starkExBridge.migrateHoldings{value: BRIDGE_FEE}(assets);
 
         assertEq(mockBridge.ethDeposits(WITHDRAWAL_PROCESSOR), ethAmount, "ETH should be deposited to bridge");
     }
 
     function test_MigrateHoldings_ERC20() public {
-        // Initialize the migration contract
-        bytes memory initData =
-            abi.encode(MIGRATION_MANAGER, address(mockBridge), address(mockSenderAdapter), WITHDRAWAL_PROCESSOR);
-        migration.initialize(initData);
+        uint256 tokenAmount = 10 ether;
+        IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
+            new IStarkExchangeMigration.TokenMigrationDetails[](1);
+        assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
+            token: address(testToken),
+            amount: tokenAmount,
+            bridgeFee: BRIDGE_FEE
+        });
 
-        uint256 tokenAmount = 100 * 10 ** 18;
-        IStarkExchangeMigration.AssetHolding[] memory assets = new IStarkExchangeMigration.AssetHolding[](1);
-        assets[0] = IStarkExchangeMigration.AssetHolding({token: address(testToken), amount: tokenAmount});
+        deal(address(testToken), address(starkExBridge), tokenAmount);
 
-        vm.deal(MIGRATION_MANAGER, 1 ether);
-        vm.prank(MIGRATION_MANAGER);
         vm.expectEmit(true, true, true, true);
         emit IStarkExchangeMigration.ERC20HoldingsMigration(
             address(testToken), tokenAmount, WITHDRAWAL_PROCESSOR, MIGRATION_MANAGER
         );
 
-        migration.migrateHoldings{value: BRIDGE_FEE}(assets);
+        vm.prank(MIGRATION_MANAGER);
+        starkExBridge.migrateHoldings{value: BRIDGE_FEE}(assets);
 
         assertEq(
             mockBridge.deposits(IERC20Metadata(address(testToken))), tokenAmount, "Tokens should be deposited to bridge"
@@ -297,20 +262,25 @@ contract StarkExchangeMigrationTest is Test {
     }
 
     function test_MigrateHoldings_Mixed() public {
-        // Initialize the migration contract
-        bytes memory initData =
-            abi.encode(MIGRATION_MANAGER, address(mockBridge), address(mockSenderAdapter), WITHDRAWAL_PROCESSOR);
-        migration.initialize(initData);
-
         uint256 ethAmount = 1 ether;
-        uint256 tokenAmount = 100 * 10 ** 18;
+        uint256 tokenAmount = 100 ether;
 
-        IStarkExchangeMigration.AssetHolding[] memory assets = new IStarkExchangeMigration.AssetHolding[](2);
-        assets[0] = IStarkExchangeMigration.AssetHolding({token: migration.NATIVE_ETH(), amount: ethAmount});
-        assets[1] = IStarkExchangeMigration.AssetHolding({token: address(testToken), amount: tokenAmount});
+        IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
+            new IStarkExchangeMigration.TokenMigrationDetails[](2);
+        assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
+            token: starkExBridge.NATIVE_ETH(),
+            amount: ethAmount,
+            bridgeFee: BRIDGE_FEE
+        });
+        assets[1] = IStarkExchangeMigration.TokenMigrationDetails({
+            token: address(testToken),
+            amount: tokenAmount,
+            bridgeFee: BRIDGE_FEE
+        });
 
-        vm.deal(MIGRATION_MANAGER, ethAmount + BRIDGE_FEE);
-        vm.prank(MIGRATION_MANAGER);
+        vm.deal(address(starkExBridge), ethAmount);
+        deal(address(testToken), address(starkExBridge), tokenAmount);
+
         vm.expectEmit(true, true, true, true);
         emit IStarkExchangeMigration.ETHHoldingsMigration(ethAmount, WITHDRAWAL_PROCESSOR, MIGRATION_MANAGER);
         vm.expectEmit(true, true, true, true);
@@ -318,7 +288,8 @@ contract StarkExchangeMigrationTest is Test {
             address(testToken), tokenAmount, WITHDRAWAL_PROCESSOR, MIGRATION_MANAGER
         );
 
-        migration.migrateHoldings{value: ethAmount + BRIDGE_FEE}(assets);
+        vm.prank(MIGRATION_MANAGER);
+        starkExBridge.migrateHoldings{value: 2 * BRIDGE_FEE}(assets);
 
         assertEq(mockBridge.ethDeposits(WITHDRAWAL_PROCESSOR), ethAmount, "ETH should be deposited to bridge");
         assertEq(
@@ -327,178 +298,115 @@ contract StarkExchangeMigrationTest is Test {
     }
 
     function test_RevertIf_MigrateHoldings_EmptyArray() public {
-        // Initialize the migration contract
-        bytes memory initData =
-            abi.encode(MIGRATION_MANAGER, address(mockBridge), address(mockSenderAdapter), WITHDRAWAL_PROCESSOR);
-        migration.initialize(initData);
-
-        IStarkExchangeMigration.AssetHolding[] memory emptyAssets = new IStarkExchangeMigration.AssetHolding[](0);
+        IStarkExchangeMigration.TokenMigrationDetails[] memory emptyAssets =
+            new IStarkExchangeMigration.TokenMigrationDetails[](0);
 
         vm.prank(MIGRATION_MANAGER);
-        vm.expectRevert(IStarkExchangeMigration.NoAssetsProvided.selector);
-        migration.migrateHoldings(emptyAssets);
+        vm.expectRevert(IStarkExchangeMigration.NoMigrationDetails.selector);
+        starkExBridge.migrateHoldings(emptyAssets);
     }
 
     function test_RevertIf_MigrateHoldings_Unauthorized() public {
-        // Initialize the migration contract
-        bytes memory initData =
-            abi.encode(MIGRATION_MANAGER, address(mockBridge), address(mockSenderAdapter), WITHDRAWAL_PROCESSOR);
-        migration.initialize(initData);
-
         uint256 ethAmount = 1 ether;
-        IStarkExchangeMigration.AssetHolding[] memory assets = new IStarkExchangeMigration.AssetHolding[](1);
-        assets[0] = IStarkExchangeMigration.AssetHolding({token: migration.NATIVE_ETH(), amount: ethAmount});
+        IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
+            new IStarkExchangeMigration.TokenMigrationDetails[](1);
+        assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
+            token: starkExBridge.NATIVE_ETH(),
+            amount: ethAmount,
+            bridgeFee: BRIDGE_FEE
+        });
 
         vm.deal(UNAUTHORIZED_ADDRESS, 2 ether);
         vm.prank(UNAUTHORIZED_ADDRESS);
         vm.expectRevert(IStarkExchangeMigration.UnauthorizedMigrationInitiator.selector);
-        migration.migrateHoldings{value: ethAmount + BRIDGE_FEE}(assets);
+        starkExBridge.migrateHoldings{value: BRIDGE_FEE}(assets);
     }
 
     function test_RevertIf_MigrateHoldings_ZeroTokenAddress() public {
-        // Initialize the migration contract
-        bytes memory initData =
-            abi.encode(MIGRATION_MANAGER, address(mockBridge), address(mockSenderAdapter), WITHDRAWAL_PROCESSOR);
-        migration.initialize(initData);
-
-        uint256 tokenAmount = 100 * 10 ** 18;
-        IStarkExchangeMigration.AssetHolding[] memory assets = new IStarkExchangeMigration.AssetHolding[](1);
-        assets[0] = IStarkExchangeMigration.AssetHolding({
+        uint256 tokenAmount = 10 ether;
+        IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
+            new IStarkExchangeMigration.TokenMigrationDetails[](1);
+        assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
             token: address(0), // Invalid token address
-            amount: tokenAmount
+            amount: tokenAmount,
+            bridgeFee: BRIDGE_FEE
         });
 
-        vm.deal(MIGRATION_MANAGER, 1 ether);
         vm.prank(MIGRATION_MANAGER);
         vm.expectRevert(IStarkExchangeMigration.InvalidAddress.selector);
-        migration.migrateHoldings{value: BRIDGE_FEE}(assets);
+        starkExBridge.migrateHoldings{value: BRIDGE_FEE}(assets);
     }
 
     function test_RevertIf_MigrateHoldings_ZeroAmount() public {
-        // Initialize the migration contract
-        bytes memory initData =
-            abi.encode(MIGRATION_MANAGER, address(mockBridge), address(mockSenderAdapter), WITHDRAWAL_PROCESSOR);
-        migration.initialize(initData);
+        IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
+            new IStarkExchangeMigration.TokenMigrationDetails[](1);
+        assets[0] =
+            IStarkExchangeMigration.TokenMigrationDetails({token: address(testToken), amount: 0, bridgeFee: BRIDGE_FEE});
 
-        IStarkExchangeMigration.AssetHolding[] memory assets = new IStarkExchangeMigration.AssetHolding[](1);
-        assets[0] = IStarkExchangeMigration.AssetHolding({
-            token: address(testToken),
-            amount: 0 // Invalid amount
-        });
-
-        vm.deal(MIGRATION_MANAGER, 1 ether);
         vm.prank(MIGRATION_MANAGER);
         vm.expectRevert(IStarkExchangeMigration.InvalidAmount.selector);
-        migration.migrateHoldings{value: BRIDGE_FEE}(assets);
+        starkExBridge.migrateHoldings{value: BRIDGE_FEE}(assets);
     }
 
     function test_RevertIf_MigrateHoldings_InsufficientTokenBalance() public {
-        // Initialize the migration contract
-        bytes memory initData =
-            abi.encode(MIGRATION_MANAGER, address(mockBridge), address(mockSenderAdapter), WITHDRAWAL_PROCESSOR);
-        migration.initialize(initData);
+        uint256 excessiveAmount = 20 ether; // More than available balance
+        IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
+            new IStarkExchangeMigration.TokenMigrationDetails[](1);
+        assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
+            token: address(testToken),
+            amount: excessiveAmount,
+            bridgeFee: BRIDGE_FEE
+        });
 
-        uint256 excessiveAmount = 2000 * 10 ** 18; // More than available balance
-        IStarkExchangeMigration.AssetHolding[] memory assets = new IStarkExchangeMigration.AssetHolding[](1);
-        assets[0] = IStarkExchangeMigration.AssetHolding({token: address(testToken), amount: excessiveAmount});
-
-        vm.deal(MIGRATION_MANAGER, 1 ether);
         vm.prank(MIGRATION_MANAGER);
         vm.expectRevert(IStarkExchangeMigration.AmountExceedsBalance.selector);
-        migration.migrateHoldings{value: BRIDGE_FEE}(assets);
+        starkExBridge.migrateHoldings{value: BRIDGE_FEE}(assets);
     }
 
     function test_RevertIf_MigrateHoldings_InsufficientETHBalance() public {
-        // Initialize the migration contract
-        bytes memory initData =
-            abi.encode(MIGRATION_MANAGER, address(mockBridge), address(mockSenderAdapter), WITHDRAWAL_PROCESSOR);
-        migration.initialize(initData);
+        uint256 excessiveAmount = 2 ether;
+        IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
+            new IStarkExchangeMigration.TokenMigrationDetails[](1);
+        assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
+            token: starkExBridge.NATIVE_ETH(),
+            amount: excessiveAmount,
+            bridgeFee: BRIDGE_FEE
+        });
 
-        uint256 excessiveAmount = 20 ether; // More than available balance
-        IStarkExchangeMigration.AssetHolding[] memory assets = new IStarkExchangeMigration.AssetHolding[](1);
-        assets[0] = IStarkExchangeMigration.AssetHolding({token: migration.NATIVE_ETH(), amount: excessiveAmount});
-
-        vm.deal(MIGRATION_MANAGER, excessiveAmount + BRIDGE_FEE);
         vm.prank(MIGRATION_MANAGER);
         vm.expectRevert(IStarkExchangeMigration.AmountExceedsBalance.selector);
-        migration.migrateHoldings{value: excessiveAmount + BRIDGE_FEE}(assets);
+        starkExBridge.migrateHoldings{value: BRIDGE_FEE}(assets);
     }
 
-    function test_Constants() public view {
-        assertEq(migration.NATIVE_ETH(), address(0xeee), "NATIVE_ETH constant should be 0xeee");
-    }
-
-    function test_ErrorSelectors() public pure {
-        // Test that error selectors can be encoded
-        bytes memory noAssetsError = abi.encodeWithSelector(IStarkExchangeMigration.NoAssetsProvided.selector);
-        assertTrue(noAssetsError.length > 0, "NoAssetsProvided error should be encodable");
-
-        bytes memory invalidAddressError = abi.encodeWithSelector(IStarkExchangeMigration.InvalidAddress.selector);
-        assertTrue(invalidAddressError.length > 0, "InvalidAddress error should be encodable");
-
-        bytes memory invalidAmountError = abi.encodeWithSelector(IStarkExchangeMigration.InvalidAmount.selector);
-        assertTrue(invalidAmountError.length > 0, "InvalidAmount error should be encodable");
-
-        bytes memory amountExceedsBalanceError =
-            abi.encodeWithSelector(IStarkExchangeMigration.AmountExceedsBalance.selector);
-        assertTrue(amountExceedsBalanceError.length > 0, "AmountExceedsBalance error should be encodable");
-
-        bytes memory unauthorizedError =
-            abi.encodeWithSelector(IStarkExchangeMigration.UnauthorizedMigrationInitiator.selector);
-        assertTrue(unauthorizedError.length > 0, "UnauthorizedMigrationInitiator error should be encodable");
-    }
-
-    function test_AssetHoldingStruct() public pure {
-        // Test that AssetHolding struct can be created and accessed
-        IStarkExchangeMigration.AssetHolding memory holding =
-            IStarkExchangeMigration.AssetHolding({token: address(0x123), amount: 456});
-
-        assertEq(holding.token, address(0x123), "Token address should be set correctly");
-        assertEq(holding.amount, 456, "Amount should be set correctly");
-    }
-
-    function test_ReentrancyProtection_MigrateVaultRoot() public {
-        // Initialize the migration contract
-        bytes memory initData =
-            abi.encode(MIGRATION_MANAGER, address(mockBridge), address(mockSenderAdapter), WITHDRAWAL_PROCESSOR);
-        migration.initialize(initData);
-
-        // This test verifies that the nonReentrant modifier is in place
-        // The actual reentrancy attack would be complex to set up, but we can verify
-        // that the function has the proper protection by checking it doesn't revert
-        // under normal circumstances
-        migration.setVaultRoot(TEST_VAULT_ROOT);
+    function test_RevertIf_MigrateHoldings_InsufficientBridgeFee() public {
+        uint256 tokenAmount = 10 ether;
+        IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
+            new IStarkExchangeMigration.TokenMigrationDetails[](1);
+        assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
+            token: address(testToken),
+            amount: tokenAmount,
+            bridgeFee: BRIDGE_FEE
+        });
 
         vm.prank(MIGRATION_MANAGER);
-        vm.deal(MIGRATION_MANAGER, 1 ether);
-
-        migration.migrateVaultRoot{value: BRIDGE_FEE}();
-
-        assertEq(
-            mockSenderAdapter.lastVaultRoot(),
-            TEST_VAULT_ROOT,
-            "Function should execute normally with reentrancy protection"
-        );
+        vm.expectRevert(IStarkExchangeMigration.InsufficientBridgeFee.selector);
+        starkExBridge.migrateHoldings{value: BRIDGE_FEE - 0.0001 ether}(assets);
     }
 
-    function test_ReentrancyProtection_MigrateHoldings() public {
-        // Initialize the migration contract
-        bytes memory initData =
-            abi.encode(MIGRATION_MANAGER, address(mockBridge), address(mockSenderAdapter), WITHDRAWAL_PROCESSOR);
-        migration.initialize(initData);
+    function test_RevertIf_MigrateHoldings_ExcessBridgeFee() public {
+        uint256 tokenAmount = 1 ether;
+        IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
+            new IStarkExchangeMigration.TokenMigrationDetails[](1);
+        assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
+            token: address(testToken),
+            amount: tokenAmount,
+            bridgeFee: BRIDGE_FEE
+        });
 
-        uint256 ethAmount = 1 ether;
-        IStarkExchangeMigration.AssetHolding[] memory assets = new IStarkExchangeMigration.AssetHolding[](1);
-        assets[0] = IStarkExchangeMigration.AssetHolding({token: migration.NATIVE_ETH(), amount: ethAmount});
+        deal(address(testToken), address(starkExBridge), tokenAmount);
 
-        vm.deal(MIGRATION_MANAGER, ethAmount + BRIDGE_FEE);
         vm.prank(MIGRATION_MANAGER);
-        migration.migrateHoldings{value: ethAmount + BRIDGE_FEE}(assets);
-
-        assertEq(
-            mockBridge.ethDeposits(WITHDRAWAL_PROCESSOR),
-            ethAmount,
-            "Function should execute normally with reentrancy protection"
-        );
+        vm.expectRevert(IStarkExchangeMigration.ExcessBridgeFeeProvided.selector);
+        starkExBridge.migrateHoldings{value: BRIDGE_FEE + 0.01 ether}(assets);
     }
 }

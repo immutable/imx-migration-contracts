@@ -8,3 +8,8 @@ gas_snapshot_check = true
 cbor_metadata = true # Enabled for Tenderly source verification
 fs_permissions = [{ access = "read", path = "./config" }]
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+
+[lint]
+exclude_lints = ["mixed-case-function", "mixed-case-variable"]
+ignore = ["test/"]
+severity = ["low","med","high"]
