@@ -1,6 +1,6 @@
 // Copyright Immutable Pty Ltd 2018 - 2025
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.27;
+pragma solidity ^0.8.28;
 
 import "../src/verifiers/accounts/AccountProofVerifier.sol";
 import "../src/verifiers/vaults/VaultEscapeProofVerifier.sol";
