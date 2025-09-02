@@ -1,6 +1,6 @@
 // Copyright Immutable Pty Ltd 2018 - 2025
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.27;
+pragma solidity ^0.8.28;
 
 import "../src/verifiers/accounts/AccountProofVerifier.sol";
 import "../src/verifiers/vaults/VaultEscapeProofVerifier.sol";
@@ -36,7 +36,11 @@ contract DeployL2Contracts is Script {
             lookupTables[i] = _lookupTables[i];
         }
 
-        assetMappings = abi.decode(vm.parseJson(config, "$.asset_mappings"), (BridgedTokenMapping.TokenMapping[]));
+        BridgedTokenMapping.TokenMapping[] memory assetMappingsMem =
+            abi.decode(vm.parseJson(config, "$.asset_mappings"), (BridgedTokenMapping.TokenMapping[]));
+        for (uint256 i = 0; i < assetMappingsMem.length; i++) {
+            assetMappings.push(assetMappingsMem[i]);
+        }
         require(assetMappings.length > 0, "At least one asset mapping must be provided");
     }
 
