@@ -75,14 +75,14 @@ contract VaultWithdrawalProcessor is
             VAULT_PROOF_VERIFIER.extractVaultAndRootFromProof(vaultProof);
 
         // Basic validation of the vault structure
-        _validateVault(vault);
+        _validateVaultStructure(vault);
+
+        // the submitted proof is not a proof against the stored vault root
+        require(_vaultRoot == vaultRoot, IVaultProofVerifier.InvalidVaultProof("Invalid vault root"));
 
         // withdrawals can only be processed for registered assets
         address token = assetMappings[vault.assetId].tokenOnZKEVM;
         require(token != address(0), AssetNotRegistered(vault.assetId));
-
-        // the submitted proof is not a proof against the stored vault root
-        require(_vaultRoot == vaultRoot, IVaultProofVerifier.InvalidVaultProof("Invalid vault root"));
 
         // Ensure that this vault hasn't already been withdrawn/processed.
         require(
@@ -155,7 +155,7 @@ contract VaultWithdrawalProcessor is
         return transferAmount;
     }
 
-    function _validateVault(IVaultProofVerifier.Vault memory vault) internal pure {
+    function _validateVaultStructure(IVaultProofVerifier.Vault memory vault) internal pure {
         require(
             vault.starkKey != 0 && vault.starkKey < STARK_KEY_UPPER_BOUND,
             IVaultProofVerifier.InvalidVaultProof("Invalid stark key")

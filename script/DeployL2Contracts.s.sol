@@ -12,7 +12,6 @@ import {ProcessorAccessControl} from "@src/withdrawals/ProcessorAccessControl.so
 
 contract DeployL2Contracts is Script {
     bool private allowRootOverride;
-    address private vaultRootProvider;
     address private vaultVerifier;
     address[63] private lookupTables;
     VaultWithdrawalProcessor private withdrawalProcessor;
@@ -22,9 +21,6 @@ contract DeployL2Contracts is Script {
     function setUp() external {
         string memory config = vm.readFile(vm.envString("DEPLOYMENT_CONFIG_FILE"));
         allowRootOverride = vm.parseJsonBool(config, "$.allow_root_override");
-
-        vaultRootProvider = vm.parseJsonAddress(config, "$.vault_root_provider");
-        require(vaultRootProvider != address(0), "Vault root provider cannot be zero");
 
         vaultVerifier = vm.parseJsonAddress(config, "$.vault_verifier");
 

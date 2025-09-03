@@ -1,6 +1,6 @@
 {
   "allow_root_override": true,
-  "vault_verifier": "0x0000000000000000000000000000000000000000",
+  "vault_verifier": "0x3498311FC4D1D1AEa7c2BE9996fa9660e88B1EbE",
   "operators": {
     "pauser": "0xBc6E5103D599FaEC8f4D2911efAEb98814cb5Aaa",
     "unpauser": "0xBc6E5103D599FaEC8f4D2911efAEb98814cb5Aaa",
