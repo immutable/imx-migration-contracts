@@ -165,11 +165,11 @@ contract VaultRootReceiverTest is Test {
         adapter.setVaultRootSource(rootProviderChain, rootProviderContract);
         adapter.setVaultRootReceiver(vaultRootReceiver);
 
-        // Create payload that's exactly 32 bytes (should be > 32)
+        // Create payload that's shorter than expected 64 bytes
         bytes memory shortPayload = new bytes(32);
         bytes32 commandId = keccak256("test-command");
 
-        vm.expectRevert(VaultRootReceiverAdapter.InvalidMessage.selector);
+        vm.expectRevert(abi.encodeWithSelector(VaultRootReceiverAdapter.InvalidMessageLength.selector, 32));
         adapter.execute(commandId, rootProviderChain, rootProviderContract, shortPayload);
     }
 
@@ -182,7 +182,7 @@ contract VaultRootReceiverTest is Test {
         bytes memory payload = abi.encode(wrongCmd, newRoot);
         bytes32 commandId = keccak256("test-command");
 
-        vm.expectRevert(VaultRootReceiverAdapter.InvalidMessage.selector);
+        vm.expectRevert(abi.encodeWithSelector(VaultRootReceiverAdapter.InvalidMessageSignature.selector, wrongCmd));
         adapter.execute(commandId, rootProviderChain, rootProviderContract, payload);
     }
 

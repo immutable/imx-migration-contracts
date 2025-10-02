@@ -20,8 +20,11 @@ contract VaultRootReceiverAdapter is AxelarExecutable, Ownable {
     /// @notice Thrown when an invalid chain ID is provided for the vault root source.
     error InvalidChainId();
 
-    /// @notice Thrown when the cross-chain message does not match the expected format or signature.
-    error InvalidMessage();
+    /// @notice Thrown when the cross-chain message does not contain the expected signature.
+    error InvalidMessageSignature(bytes32 msgSig);
+
+    /// @notice Thrown when the cross-chain message does not have the expected length.
+    error InvalidMessageLength(uint256 msgLength);
 
     /// @notice Thrown when a cross-chain message is received by an unauthorized sender.
     error UnauthorizedMessageSender(string);
@@ -122,9 +125,9 @@ contract VaultRootReceiverAdapter is AxelarExecutable, Ownable {
         );
 
         // Decode the payload and ensure it is structurally valid.
-        require(_payload.length == 64, InvalidMessage());
+        require(_payload.length == 64, InvalidMessageLength(_payload.length));
         (bytes32 sig, uint256 vaultRoot) = abi.decode(_payload, (bytes32, uint256));
-        require(sig == SET_VAULT_ROOT, InvalidMessage());
+        require(sig == SET_VAULT_ROOT, InvalidMessageSignature(sig));
 
         // Forward the vault root to the VaultRootReceiver contract.
         rootReceiver.setVaultRoot(vaultRoot);
