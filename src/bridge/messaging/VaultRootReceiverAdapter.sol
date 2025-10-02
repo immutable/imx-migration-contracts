@@ -113,7 +113,7 @@ contract VaultRootReceiverAdapter is AxelarExecutable, Ownable {
     {
         // Ensure the adapter is in a valid state to process messages.
         require(address(rootReceiver) != address(0), VaultRootReceiverNotSet());
-        require(bytes(rootSenderChain).length != 0 && bytes(rootSenderAddress).length != 0, VaultRootSourceNotSet());
+        require(bytes(rootSenderAddress).length != 0, VaultRootSourceNotSet());
 
         // Validate the sender
         require(Strings.equal(_sourceChain, rootSenderChain), UnauthorizedMessageSender());
