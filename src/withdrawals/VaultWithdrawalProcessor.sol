@@ -128,7 +128,7 @@ contract VaultWithdrawalProcessor is
         rootOverrideAllowed = allowed;
     }
 
-    function registerTokenMappings(TokenMapping[] memory assets) external override onlyRole(TOKEN_MAPPING_MANAGER) {
+    function registerTokenMappings(TokenMapping[] calldata assets) external override onlyRole(TOKEN_MAPPING_MANAGER) {
         _registerTokenMappings(assets);
     }
 

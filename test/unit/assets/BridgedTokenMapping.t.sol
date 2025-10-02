@@ -5,7 +5,7 @@ import {BridgedTokenMapping} from "@src/assets/BridgedTokenMapping.sol";
 import "forge-std/Test.sol";
 
 contract MockAssetsRegistry is BridgedTokenMapping {
-    function registerTokenMappings(TokenMapping[] memory assetInfos) public override {
+    function registerTokenMappings(TokenMapping[] calldata assetInfos) public override {
         _registerTokenMappings(assetInfos);
     }
 }
