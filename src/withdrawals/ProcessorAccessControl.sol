@@ -4,8 +4,9 @@ pragma solidity ^0.8.27;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+import {AccessControlEnumerable} from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 
-abstract contract ProcessorAccessControl is AccessControl, Pausable {
+abstract contract ProcessorAccessControl is AccessControlEnumerable, Pausable {
     error InvalidOperatorAddress();
 
     /// @notice Role for pausing the contract
