@@ -6,6 +6,11 @@ import {ProxyStorage} from "./ProxyStorage.sol";
 import {StarkExTypes} from "./libraries/Common.sol";
 import {VaultRootSenderAdapter} from "../messaging/VaultRootSenderAdapter.sol";
 
+/*
+ * NOTE: This code is imported from starkex-contracts repository, with minor modifications:
+ * https://github.com/starkware-libs/starkex-contracts/blob/f4ed79bb04b56d587618c24312e87d81e4efc56b/scalable-dex/contracts/src/components/MainStorage.sol
+ */
+
 /**
  * @title MainStorage
  * @notice Contract that holds ALL the main contract state (storage) variables
@@ -110,6 +115,8 @@ contract MainStorage is ProxyStorage {
 
     /// @notice Append only list of requested forced action hashes
     bytes32[] actionHashList;
+
+    // ---- START OF STORAGE CHANGES FOR IMMUTABLE X BRIDGE MIGRATION UPGRADE ----
 
     /// @notice Address of the zkEVM bridge contract
     address public zkEVMBridge; // NOLINT: constable-states uninitialized-state.

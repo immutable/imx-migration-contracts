@@ -4,6 +4,11 @@ pragma solidity ^0.8.27;
 
 import {GovernanceStorage} from "./GovernanceStorage.sol";
 
+/*
+ * NOTE: This code is imported as is from starkex-contracts repository:
+ * https://github.com/starkware-libs/starkex-contracts/blob/f4ed79bb04b56d587618c24312e87d81e4efc56b/scalable-dex/contracts/src/upgrade/ProxyStorage.sol
+ */
+
 /**
  * @title ProxyStorage
  * @notice Contract that holds Proxy-specific state variables

@@ -3,6 +3,11 @@
 pragma solidity ^0.8.27;
 
 /*
+ * NOTE: This code is imported as is from starkex-contracts repository:
+ * https://github.com/starkware-libs/starkex-contracts/blob/f4ed79bb04b56d587618c24312e87d81e4efc56b/scalable-dex/contracts/src/libraries/Common.sol
+ */
+
+/*
   Common Utility libraries.
   I. Addresses (extending address).
 */
