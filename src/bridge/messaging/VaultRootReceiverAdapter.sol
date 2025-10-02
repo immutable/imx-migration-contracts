@@ -122,7 +122,7 @@ contract VaultRootReceiverAdapter is AxelarExecutable, Ownable {
         );
 
         // Decode the payload and ensure it is structurally valid.
-        require(_payload.length > 32, InvalidMessage());
+        require(_payload.length == 64, InvalidMessage());
         (bytes32 sig, uint256 vaultRoot) = abi.decode(_payload, (bytes32, uint256));
         require(sig == SET_VAULT_ROOT, InvalidMessage());
 
