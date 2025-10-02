@@ -134,7 +134,6 @@ contract VaultWithdrawalProcessor is
 
     /**
      * @notice Receive function to accept native IMX funds
-     * @dev Only the vault fund provider can send funds to this contract
      */
     receive() external payable {}
 
