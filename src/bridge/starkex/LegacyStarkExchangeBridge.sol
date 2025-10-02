@@ -191,7 +191,6 @@ abstract contract LegacyStarkExchangeBridge is MainStorage {
     {
         uint256 quantum = getQuantum(presumedAssetType);
         amount = quantizedAmount * quantum;
-        require(amount / quantum == quantizedAmount, "DEQUANTIZATION_OVERFLOW");
     }
 
     /**
