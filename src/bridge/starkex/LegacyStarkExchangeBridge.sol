@@ -90,9 +90,9 @@ abstract contract LegacyStarkExchangeBridge is MainStorage {
 
     /**
      * @notice Returns the Ethereum public key (address) that owns the given ownerKey
-     * @dev If the ownerKey size is within the range of an Ethereum address (i.e. < 2**160)
-     *      it returns the owner key itself. If the ownerKey is larger than a potential eth address,
-     *      the eth address for which the starkKey was registered is returned, and 0 if the starkKey is not registered.
+     * @dev If the ownerKey is registered, the registered key is returned.
+     *      If not, and the size is within the range of an Ethereum address (i.e. < 2**160)
+     *      the owner key itself is returned. Otherwise, the zero address is returned.
      * @dev Note - prior to version 4.0 this function reverted on an unregistered starkKey.
      *      For a variant of this function that reverts on an unregistered starkKey, use strictGetEthKey.
      * @param ownerKey The Stark key to look up
