@@ -5,7 +5,6 @@ pragma solidity ^0.8.27;
 import "forge-std/Test.sol";
 import "@src/assets/BridgedTokenMapping.sol";
 import "@src/verifiers/vaults/VaultEscapeProofVerifier.sol";
-import "@src/withdrawals/IVaultWithdrawalProcessor.sol";
 import "@src/withdrawals/VaultWithdrawalProcessor.sol";
 import "../../common/FixtureVaultEscapes.sol";
 import "../../common/FixtureAssets.sol";
@@ -105,7 +104,7 @@ contract VaultWithdrawalProcessorTest is
         uint256 initialBalance = _recipient.balance;
 
         vm.expectEmit(true, true, true, true);
-        emit IVaultWithdrawalProcessor.WithdrawalProcessed(
+        emit BaseVaultWithdrawalProcessor.WithdrawalProcessed(
             v.vault.starkKey,
             _recipient,
             v.vault.assetId,
@@ -139,7 +138,7 @@ contract VaultWithdrawalProcessorTest is
         uint256 initialBalance = token.balanceOf(_recipient.ethAddress);
 
         vm.expectEmit(true, true, true, true);
-        emit IVaultWithdrawalProcessor.WithdrawalProcessed(
+        emit BaseVaultWithdrawalProcessor.WithdrawalProcessed(
             testVaultWithProof.vault.starkKey, _recipient.ethAddress, assetId, address(token), expectedTransfer
         );
 
@@ -223,7 +222,7 @@ contract VaultWithdrawalProcessorTest is
         bytes32[] memory accountProof = new bytes32[](2);
         vaultVerifier.setShouldVerify(true);
 
-        vm.expectRevert(IVaultWithdrawalProcessor.ZeroAddress.selector);
+        vm.expectRevert(BaseVaultWithdrawalProcessor.ZeroAddress.selector);
         vaultWithdrawalProcessor.verifyAndProcessWithdrawal(address(0), accountProof, fixVaultEscapes[0].proof);
     }
 
@@ -291,7 +290,7 @@ contract VaultWithdrawalProcessorTest is
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                IVaultWithdrawalProcessor.WithdrawalAlreadyProcessed.selector, v.vault.starkKey, v.vault.assetId
+                BaseVaultWithdrawalProcessor.WithdrawalAlreadyProcessed.selector, v.vault.starkKey, v.vault.assetId
             )
         );
         vaultWithdrawalProcessor.verifyAndProcessWithdrawal(_recipient, accountProof, fixVaultEscapes[2].proof);
@@ -321,7 +320,7 @@ contract VaultWithdrawalProcessorTest is
     }
 
     function test_RevertIf_Constructor_ZeroVaultVerifier() public {
-        vm.expectRevert(IVaultWithdrawalProcessor.ZeroAddress.selector);
+        vm.expectRevert(BaseVaultWithdrawalProcessor.ZeroAddress.selector);
         new VaultWithdrawalProcessor(address(0), initRoles, true);
     }
 
@@ -525,7 +524,7 @@ contract VaultWithdrawalProcessorTest is
         bytes32[] memory accountProof = new bytes32[](2);
         vaultVerifier.setShouldVerify(true);
 
-        vm.expectRevert(IVaultWithdrawalProcessor.VaultRootNotSet.selector);
+        vm.expectRevert(BaseVaultWithdrawalProcessor.VaultRootNotSet.selector);
         newProcessor.verifyAndProcessWithdrawal(recipient, accountProof, fixVaultEscapes[0].proof);
     }
 

@@ -8,14 +8,14 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {BridgedTokenMapping} from "@src/assets/BridgedTokenMapping.sol";
 import {IVaultProofVerifier} from "@src/verifiers/vaults/IVaultProofVerifier.sol";
 import {VaultRootReceiver} from "./VaultRootReceiver.sol";
-import {IVaultWithdrawalProcessor} from "./IVaultWithdrawalProcessor.sol";
+import {BaseVaultWithdrawalProcessor} from "./BaseVaultWithdrawalProcessor.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {AccountProofVerifier} from "../verifiers/accounts/AccountProofVerifier.sol";
 import {ProcessorAccessControl} from "./ProcessorAccessControl.sol";
 import {AccountRootReceiver} from "./AccountRootReceiver.sol";
 
 contract VaultWithdrawalProcessor is
-    IVaultWithdrawalProcessor,
+    BaseVaultWithdrawalProcessor,
     ReentrancyGuard,
     ProcessorAccessControl,
     VaultRootReceiver,
@@ -53,7 +53,7 @@ contract VaultWithdrawalProcessor is
     }
 
     /**
-     * @inheritdoc IVaultWithdrawalProcessor
+     * @inheritdoc BaseVaultWithdrawalProcessor
      */
     function verifyAndProcessWithdrawal(
         address receiver,
