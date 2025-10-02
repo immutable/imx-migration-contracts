@@ -120,7 +120,9 @@ contract VaultRootReceiverTest is Test {
 
         bytes memory payload = abi.encode(adapter.SET_VAULT_ROOT(), newRoot);
         bytes32 commandId = keccak256("test-command");
-        vm.expectRevert(VaultRootReceiverAdapter.UnauthorizedMessageSender.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(VaultRootReceiverAdapter.UnauthorizedMessageSender.selector, "unexpected chain")
+        );
         adapter.execute(commandId, "polygon", rootProviderContract, payload);
     }
 
@@ -131,7 +133,11 @@ contract VaultRootReceiverTest is Test {
 
         bytes memory payload = abi.encode(adapter.SET_VAULT_ROOT(), newRoot);
         bytes32 commandId = keccak256("test-command");
-        vm.expectRevert(VaultRootReceiverAdapter.UnauthorizedMessageSender.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                VaultRootReceiverAdapter.UnauthorizedMessageSender.selector, "unexpected contract address"
+            )
+        );
         adapter.execute(commandId, rootProviderChain, "0x789", payload);
     }
 

@@ -24,7 +24,7 @@ contract VaultRootReceiverAdapter is AxelarExecutable, Ownable {
     error InvalidMessage();
 
     /// @notice Thrown when a cross-chain message is received by an unauthorized sender.
-    error UnauthorizedMessageSender();
+    error UnauthorizedMessageSender(string);
 
     /// @notice Thrown when attempting to perform an action that requires the VaultRootReceiver to be set, when it is not set.
     error VaultRootReceiverNotSet();
@@ -116,8 +116,10 @@ contract VaultRootReceiverAdapter is AxelarExecutable, Ownable {
         require(bytes(rootSenderAddress).length != 0, VaultRootSourceNotSet());
 
         // Validate the sender
-        require(Strings.equal(_sourceChain, rootSenderChain), UnauthorizedMessageSender());
-        require(Strings.equal(_sourceAddress, rootSenderAddress), UnauthorizedMessageSender());
+        require(Strings.equal(_sourceChain, rootSenderChain), UnauthorizedMessageSender("unexpected chain"));
+        require(
+            Strings.equal(_sourceAddress, rootSenderAddress), UnauthorizedMessageSender("unexpected contract address")
+        );
 
         // Decode the payload and ensure it is structurally valid.
         require(_payload.length > 32, InvalidMessage());
