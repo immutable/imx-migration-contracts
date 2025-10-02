@@ -141,7 +141,8 @@ contract VaultWithdrawalProcessor is
         internal
         returns (uint256)
     {
-        // de-quantize the amount
+        // de-quantize the amount. An overflow here would mean the funds would permanently be locked for that vault. However,
+        // this should never happen in practice given sanity checks around the quantum during token registration and the balance of every vault.
         uint256 transferAmount = quantizedBalance * assetMappings[assetId].tokenOnIMX.quantum;
 
         if (asset == NATIVE_IMX_ADDRESS) {
