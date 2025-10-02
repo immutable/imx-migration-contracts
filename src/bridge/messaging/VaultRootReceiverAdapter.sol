@@ -32,6 +32,14 @@ contract VaultRootReceiverAdapter is AxelarExecutable, Ownable {
     /// @notice Thrown when attempting to perform an action that requires the vault root source chain id and contract to be set, when they are not set.
     error VaultRootSourceNotSet();
 
+    /// @notice Emitted when the vault root source chain and contract are set.
+    event VaultRootSourceSet(
+        string indexed oldRootSenderAddress,
+        string indexed oldRootSenderChain,
+        string indexed newRootSenderAddress,
+        string newRootSenderChain
+    );
+
     /// @notice Emitted when the VaultRootReceiver contract is set.
     event VaultRootReceiverSet(address indexed vaultRootReceiver);
 
@@ -83,8 +91,13 @@ contract VaultRootReceiverAdapter is AxelarExecutable, Ownable {
         require(bytes(_rootSenderChain).length != 0, InvalidChainId());
         require(bytes(_rootSenderAddress).length != 0, InvalidAddress());
 
+        string memory _oldRootSenderChain = rootSenderChain;
+        string memory _oldRootSenderAddress = rootSenderAddress;
+
         rootSenderChain = _rootSenderChain;
         rootSenderAddress = _rootSenderAddress;
+
+        emit VaultRootSourceSet(_oldRootSenderAddress, _oldRootSenderChain, _rootSenderAddress, _rootSenderChain);
     }
 
     /**

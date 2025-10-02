@@ -61,7 +61,25 @@ contract VaultRootReceiverTest is Test {
     }
 
     function test_SetVaultRootSource() public {
+        vm.expectEmit(true, true, true, true);
+        emit VaultRootReceiverAdapter.VaultRootSourceSet("", "", rootProviderContract, rootProviderChain);
+
         adapter.setVaultRootSource(rootProviderChain, rootProviderContract);
+        assertEq(adapter.rootSenderChain(), rootProviderChain);
+        assertEq(adapter.rootSenderAddress(), rootProviderContract);
+    }
+
+    function test_SetVaultRootSource_UpdateExisting() public {
+        string memory oldProviderChain = "old-chain";
+        string memory oldProviderContract = "0xabc";
+        adapter.setVaultRootSource(oldProviderChain, oldProviderContract);
+
+        vm.expectEmit(true, true, true, true);
+        emit VaultRootReceiverAdapter.VaultRootSourceSet(
+            oldProviderContract, oldProviderChain, rootProviderContract, rootProviderChain
+        );
+        adapter.setVaultRootSource(rootProviderChain, rootProviderContract);
+
         assertEq(adapter.rootSenderChain(), rootProviderChain);
         assertEq(adapter.rootSenderAddress(), rootProviderContract);
     }
