@@ -48,25 +48,6 @@ abstract contract LegacyStarkExchangeBridge is MainStorage {
     uint256 internal constant TOKEN_CONTRACT_ADDRESS_OFFSET = SELECTOR_OFFSET + SELECTOR_SIZE;
 
     /**
-     * @notice Returns whether the contract is frozen
-     * @return Always returns false as this contract is never frozen
-     */
-    function isFrozen() external pure returns (bool) {
-        return false;
-    }
-
-    /**
-     * @notice Gets the withdrawal balance for a specific owner and asset
-     * @param ownerKey The Stark key of the owner
-     * @param assetId The asset ID to check
-     * @return The withdrawal balance in non-quantized units
-     */
-    function getWithdrawalBalance(uint256 ownerKey, uint256 assetId) external view returns (uint256) {
-        uint256 presumedAssetType = assetId;
-        return _fromQuantized(presumedAssetType, pendingWithdrawals[ownerKey][assetId]);
-    }
-
-    /**
      * @notice Moves funds from the pending withdrawal account to the owner address
      * @dev This function can be called by anyone
      * @dev Can be called normally while frozen
@@ -86,6 +67,25 @@ abstract contract LegacyStarkExchangeBridge is MainStorage {
         emit LogWithdrawalPerformed(
             ownerKey, assetType, _fromQuantized(assetType, quantizedAmount), quantizedAmount, recipient
         );
+    }
+
+    /**
+     * @notice Gets the withdrawal balance for a specific owner and asset
+     * @param ownerKey The Stark key of the owner
+     * @param assetId The asset ID to check
+     * @return The withdrawal balance in non-quantized units
+     */
+    function getWithdrawalBalance(uint256 ownerKey, uint256 assetId) external view returns (uint256) {
+        uint256 presumedAssetType = assetId;
+        return _fromQuantized(presumedAssetType, pendingWithdrawals[ownerKey][assetId]);
+    }
+
+    /**
+     * @notice Returns whether the contract is frozen
+     * @return Always returns false as this contract is never frozen
+     */
+    function isFrozen() external pure returns (bool) {
+        return false;
     }
 
     /**
@@ -109,23 +109,33 @@ abstract contract LegacyStarkExchangeBridge is MainStorage {
     }
 
     /**
-     * @notice Same as getEthKey, but fails when a stark key is not registered
-     * @param ownerKey The Stark key to look up
-     * @return ethKey The Ethereum address associated with the Stark key
-     * @dev Reverts if the Stark key is not registered
+     * @notice Gets the asset info for a given asset type
+     * @param assetType The asset type to get info for
+     * @return assetInfo The asset info bytes
+     * @dev Reverts if the asset type is not registered
      */
-    function strictGetEthKey(uint256 ownerKey) internal view returns (address ethKey) {
-        ethKey = getEthKey(ownerKey);
-        require(ethKey != address(0x0), "USER_UNREGISTERED");
+    function getAssetInfo(uint256 assetType) public view returns (bytes memory assetInfo) {
+        // Verify that the registration is set and valid.
+        require(registeredAssetType[assetType], "ASSET_TYPE_NOT_REGISTERED");
+
+        // Retrieve registration.
+        assetInfo = assetTypeToAssetInfo[assetType];
     }
 
     /**
-     * @notice Checks if the message sender is the owner of the given Stark key
-     * @param ownerKey The Stark key to check
-     * @return True if the message sender owns the Stark key
+     * @notice Gets the quantum for an asset type
+     * @param presumedAssetType The asset type to get quantum for
+     * @return quantum The quantum value for the asset type
+     * @dev Returns 1 as default quantum for unregistered asset types (e.g., NFTs)
      */
-    function isMsgSenderKeyOwner(uint256 ownerKey) internal view returns (bool) {
-        return msg.sender == getEthKey(ownerKey);
+    function getQuantum(uint256 presumedAssetType) public view returns (uint256 quantum) {
+        if (!registeredAssetType[presumedAssetType]) {
+            // Default quantization, for NFTs
+            quantum = 1;
+        } else {
+            // Retrieve registration.
+            quantum = assetTypeToQuantum[presumedAssetType];
+        }
     }
 
     /**
@@ -159,78 +169,6 @@ abstract contract LegacyStarkExchangeBridge is MainStorage {
     }
 
     /**
-     * @notice Extract the tokenSelector from assetInfo
-     * @dev Works like bytes4 tokenSelector = abi.decode(assetInfo, (bytes4))
-     *      but does not revert when assetInfo.length < SELECTOR_OFFSET
-     * @param assetInfo The asset info bytes to extract selector from
-     * @return selector The extracted token selector
-     */
-    function _extractTokenSelectorFromAssetInfo(bytes memory assetInfo) private pure returns (bytes4 selector) {
-        assembly {
-            selector :=
-                and(
-                    0xffffffff00000000000000000000000000000000000000000000000000000000,
-                    mload(add(assetInfo, SELECTOR_OFFSET))
-                )
-        }
-    }
-
-    /**
-     * @notice Gets the asset info for a given asset type
-     * @param assetType The asset type to get info for
-     * @return assetInfo The asset info bytes
-     * @dev Reverts if the asset type is not registered
-     */
-    function getAssetInfo(uint256 assetType) public view returns (bytes memory assetInfo) {
-        // Verify that the registration is set and valid.
-        require(registeredAssetType[assetType], "ASSET_TYPE_NOT_REGISTERED");
-
-        // Retrieve registration.
-        assetInfo = assetTypeToAssetInfo[assetType];
-    }
-
-    /**
-     * @notice Extracts the token selector from an asset type
-     * @param assetType The asset type to extract selector from
-     * @return The token selector
-     */
-    function _extractTokenSelectorFromAssetType(uint256 assetType) private view returns (bytes4) {
-        return _extractTokenSelectorFromAssetInfo(getAssetInfo(assetType));
-    }
-
-    /**
-     * @notice Checks if an asset type represents ETH
-     * @param assetType The asset type to check
-     * @return True if the asset type is ETH
-     */
-    function isEther(uint256 assetType) internal view returns (bool) {
-        return _extractTokenSelectorFromAssetType(assetType) == ETH_SELECTOR;
-    }
-
-    /**
-     * @notice Checks if an asset type represents an ERC20 token
-     * @param assetType The asset type to check
-     * @return True if the asset type is an ERC20 token
-     */
-    function isERC20(uint256 assetType) internal view returns (bool) {
-        return _extractTokenSelectorFromAssetType(assetType) == ERC20_SELECTOR;
-    }
-
-    /**
-     * @notice Extracts the contract address from asset info
-     * @param assetInfo The asset info bytes
-     * @return The contract address
-     */
-    function _extractContractAddressFromAssetInfo(bytes memory assetInfo) private pure returns (address) {
-        uint256 offset = TOKEN_CONTRACT_ADDRESS_OFFSET;
-        uint256 res;
-        assembly {
-            res := mload(add(assetInfo, offset))
-        }
-        return address(uint160(res));
-    }
-
-    /**
      * @notice Extracts the contract address from an asset type
      * @param assetType The asset type to extract address from
      * @return The contract address
@@ -257,22 +195,6 @@ abstract contract LegacyStarkExchangeBridge is MainStorage {
     }
 
     /**
-     * @notice Gets the quantum for an asset type
-     * @param presumedAssetType The asset type to get quantum for
-     * @return quantum The quantum value for the asset type
-     * @dev Returns 1 as default quantum for unregistered asset types (e.g., NFTs)
-     */
-    function getQuantum(uint256 presumedAssetType) public view returns (uint256 quantum) {
-        if (!registeredAssetType[presumedAssetType]) {
-            // Default quantization, for NFTs
-            quantum = 1;
-        } else {
-            // Retrieve registration.
-            quantum = assetTypeToQuantum[presumedAssetType];
-        }
-    }
-
-    /**
      * @notice Checks if an asset type is fungible
      * @param assetType The asset type to check
      * @return True if the asset type is fungible (ETH or ERC20)
@@ -280,5 +202,83 @@ abstract contract LegacyStarkExchangeBridge is MainStorage {
     function isFungibleAssetType(uint256 assetType) internal view returns (bool) {
         bytes4 tokenSelector = _extractTokenSelectorFromAssetType(assetType);
         return tokenSelector == ETH_SELECTOR || tokenSelector == ERC20_SELECTOR;
+    }
+
+    /**
+     * @notice Same as getEthKey, but fails when a stark key is not registered
+     * @param ownerKey The Stark key to look up
+     * @return ethKey The Ethereum address associated with the Stark key
+     * @dev Reverts if the Stark key is not registered
+     */
+    function strictGetEthKey(uint256 ownerKey) internal view returns (address ethKey) {
+        ethKey = getEthKey(ownerKey);
+        require(ethKey != address(0x0), "USER_UNREGISTERED");
+    }
+
+    /**
+     * @notice Checks if the message sender is the owner of the given Stark key
+     * @param ownerKey The Stark key to check
+     * @return True if the message sender owns the Stark key
+     */
+    function isMsgSenderKeyOwner(uint256 ownerKey) internal view returns (bool) {
+        return msg.sender == getEthKey(ownerKey);
+    }
+
+    /**
+     * @notice Checks if an asset type represents ETH
+     * @param assetType The asset type to check
+     * @return True if the asset type is ETH
+     */
+    function isEther(uint256 assetType) internal view returns (bool) {
+        return _extractTokenSelectorFromAssetType(assetType) == ETH_SELECTOR;
+    }
+
+    /**
+     * @notice Checks if an asset type represents an ERC20 token
+     * @param assetType The asset type to check
+     * @return True if the asset type is an ERC20 token
+     */
+    function isERC20(uint256 assetType) internal view returns (bool) {
+        return _extractTokenSelectorFromAssetType(assetType) == ERC20_SELECTOR;
+    }
+    /**
+     * @notice Extracts the token selector from an asset type
+     * @param assetType The asset type to extract selector from
+     * @return The token selector
+     */
+
+    function _extractTokenSelectorFromAssetType(uint256 assetType) private view returns (bytes4) {
+        return _extractTokenSelectorFromAssetInfo(getAssetInfo(assetType));
+    }
+
+    /**
+     * @notice Extract the tokenSelector from assetInfo
+     * @dev Works like bytes4 tokenSelector = abi.decode(assetInfo, (bytes4))
+     *      but does not revert when assetInfo.length < SELECTOR_OFFSET
+     * @param assetInfo The asset info bytes to extract selector from
+     * @return selector The extracted token selector
+     */
+    function _extractTokenSelectorFromAssetInfo(bytes memory assetInfo) private pure returns (bytes4 selector) {
+        assembly {
+            selector :=
+                and(
+                    0xffffffff00000000000000000000000000000000000000000000000000000000,
+                    mload(add(assetInfo, SELECTOR_OFFSET))
+                )
+        }
+    }
+
+    /**
+     * @notice Extracts the contract address from asset info
+     * @param assetInfo The asset info bytes
+     * @return The contract address
+     */
+    function _extractContractAddressFromAssetInfo(bytes memory assetInfo) private pure returns (address) {
+        uint256 offset = TOKEN_CONTRACT_ADDRESS_OFFSET;
+        uint256 res;
+        assembly {
+            res := mload(add(assetInfo, offset))
+        }
+        return address(uint160(res));
     }
 }
