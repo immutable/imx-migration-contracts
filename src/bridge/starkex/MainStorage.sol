@@ -21,53 +21,57 @@ contract MainStorage is ProxyStorage {
     /// @dev Layout length constant for storage gap management
     uint256 internal constant LAYOUT_LENGTH = 2 ** 64;
 
-    /// @notice Address of the escape verifier contract
+    /// @notice NO_LONGER_USED: Address of the escape verifier contract
     address escapeVerifierAddress; // NOLINT: constable-states.
 
-    /// @notice Global flag indicating if the DEX state is frozen
+    /// @notice NO_LONGER_USED: Global flag indicating if the DEX state is frozen
     bool stateFrozen; // NOLINT: constable-states.
 
-    /// @notice Time when unFreeze can be successfully called (UNFREEZE_DELAY after freeze)
+    /// @notice NO_LONGER_USED: Time when unFreeze can be successfully called (UNFREEZE_DELAY after freeze)
     uint256 unFreezeTime; // NOLINT: constable-states.
 
-    /// @notice Pending deposits mapping: STARK key => asset id => vault id => quantized amount
+    /// @notice NO_LONGER_USED: Pending deposits mapping: STARK key => asset id => vault id => quantized amount
     mapping(uint256 => mapping(uint256 => mapping(uint256 => uint256))) pendingDeposits;
 
-    /// @notice Cancellation requests mapping: STARK key => asset id => vault id => request timestamp
+    /// @notice NO_LONGER_USED: Cancellation requests mapping: STARK key => asset id => vault id => request timestamp
     mapping(uint256 => mapping(uint256 => mapping(uint256 => uint256))) cancellationRequests;
 
-    /// @notice Pending withdrawals mapping: STARK key => asset id => quantized amount
+    /// @notice no_longer_used: Pending withdrawals mapping: STARK key => asset id => quantized amount
     mapping(uint256 => mapping(uint256 => uint256)) pendingWithdrawals;
 
-    /// @notice Mapping of vault_id => escape used boolean
+    /// @notice NO_LONGER_USED: Mapping of vault_id => escape used boolean
     mapping(uint256 => bool) escapesUsed;
 
-    /// @notice Number of escapes that were performed when frozen
+    /// @notice NO_LONGER_USED: Number of escapes that were performed when frozen
     uint256 escapesUsedCount; // NOLINT: constable-states.
 
     /// @notice DEPRECATED: Full withdrawal requests mapping (replaced by forcedActionRequests)
     /// @dev NOLINTNEXTLINE naming-convention
     mapping(uint256 => mapping(uint256 => uint256)) fullWithdrawalRequests_DEPRECATED;
 
-    /// @notice State sequence number
+    /// @notice NO_LONGER_USED: State sequence number
     uint256 sequenceNumber; // NOLINT: constable-states uninitialized-state.
 
-    /// @notice Vaults Tree Root & Height
+    /// @notice Vaults Tree Root
     uint256 public vaultRoot; // NOLINT: constable-states uninitialized-state.
+
+    /// @notice NO_LONGER_USED: Vault Tree Height
     uint256 vaultTreeHeight; // NOLINT: constable-states uninitialized-state.
 
-    /// @notice Order Tree Root & Height
+    /// @notice NO_LONGER_USED: Order Tree Root
     uint256 orderRoot; // NOLINT: constable-states uninitialized-state.
+
+    /// @notice NO_LONGER_USED: Order Tree Height
     uint256 orderTreeHeight; // NOLINT: constable-states uninitialized-state.
 
-    /// @notice Mapping of addresses that are allowed to add tokens
+    /// @notice NO_LONGER_USED: Mapping of addresses that are allowed to add tokens
     mapping(address => bool) tokenAdmins;
 
     /// @notice DEPRECATED: User admins mapping (no longer in use, remains for backwards compatibility)
     /// @dev NOLINTNEXTLINE naming-convention
     mapping(address => bool) userAdmins_DEPRECATED;
 
-    /// @notice Mapping of addresses that are operators (allowed to update state)
+    /// @notice NO_LONGER_USED: Mapping of addresses that are operators (allowed to update state)
     mapping(address => bool) operators;
 
     /// @notice Mapping of contract ID to asset data
@@ -86,14 +90,14 @@ contract MainStorage is ProxyStorage {
     /// @notice Mapping from STARK public key to the Ethereum public key of its owner
     mapping(uint256 => address) ethKeys; // NOLINT: uninitialized-state.
 
-    /// @notice Timelocked state transition and availability verification chain
+    /// @notice NO_LONGER_USED: Timelocked state transition and availability verification chain
     StarkExTypes.ApprovalChainData verifiersChain;
     StarkExTypes.ApprovalChainData availabilityVerifiersChain;
 
-    /// @notice Batch id of last accepted proof
+    /// @notice NO_LONGER_USED: Batch id of last accepted proof
     uint256 lastBatchId; // NOLINT: constable-states uninitialized-state.
 
-    /// @notice Mapping between sub-contract index to sub-contract address
+    /// @notice NO_LONGER_USED: Mapping between sub-contract index to sub-contract address
     mapping(uint256 => address) subContracts; // NOLINT: uninitialized-state.
 
     /// @notice DEPRECATED: Permissive asset type mapping (no longer in use, remains for backwards compatibility)
@@ -101,19 +105,19 @@ contract MainStorage is ProxyStorage {
     mapping(uint256 => bool) permissiveAssetType_DEPRECATED;
     // ---- END OF MAIN STORAGE AS DEPLOYED IN STARKEX2.0 ----
 
-    /// @notice Onchain-data version configured for the system
+    /// @notice NO_LONGER_USED: Onchain-data version configured for the system
     uint256 onchainDataVersion; // NOLINT: constable-states uninitialized-state.
 
-    /// @notice Counter of forced action request in block. The key is the block number
+    /// @notice NO_LONGER_USED: Counter of forced action request in block. The key is the block number
     mapping(uint256 => uint256) forcedRequestsInBlock;
 
-    /// @notice ForcedAction requests: actionHash => requestTime
+    /// @notice NO_LONGER_USED: ForcedAction requests: actionHash => requestTime
     mapping(bytes32 => uint256) forcedActionRequests;
 
-    /// @notice Mapping for timelocked actions: actionKey => activation time
+    /// @notice NO_LONGER_USED: Mapping for timelocked actions: actionKey => activation time
     mapping(bytes32 => uint256) actionsTimeLock;
 
-    /// @notice Append only list of requested forced action hashes
+    /// @notice NO_LONGER_USED: Append only list of requested forced action hashes
     bytes32[] actionHashList;
 
     // ---- START OF STORAGE CHANGES FOR IMMUTABLE X BRIDGE MIGRATION UPGRADE ----

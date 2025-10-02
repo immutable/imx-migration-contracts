@@ -20,7 +20,7 @@ contract ProxyStorage is GovernanceStorage {
     /// @dev NOLINTNEXTLINE: naming-convention uninitialized-state - this is intentional as it's a storage contract
     mapping(address => bytes32) internal initializationHash_DEPRECATED;
 
-    /// @notice Mapping of implementation hashes to their enabled time
+    /// @notice NO_LONGER_USED: Mapping of implementation hashes to their enabled time
     /// @dev The time after which we can switch to the implementation
     /// @dev Hash(implementation, data, finalize) => time
     mapping(bytes32 => uint256) internal enabledTime;

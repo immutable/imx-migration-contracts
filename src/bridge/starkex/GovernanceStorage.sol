@@ -25,7 +25,7 @@ struct GovernanceInfoStruct {
  * @dev This contract provides a centralized storage for governance information across multiple entities
  */
 contract GovernanceStorage {
-    /// @notice Mapping from governor tag to its corresponding GovernanceInfoStruct
+    /// @notice NO_LONGER_USED: Mapping from governor tag to its corresponding GovernanceInfoStruct
     /// @dev NOLINT uninitialized-state - this is intentional as it's a storage contract
     mapping(string => GovernanceInfoStruct) internal governanceInfo;
 }
