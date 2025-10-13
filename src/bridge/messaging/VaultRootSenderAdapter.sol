@@ -13,6 +13,26 @@ import {IAxelarGateway} from "@axelar-gmp-sdk-solidity/interfaces/IAxelarGateway
  * @dev Only the configured vault root sender is authorized to send vault root hashes through this adapter. The sender is the StarkEx bridge contract on Ethereum.
  */
 contract VaultRootSenderAdapter is AxelarExecutable {
+    /// @notice Thrown when an invalid chain ID is provided for the vault root destination.
+    error InvalidChainId();
+
+    /// @notice Thrown when any entity other than the authorised `vaultRootSender` attempts to send a vault root through this adapter
+    error UnauthorizedRootSender();
+
+    /// @notice Thrown when no destination gas fee is provided for the cross-chain transaction
+    error NoBridgeFee();
+
+    /// @notice Thrown when an invalid vault root (zero value) is provided
+    error InvalidVaultRoot();
+
+    /**
+     * @notice Emitted when a vault root is sent to the destination chain
+     * @param _destinationChain The chain ID of the destination chain
+     * @param _destinationReceiver The address of the vault receiver contract on the destination chain
+     * @param _payload The encoded vault root data being sent
+     */
+    event VaultRootSent(string indexed _destinationChain, string indexed _destinationReceiver, bytes indexed _payload);
+
     bytes32 public constant SET_VAULT_ROOT = keccak256("SET_VAULT_ROOT");
 
     /// @notice The StarkEx bridge contract address that is authorized to send vault roots through this adapter
@@ -28,26 +48,6 @@ contract VaultRootSenderAdapter is AxelarExecutable {
     /// @notice The address of the vault root receiver contract on the destination chain
     /// @dev This is a string representation of the contract address
     string public rootReceiver;
-
-    /**
-     * @notice Emitted when a vault root is sent to the destination chain
-     * @param _destinationChain The chain ID of the destination chain
-     * @param _destinationReceiver The address of the vault receiver contract on the destination chain
-     * @param _payload The encoded vault root data being sent
-     */
-    event VaultRootSent(string indexed _destinationChain, string indexed _destinationReceiver, bytes indexed _payload);
-
-    /// @notice Thrown when an invalid chain ID is provided for the vault root destination.
-    error InvalidChainId();
-
-    /// @notice Thrown when any entity other than the authorised `vaultRootSender` attempts to send a vault root through this adapter
-    error UnauthorizedRootSender();
-
-    /// @notice Thrown when no destination gas fee is provided for the cross-chain transaction
-    error NoBridgeFee();
-
-    /// @notice Thrown when an invalid vault root (zero value) is provided
-    error InvalidVaultRoot();
 
     /**
      * @notice Constructs the VaultRootSender contract

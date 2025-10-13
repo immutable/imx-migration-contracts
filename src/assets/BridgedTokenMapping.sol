@@ -63,12 +63,14 @@ abstract contract BridgedTokenMapping {
     /// @notice Mapping of Immutable X asset IDs to their corresponding asset details
     mapping(uint256 idOnX => TokenMapping) public assetMappings;
 
+    function registerTokenMappings(TokenMapping[] calldata assetsDetails) external virtual;
+
     /**
      * @notice Checks if a given Immutable X asset ID is mapped to an asset on Immutable zkEVM.
      * @param assetId The Immutable X ID of the asset to check.
      * @return True if the asset is registered, false otherwise.
      */
-    function isMapped(uint256 assetId) public view returns (bool) {
+    function isMapped(uint256 assetId) external view returns (bool) {
         return assetMappings[assetId].tokenOnZKEVM != address(0);
     }
 
@@ -77,7 +79,7 @@ abstract contract BridgedTokenMapping {
      * @param assetId The Immutable X ID of the asset.
      * @return The details of the asset association if it exists; otherwise, returns an empty TokenAssociation struct.
      */
-    function getTokenMapping(uint256 assetId) public view returns (TokenMapping memory) {
+    function getTokenMapping(uint256 assetId) external view returns (TokenMapping memory) {
         return assetMappings[assetId];
     }
 
@@ -86,7 +88,7 @@ abstract contract BridgedTokenMapping {
      * @param assetId The Immutable X ID of the asset.
      * @return The address of the asset on Immutable zkEVM, if it exists; otherwise, returns the zero address.
      */
-    function getZKEVMAddress(uint256 assetId) public view returns (address) {
+    function getZKEVMAddress(uint256 assetId) external view returns (address) {
         return assetMappings[assetId].tokenOnZKEVM;
     }
 
@@ -95,7 +97,7 @@ abstract contract BridgedTokenMapping {
      * @param assetId The Immutable X ID of the asset.
      * @return The quantum of the asset on Immutable X, if it exists; otherwise, returns zero.
      */
-    function getQuantum(uint256 assetId) public view returns (uint256) {
+    function getQuantum(uint256 assetId) external view returns (uint256) {
         return assetMappings[assetId].tokenOnIMX.quantum;
     }
 
@@ -104,7 +106,7 @@ abstract contract BridgedTokenMapping {
      * @dev This function is internal and can be called by derived contracts to register a new asset mapping.
      * @param tokenMapping The details of the asset to register, including its Immutable X ID, quantum, and corresponding zkEVM address.
      */
-    function _registerTokenMapping(TokenMapping memory tokenMapping) internal {
+    function _registerTokenMapping(TokenMapping calldata tokenMapping) private {
         ImmutableXToken memory tokenOnX = tokenMapping.tokenOnIMX;
 
         require(tokenOnX.id != 0, InvalidTokenDetails("Asset ID cannot be zero"));
@@ -121,13 +123,11 @@ abstract contract BridgedTokenMapping {
      * @dev This function is internal and can be called by derived contracts to register multiple asset mappings at once.
      * @param assets An array of TokenAssociation structs containing the details of the assets to register.
      */
-    function _registerTokenMappings(TokenMapping[] memory assets) internal {
+    function _registerTokenMappings(TokenMapping[] calldata assets) internal {
         require(assets.length > 0, InvalidTokenDetails("No assets to register"));
 
         for (uint256 i = 0; i < assets.length; i++) {
             _registerTokenMapping(assets[i]);
         }
     }
-
-    function registerTokenMappings(TokenMapping[] memory assetsDetails) external virtual;
 }

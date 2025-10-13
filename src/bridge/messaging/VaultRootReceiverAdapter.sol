@@ -20,17 +20,28 @@ contract VaultRootReceiverAdapter is AxelarExecutable, Ownable {
     /// @notice Thrown when an invalid chain ID is provided for the vault root source.
     error InvalidChainId();
 
-    /// @notice Thrown when the cross-chain message does not match the expected format or signature.
-    error InvalidMessage();
+    /// @notice Thrown when the cross-chain message does not contain the expected signature.
+    error InvalidMessageSignature(bytes32 msgSig);
+
+    /// @notice Thrown when the cross-chain message does not have the expected length.
+    error InvalidMessageLength(uint256 msgLength);
 
     /// @notice Thrown when a cross-chain message is received by an unauthorized sender.
-    error UnauthorizedMessageSender();
+    error UnauthorizedMessageSender(string);
 
     /// @notice Thrown when attempting to perform an action that requires the VaultRootReceiver to be set, when it is not set.
     error VaultRootReceiverNotSet();
 
     /// @notice Thrown when attempting to perform an action that requires the vault root source chain id and contract to be set, when they are not set.
     error VaultRootSourceNotSet();
+
+    /// @notice Emitted when the vault root source chain and contract are set.
+    event VaultRootSourceSet(
+        string indexed oldRootSenderAddress,
+        string indexed oldRootSenderChain,
+        string indexed newRootSenderAddress,
+        string newRootSenderChain
+    );
 
     /// @notice Emitted when the VaultRootReceiver contract is set.
     event VaultRootReceiverSet(address indexed vaultRootReceiver);
@@ -83,8 +94,13 @@ contract VaultRootReceiverAdapter is AxelarExecutable, Ownable {
         require(bytes(_rootSenderChain).length != 0, InvalidChainId());
         require(bytes(_rootSenderAddress).length != 0, InvalidAddress());
 
+        string memory _oldRootSenderChain = rootSenderChain;
+        string memory _oldRootSenderAddress = rootSenderAddress;
+
         rootSenderChain = _rootSenderChain;
         rootSenderAddress = _rootSenderAddress;
+
+        emit VaultRootSourceSet(_oldRootSenderAddress, _oldRootSenderChain, _rootSenderAddress, _rootSenderChain);
     }
 
     /**
@@ -100,16 +116,18 @@ contract VaultRootReceiverAdapter is AxelarExecutable, Ownable {
     {
         // Ensure the adapter is in a valid state to process messages.
         require(address(rootReceiver) != address(0), VaultRootReceiverNotSet());
-        require(bytes(rootSenderChain).length != 0 && bytes(rootSenderAddress).length != 0, VaultRootSourceNotSet());
+        require(bytes(rootSenderAddress).length != 0, VaultRootSourceNotSet());
 
         // Validate the sender
-        require(Strings.equal(_sourceChain, rootSenderChain), UnauthorizedMessageSender());
-        require(Strings.equal(_sourceAddress, rootSenderAddress), UnauthorizedMessageSender());
+        require(Strings.equal(_sourceChain, rootSenderChain), UnauthorizedMessageSender("unexpected chain"));
+        require(
+            Strings.equal(_sourceAddress, rootSenderAddress), UnauthorizedMessageSender("unexpected contract address")
+        );
 
         // Decode the payload and ensure it is structurally valid.
-        require(_payload.length > 32, InvalidMessage());
+        require(_payload.length == 64, InvalidMessageLength(_payload.length));
         (bytes32 sig, uint256 vaultRoot) = abi.decode(_payload, (bytes32, uint256));
-        require(sig == SET_VAULT_ROOT, InvalidMessage());
+        require(sig == SET_VAULT_ROOT, InvalidMessageSignature(sig));
 
         // Forward the vault root to the VaultRootReceiver contract.
         rootReceiver.setVaultRoot(vaultRoot);

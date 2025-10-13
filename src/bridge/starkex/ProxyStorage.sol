@@ -4,6 +4,11 @@ pragma solidity ^0.8.27;
 
 import {GovernanceStorage} from "./GovernanceStorage.sol";
 
+/*
+ * NOTE: This code is imported as is from starkex-contracts repository:
+ * https://github.com/starkware-libs/starkex-contracts/blob/f4ed79bb04b56d587618c24312e87d81e4efc56b/scalable-dex/contracts/src/upgrade/ProxyStorage.sol
+ */
+
 /**
  * @title ProxyStorage
  * @notice Contract that holds Proxy-specific state variables
@@ -15,7 +20,7 @@ contract ProxyStorage is GovernanceStorage {
     /// @dev NOLINTNEXTLINE: naming-convention uninitialized-state - this is intentional as it's a storage contract
     mapping(address => bytes32) internal initializationHash_DEPRECATED;
 
-    /// @notice Mapping of implementation hashes to their enabled time
+    /// @notice NO_LONGER_USED: Mapping of implementation hashes to their enabled time
     /// @dev The time after which we can switch to the implementation
     /// @dev Hash(implementation, data, finalize) => time
     mapping(bytes32 => uint256) internal enabledTime;

@@ -6,7 +6,7 @@ import {IVaultProofVerifier} from "./IVaultProofVerifier.sol";
 
 /**
  * @notice VaultEscapeProofVerifier is a contract that verifies vault proofs, against a given vault root.
- * @dev The implementation reuses the existing EscapeProofVerifier contract found [here](https://github.com/starkware-libs/starkex-contracts/blob/master/scalable-dex/contracts/src/starkex/components/EscapeVerifier.soll)
+ * @dev The implementation reuses the existing EscapeProofVerifier contract found [here](https://github.com/starkware-libs/starkex-contracts/blob/master/scalable-dex/contracts/src/starkex/components/EscapeVerifier.sol)
  *      One notable difference is that this contract does not maintain state about proven vault escapes.
  * @dev A vault information consists of a starkKey, assetId, and quantized balance.
  *

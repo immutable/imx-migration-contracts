@@ -8,12 +8,14 @@ import {MockVaultRootSenderAdapter} from "../../../common/MockVaultRootSenderAda
 
 interface IStarkExchangeProxy is IStarkExchangeMigration {
     event ImplementationAdded(address indexed implementation, bytes initData, bool finalize);
+    event Upgraded(address indexed implementation);
 
     function vaultRoot() external view returns (uint256 vaultRoot);
 
     function addImplementation(address newImplementation, bytes calldata initData, bool finalized) external;
     function upgradeTo(address newImplementation, bytes calldata initData, bool finalized) external payable;
     function implementation() external view returns (address implementation);
+    function isNotFinalized() external view returns (bool);
 }
 
 contract StarkExchangeMigrationTest is Test {
@@ -50,7 +52,11 @@ contract StarkExchangeMigrationTest is Test {
         starkExProxy.addImplementation(starkExchange, initData, false);
 
         skip(15 days);
+        vm.expectEmit(true, true, true, true);
+        emit IStarkExchangeProxy.Upgraded(starkExchange);
         starkExProxy.upgradeTo(starkExchange, initData, false);
+
+        assertTrue(starkExProxy.isNotFinalized(), "Implementation should not be finalized through this upgrade");
 
         vm.stopPrank();
         return starkExchange;

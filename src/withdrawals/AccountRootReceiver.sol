@@ -18,15 +18,15 @@ abstract contract AccountRootReceiver {
     /// @notice The Merkle root of the account associations tree
     bytes32 public accountRoot;
 
-    function _setAccountRoot(bytes32 newRoot, bool _overrideExisting) internal {
-        require(newRoot != bytes32(0), InvalidAccountRoot());
+    function setAccountRoot(bytes32 newRoot) external virtual;
+
+    function _setAccountRoot(bytes32 _newRoot, bool _overrideExisting) internal {
+        require(_newRoot != bytes32(0), InvalidAccountRoot());
         require(accountRoot == bytes32(0) || _overrideExisting, RootOverrideNotAllowed());
 
         bytes32 oldRoot = accountRoot;
-        accountRoot = newRoot;
+        accountRoot = _newRoot;
 
-        emit AccountRootSet(oldRoot, newRoot);
+        emit AccountRootSet(oldRoot, _newRoot);
     }
-
-    function setAccountRoot(bytes32 newRoot) external virtual;
 }

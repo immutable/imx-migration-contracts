@@ -3,14 +3,13 @@
 pragma solidity ^0.8.27;
 
 /**
- * @title IVaultWithdrawalProcessor
- * @notice Interface for processing Immutable X vault withdrawals.
+ * @title BaseVaultWithdrawalProcessor
  * @dev Mechanism for processing vault withdrawals involves the following key steps:
  *     1. Verifying a vault proof against a verified vault root from the L1 StarkExchange bridge contract on Ethereum.
  *     2. Validating an account proof to ensure the provided Ethereum address corresponds to the user's Stark key for a given vault.
  *     3. Disbursing the full quantized balance of the asset to the specified recipient address.
  */
-abstract contract IVaultWithdrawalProcessor {
+abstract contract BaseVaultWithdrawalProcessor {
     /**
      * @notice Emitted when a withdrawal is successfully processed
      * @param starkKey The Stark key of the vault owner

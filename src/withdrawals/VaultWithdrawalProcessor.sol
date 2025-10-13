@@ -8,14 +8,14 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {BridgedTokenMapping} from "@src/assets/BridgedTokenMapping.sol";
 import {IVaultProofVerifier} from "@src/verifiers/vaults/IVaultProofVerifier.sol";
 import {VaultRootReceiver} from "./VaultRootReceiver.sol";
-import {IVaultWithdrawalProcessor} from "./IVaultWithdrawalProcessor.sol";
+import {BaseVaultWithdrawalProcessor} from "./BaseVaultWithdrawalProcessor.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {AccountProofVerifier} from "../verifiers/accounts/AccountProofVerifier.sol";
 import {ProcessorAccessControl} from "./ProcessorAccessControl.sol";
 import {AccountRootReceiver} from "./AccountRootReceiver.sol";
 
 contract VaultWithdrawalProcessor is
-    IVaultWithdrawalProcessor,
+    BaseVaultWithdrawalProcessor,
     ReentrancyGuard,
     ProcessorAccessControl,
     VaultRootReceiver,
@@ -53,7 +53,7 @@ contract VaultWithdrawalProcessor is
     }
 
     /**
-     * @inheritdoc IVaultWithdrawalProcessor
+     * @inheritdoc BaseVaultWithdrawalProcessor
      */
     function verifyAndProcessWithdrawal(
         address receiver,
@@ -128,13 +128,12 @@ contract VaultWithdrawalProcessor is
         rootOverrideAllowed = allowed;
     }
 
-    function registerTokenMappings(TokenMapping[] memory assets) external override onlyRole(TOKEN_MAPPING_MANAGER) {
+    function registerTokenMappings(TokenMapping[] calldata assets) external override onlyRole(TOKEN_MAPPING_MANAGER) {
         _registerTokenMappings(assets);
     }
 
     /**
      * @notice Receive function to accept native IMX funds
-     * @dev Only the vault fund provider can send funds to this contract
      */
     receive() external payable {}
 
@@ -142,7 +141,8 @@ contract VaultWithdrawalProcessor is
         internal
         returns (uint256)
     {
-        // de-quantize the amount
+        // de-quantize the amount. An overflow here would mean the funds would permanently be locked for that vault. However,
+        // this should never happen in practice given sanity checks around the quantum during token registration and the balance of every vault.
         uint256 transferAmount = quantizedBalance * assetMappings[assetId].tokenOnIMX.quantum;
 
         if (asset == NATIVE_IMX_ADDRESS) {
