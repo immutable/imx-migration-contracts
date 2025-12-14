@@ -9,6 +9,11 @@ import {Hashes} from "@openzeppelin/contracts/utils/cryptography/Hashes.sol";
  * @title Account Proof Verifier
  * @notice Verifies that a Merkle proof for a Stark key to Ethereum address association is valid, given a Merkle root of an account associations tree.
  * @dev This contract does not maintain an account root itself, but rather provides a function to verify proofs against a provided Merkle root.
+ * @dev SECURITY NOTE: This contract uses commutativeKeccak256 for leaf computation, where H(a, b) == H(b, a).
+ *      This creates a theoretical collision risk if a user's starkKey < 2^160. However, this risk is mitigated by:
+ *      (1) Withdrawals are executed by a trusted DISBURSER_ROLE, not directly by users - attackers cannot exploit directly.
+ *      (2) The account Merkle tree is generated off-chain by trusted infrastructure - attackers cannot insert collisions.
+ *      (3) The probability of a starkKey being < 2^160 is ~2^-91 (cryptographically negligible).
  */
 abstract contract AccountProofVerifier {
     /// @notice Thrown when the provided account proof is invalid or malformed
@@ -28,6 +33,7 @@ abstract contract AccountProofVerifier {
         internal
         pure
     {
+        // Compute leaf using commutative hash - see contract-level SECURITY NOTE for implications
         bytes32 leaf = Hashes.commutativeKeccak256(bytes32(starkKey), bytes32(uint256(uint160(ethAddress))));
         bool isValid = MerkleProof.verify(proof, accountRoot, leaf);
         require(isValid, InvalidAccountProof("Invalid merkle proof"));
