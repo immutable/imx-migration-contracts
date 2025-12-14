@@ -31,6 +31,11 @@ contract VaultWithdrawalProcessor is
     /// @notice Thrown if attempting to set the root override value to the existing value
     error NoChangeInOverrideValue();
 
+    /// @notice Thrown if dequantization would cause an overflow
+    /// @param quantizedBalance The quantized balance that caused the overflow
+    /// @param quantum The quantum value that caused the overflow
+    error DequantizationOverflow(uint256 quantizedBalance, uint256 quantum);
+
     using SafeERC20 for IERC20;
 
     /// @dev Upper bound for valid Stark keys (2^251 + 17 * 2^192 + 1)
@@ -170,9 +175,14 @@ contract VaultWithdrawalProcessor is
         internal
         returns (uint256)
     {
-        // de-quantize the amount. An overflow here would mean the funds would permanently be locked for that vault. However,
-        // this should never happen in practice given sanity checks around the quantum during token registration and the balance of every vault.
-        uint256 transferAmount = quantizedBalance * assetMappings[assetId].tokenOnIMX.quantum;
+        uint256 quantum = assetMappings[assetId].tokenOnIMX.quantum;
+
+        // Check for overflow before dequantization to provide a clear error message
+        // instead of a generic overflow revert. This should never happen in practice
+        // given sanity checks around the quantum during token registration.
+        require(quantizedBalance <= type(uint256).max / quantum, DequantizationOverflow(quantizedBalance, quantum));
+
+        uint256 transferAmount = quantizedBalance * quantum;
 
         if (asset == NATIVE_IMX_ADDRESS) {
             Address.sendValue(payable(recipient), transferAmount);

@@ -60,6 +60,7 @@ abstract contract LegacyStarkExchangeBridge is MainStorage {
         uint256 assetId = assetType;
         // Fetch and clear quantized amount.
         uint256 quantizedAmount = pendingWithdrawals[ownerKey][assetId];
+        require(quantizedAmount > 0, "NO_PENDING_WITHDRAWAL");
         pendingWithdrawals[ownerKey][assetId] = 0;
 
         // Transfer funds.
