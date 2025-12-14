@@ -63,6 +63,12 @@ abstract contract BridgedTokenMapping {
     /// @notice Mapping of Immutable X asset IDs to their corresponding asset details
     mapping(uint256 idOnX => TokenMapping) public assetMappings;
 
+    /**
+     * @notice Registers mappings between Immutable X asset IDs and their corresponding zkEVM token addresses
+     * @dev Only accounts with TOKEN_MAPPING_MANAGER role can call this function
+     * @dev Each asset can only be registered once; attempts to re-register will revert
+     * @param assetsDetails Array of token mappings containing Immutable X token details and zkEVM addresses
+     */
     function registerTokenMappings(TokenMapping[] calldata assetsDetails) external virtual;
 
     /**
@@ -104,6 +110,7 @@ abstract contract BridgedTokenMapping {
     /**
      * @notice Registers a new asset mapping.
      * @dev This function is internal and can be called by derived contracts to register a new asset mapping.
+     * @dev NOTE: A token can only be registered once, so ensuring the correctness of values is important.
      * @param tokenMapping The details of the asset to register, including its Immutable X ID, quantum, and corresponding zkEVM address.
      */
     function _registerTokenMapping(TokenMapping calldata tokenMapping) private {

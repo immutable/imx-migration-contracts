@@ -95,9 +95,7 @@ contract StarkExchangeMigrationTest is Test {
         IStarkExchangeMigration.TokenMigrationDetails[] memory asset =
             new IStarkExchangeMigration.TokenMigrationDetails[](1);
         asset[0] = IStarkExchangeMigration.TokenMigrationDetails({
-            token: address(0xeee),
-            amount: migrateAmount,
-            bridgeFee: BRIDGE_FEE
+            token: address(0xeee), amount: migrateAmount, bridgeFee: BRIDGE_FEE
         });
 
         starkExProxy.migrateHoldings{value: bridgeFee}(asset);
@@ -130,9 +128,7 @@ contract StarkExchangeMigrationTest is Test {
             IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
                 new IStarkExchangeMigration.TokenMigrationDetails[](1);
             assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
-                token: address(token),
-                amount: initStarkExBal,
-                bridgeFee: bridgeFee
+                token: address(token), amount: initStarkExBal, bridgeFee: bridgeFee
             });
 
             starkExProxy.migrateHoldings{value: bridgeFee}(assets);

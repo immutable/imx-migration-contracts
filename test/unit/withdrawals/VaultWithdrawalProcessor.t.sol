@@ -473,11 +473,30 @@ contract VaultWithdrawalProcessorTest is
     }
 
     function test_SetRootOverrideAllowed() public {
+        // Initial value is true, set to false
+        vm.expectEmit(true, true, true, true);
+        emit VaultWithdrawalProcessor.RootOverrideSet(false);
         vaultWithdrawalProcessor.setRootOverrideAllowed(false);
         assertEq(vaultWithdrawalProcessor.rootOverrideAllowed(), false, "rootOverrideAllowed should be set to false");
 
+        // Set back to true
+        vm.expectEmit(true, true, true, true);
+        emit VaultWithdrawalProcessor.RootOverrideSet(true);
         vaultWithdrawalProcessor.setRootOverrideAllowed(true);
         assertEq(vaultWithdrawalProcessor.rootOverrideAllowed(), true, "rootOverrideAllowed should be set to true");
+    }
+
+    function test_RevertIf_SetRootOverrideAllowed_NoChange() public {
+        // Initial value is true, trying to set to true should revert
+        vm.expectRevert(VaultWithdrawalProcessor.NoChangeInOverrideValue.selector);
+        vaultWithdrawalProcessor.setRootOverrideAllowed(true);
+
+        // Set to false first
+        vaultWithdrawalProcessor.setRootOverrideAllowed(false);
+
+        // Trying to set to false again should revert
+        vm.expectRevert(VaultWithdrawalProcessor.NoChangeInOverrideValue.selector);
+        vaultWithdrawalProcessor.setRootOverrideAllowed(false);
     }
 
     function test_RevertIf_SetRootOverrideAllowed_Unauthorized() public {

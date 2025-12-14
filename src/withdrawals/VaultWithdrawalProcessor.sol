@@ -23,6 +23,18 @@ contract VaultWithdrawalProcessor is
     AccountProofVerifier,
     BridgedTokenMapping
 {
+    /// @notice Emitted when the root override setting is changed
+    /// @param newValue The new value for the override flag. True indicates override enabled.
+    event RootOverrideSet(bool newValue);
+
+    /// @notice Thrown if attempting to set the root override value to the existing value
+    error NoChangeInOverrideValue();
+
+    /// @notice Thrown if dequantization would cause an overflow
+    /// @param quantizedBalance The quantized balance that caused the overflow
+    /// @param quantum The quantum value that caused the overflow
+    error DequantizationOverflow(uint256 quantizedBalance, uint256 quantum);
+
     using SafeERC20 for IERC20;
 
     /// @dev Upper bound for valid Stark keys (2^251 + 17 * 2^192 + 1)
@@ -124,10 +136,21 @@ contract VaultWithdrawalProcessor is
         _setAccountRoot(newRoot, rootOverrideAllowed);
     }
 
+    /**
+     * @notice Enables or disables the ability to override vault and account roots after initial setting
+     * @dev Only accounts with DEFAULT_ADMIN_ROLE can call this function
+     * @dev Reverts if the new value is the same as the current value
+     * @param allowed True to allow root overrides, false to lock roots after first setting
+     */
     function setRootOverrideAllowed(bool allowed) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(rootOverrideAllowed != allowed, NoChangeInOverrideValue());
         rootOverrideAllowed = allowed;
+        emit RootOverrideSet(allowed);
     }
 
+    /**
+     * @inheritdoc BridgedTokenMapping
+     */
     function registerTokenMappings(TokenMapping[] calldata assets) external override onlyRole(TOKEN_MAPPING_MANAGER) {
         _registerTokenMappings(assets);
     }
@@ -137,13 +160,27 @@ contract VaultWithdrawalProcessor is
      */
     receive() external payable {}
 
+    /**
+     * @notice Transfers funds from the contract to the recipient
+     * @dev This function is internal and can be called by derived contracts to transfer funds
+     * @param recipient The address to transfer the funds to
+     * @param assetId The ID of the asset to transfer
+     * @param asset The address of the asset to transfer
+     * @param quantizedBalance The quantized balance of the asset to transfer
+     * @return The amount of funds transferred
+     */
     function _transferFunds(address recipient, uint256 assetId, address asset, uint256 quantizedBalance)
         internal
         returns (uint256)
     {
-        // de-quantize the amount. An overflow here would mean the funds would permanently be locked for that vault. However,
-        // this should never happen in practice given sanity checks around the quantum during token registration and the balance of every vault.
-        uint256 transferAmount = quantizedBalance * assetMappings[assetId].tokenOnIMX.quantum;
+        uint256 quantum = assetMappings[assetId].tokenOnIMX.quantum;
+
+        // Check for overflow before dequantization to provide a clear error message
+        // instead of a generic overflow revert. This should never happen in practice
+        // given sanity checks around the quantum during token registration.
+        require(quantizedBalance <= type(uint256).max / quantum, DequantizationOverflow(quantizedBalance, quantum));
+
+        uint256 transferAmount = quantizedBalance * quantum;
 
         if (asset == NATIVE_IMX_ADDRESS) {
             Address.sendValue(payable(recipient), transferAmount);
@@ -155,6 +192,11 @@ contract VaultWithdrawalProcessor is
         return transferAmount;
     }
 
+    /**
+     * @notice Validates the structure of a vault
+     * @dev This function is internal and can be called by derived contracts to validate a vault
+     * @param vault The vault to validate
+     */
     function _validateVaultStructure(IVaultProofVerifier.Vault memory vault) internal pure {
         require(
             vault.starkKey != 0 && vault.starkKey < STARK_KEY_UPPER_BOUND,

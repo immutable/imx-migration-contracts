@@ -60,6 +60,7 @@ abstract contract LegacyStarkExchangeBridge is MainStorage {
         uint256 assetId = assetType;
         // Fetch and clear quantized amount.
         uint256 quantizedAmount = pendingWithdrawals[ownerKey][assetId];
+        require(quantizedAmount > 0, "NO_PENDING_WITHDRAWAL");
         pendingWithdrawals[ownerKey][assetId] = 0;
 
         // Transfer funds.
@@ -184,11 +185,7 @@ abstract contract LegacyStarkExchangeBridge is MainStorage {
      * @return amount The non-quantized amount
      * @dev Reverts if dequantization would overflow
      */
-    function _fromQuantized(uint256 presumedAssetType, uint256 quantizedAmount)
-        internal
-        view
-        returns (uint256 amount)
-    {
+    function _fromQuantized(uint256 presumedAssetType, uint256 quantizedAmount) internal view returns (uint256 amount) {
         uint256 quantum = getQuantum(presumedAssetType);
         amount = quantizedAmount * quantum;
     }
@@ -259,11 +256,10 @@ abstract contract LegacyStarkExchangeBridge is MainStorage {
      */
     function _extractTokenSelectorFromAssetInfo(bytes memory assetInfo) private pure returns (bytes4 selector) {
         assembly {
-            selector :=
-                and(
-                    0xffffffff00000000000000000000000000000000000000000000000000000000,
-                    mload(add(assetInfo, SELECTOR_OFFSET))
-                )
+            selector := and(
+                0xffffffff00000000000000000000000000000000000000000000000000000000,
+                mload(add(assetInfo, SELECTOR_OFFSET))
+            )
         }
     }
 

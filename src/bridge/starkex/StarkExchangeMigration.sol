@@ -4,7 +4,9 @@ pragma solidity ^0.8.27;
 
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {IRootERC20Bridge} from "../zkEVM/IRootERC20Bridge.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IStarkExchangeMigration} from "./IStarkExchangeMigration.sol";
 import {VaultRootSenderAdapter} from "../messaging/VaultRootSenderAdapter.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -18,12 +20,9 @@ import {LegacyStarkExchangeBridge} from "./LegacyStarkExchangeBridge.sol";
  *      2. Enables an authorised entity to migrate ERC-20 tokens and ETH held by the StarkExchange bridge to Immutable zkEVM.
  *      3. Enables users who had already initiated a withdrawal from Immutable X, prior to this contract upgrade taking effect, to finalise their pending withdrawal.
  */
-contract StarkExchangeMigration is
-    IStarkExchangeMigration,
-    LegacyStarkExchangeBridge,
-    Initializable,
-    ReentrancyGuard
-{
+contract StarkExchangeMigration is IStarkExchangeMigration, LegacyStarkExchangeBridge, Initializable, ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
     /**
      * @notice Restrict access only to the migration manager
      */
@@ -43,8 +42,12 @@ contract StarkExchangeMigration is
      * @dev The hash of the data used to initialize the contract is pre-committed to when the contract upgrade is proposed in the Proxy's timelock upgrade.
      */
     function initialize(bytes calldata data) external initializer {
-        (address _migrationManager, address _zkEVMBridge, address _rootSenderAdapter, address _zkEVMWithdrawalProcessor)
-        = abi.decode(data, (address, address, address, address));
+        (
+            address _migrationManager,
+            address _zkEVMBridge,
+            address _rootSenderAdapter,
+            address _zkEVMWithdrawalProcessor
+        ) = abi.decode(data, (address, address, address, address));
 
         require(_migrationManager != address(0), InvalidAddress());
         require(_zkEVMBridge != address(0), InvalidAddress());
@@ -110,8 +113,9 @@ contract StarkExchangeMigration is
 
         uint256 balance = token.balanceOf(address(this));
         require(balance >= amount, AmountExceedsBalance());
-        // Transfer the specified amount of tokens to the recipient
-        token.approve(zkEVMBridge, amount);
+        // Approve the zkEVM bridge to spend the tokens
+        // Using forceApprove to handle tokens that require zero approval first (e.g., USDT)
+        IERC20(address(token)).forceApprove(zkEVMBridge, amount);
         IRootERC20Bridge(zkEVMBridge).depositTo{value: bridgeFee}(token, zkEVMWithdrawalProcessor, amount);
     }
 

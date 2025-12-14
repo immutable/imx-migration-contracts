@@ -221,9 +221,7 @@ contract StarkExchangeMigrationTest is Test {
         IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
             new IStarkExchangeMigration.TokenMigrationDetails[](1);
         assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
-            token: starkExBridge.NATIVE_ETH(),
-            amount: ethAmount,
-            bridgeFee: BRIDGE_FEE
+            token: starkExBridge.NATIVE_ETH(), amount: ethAmount, bridgeFee: BRIDGE_FEE
         });
 
         vm.deal(address(starkExBridge), ethAmount);
@@ -241,9 +239,7 @@ contract StarkExchangeMigrationTest is Test {
         IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
             new IStarkExchangeMigration.TokenMigrationDetails[](1);
         assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
-            token: address(testToken),
-            amount: tokenAmount,
-            bridgeFee: BRIDGE_FEE
+            token: address(testToken), amount: tokenAmount, bridgeFee: BRIDGE_FEE
         });
 
         deal(address(testToken), address(starkExBridge), tokenAmount);
@@ -268,14 +264,10 @@ contract StarkExchangeMigrationTest is Test {
         IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
             new IStarkExchangeMigration.TokenMigrationDetails[](2);
         assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
-            token: starkExBridge.NATIVE_ETH(),
-            amount: ethAmount,
-            bridgeFee: BRIDGE_FEE
+            token: starkExBridge.NATIVE_ETH(), amount: ethAmount, bridgeFee: BRIDGE_FEE
         });
         assets[1] = IStarkExchangeMigration.TokenMigrationDetails({
-            token: address(testToken),
-            amount: tokenAmount,
-            bridgeFee: BRIDGE_FEE
+            token: address(testToken), amount: tokenAmount, bridgeFee: BRIDGE_FEE
         });
 
         vm.deal(address(starkExBridge), ethAmount);
@@ -311,9 +303,7 @@ contract StarkExchangeMigrationTest is Test {
         IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
             new IStarkExchangeMigration.TokenMigrationDetails[](1);
         assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
-            token: starkExBridge.NATIVE_ETH(),
-            amount: ethAmount,
-            bridgeFee: BRIDGE_FEE
+            token: starkExBridge.NATIVE_ETH(), amount: ethAmount, bridgeFee: BRIDGE_FEE
         });
 
         vm.deal(UNAUTHORIZED_ADDRESS, 2 ether);
@@ -340,8 +330,9 @@ contract StarkExchangeMigrationTest is Test {
     function test_RevertIf_MigrateHoldings_ZeroAmount() public {
         IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
             new IStarkExchangeMigration.TokenMigrationDetails[](1);
-        assets[0] =
-            IStarkExchangeMigration.TokenMigrationDetails({token: address(testToken), amount: 0, bridgeFee: BRIDGE_FEE});
+        assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
+            token: address(testToken), amount: 0, bridgeFee: BRIDGE_FEE
+        });
 
         vm.prank(MIGRATION_MANAGER);
         vm.expectRevert(IStarkExchangeMigration.InvalidAmount.selector);
@@ -353,9 +344,7 @@ contract StarkExchangeMigrationTest is Test {
         IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
             new IStarkExchangeMigration.TokenMigrationDetails[](1);
         assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
-            token: address(testToken),
-            amount: excessiveAmount,
-            bridgeFee: BRIDGE_FEE
+            token: address(testToken), amount: excessiveAmount, bridgeFee: BRIDGE_FEE
         });
 
         vm.prank(MIGRATION_MANAGER);
@@ -368,9 +357,7 @@ contract StarkExchangeMigrationTest is Test {
         IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
             new IStarkExchangeMigration.TokenMigrationDetails[](1);
         assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
-            token: starkExBridge.NATIVE_ETH(),
-            amount: excessiveAmount,
-            bridgeFee: BRIDGE_FEE
+            token: starkExBridge.NATIVE_ETH(), amount: excessiveAmount, bridgeFee: BRIDGE_FEE
         });
 
         vm.prank(MIGRATION_MANAGER);
@@ -383,9 +370,7 @@ contract StarkExchangeMigrationTest is Test {
         IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
             new IStarkExchangeMigration.TokenMigrationDetails[](1);
         assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
-            token: address(testToken),
-            amount: tokenAmount,
-            bridgeFee: BRIDGE_FEE
+            token: address(testToken), amount: tokenAmount, bridgeFee: BRIDGE_FEE
         });
 
         vm.prank(MIGRATION_MANAGER);
@@ -398,9 +383,7 @@ contract StarkExchangeMigrationTest is Test {
         IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
             new IStarkExchangeMigration.TokenMigrationDetails[](1);
         assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
-            token: address(testToken),
-            amount: tokenAmount,
-            bridgeFee: BRIDGE_FEE
+            token: address(testToken), amount: tokenAmount, bridgeFee: BRIDGE_FEE
         });
 
         deal(address(testToken), address(starkExBridge), tokenAmount);
