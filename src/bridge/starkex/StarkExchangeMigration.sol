@@ -18,12 +18,7 @@ import {LegacyStarkExchangeBridge} from "./LegacyStarkExchangeBridge.sol";
  *      2. Enables an authorised entity to migrate ERC-20 tokens and ETH held by the StarkExchange bridge to Immutable zkEVM.
  *      3. Enables users who had already initiated a withdrawal from Immutable X, prior to this contract upgrade taking effect, to finalise their pending withdrawal.
  */
-contract StarkExchangeMigration is
-    IStarkExchangeMigration,
-    LegacyStarkExchangeBridge,
-    Initializable,
-    ReentrancyGuard
-{
+contract StarkExchangeMigration is IStarkExchangeMigration, LegacyStarkExchangeBridge, Initializable, ReentrancyGuard {
     /**
      * @notice Restrict access only to the migration manager
      */
@@ -43,8 +38,12 @@ contract StarkExchangeMigration is
      * @dev The hash of the data used to initialize the contract is pre-committed to when the contract upgrade is proposed in the Proxy's timelock upgrade.
      */
     function initialize(bytes calldata data) external initializer {
-        (address _migrationManager, address _zkEVMBridge, address _rootSenderAdapter, address _zkEVMWithdrawalProcessor)
-        = abi.decode(data, (address, address, address, address));
+        (
+            address _migrationManager,
+            address _zkEVMBridge,
+            address _rootSenderAdapter,
+            address _zkEVMWithdrawalProcessor
+        ) = abi.decode(data, (address, address, address, address));
 
         require(_migrationManager != address(0), InvalidAddress());
         require(_zkEVMBridge != address(0), InvalidAddress());

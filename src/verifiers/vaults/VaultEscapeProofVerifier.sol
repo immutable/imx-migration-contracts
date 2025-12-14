@@ -225,12 +225,11 @@ contract VaultEscapeProofVerifier is IVaultProofVerifier {
                     // aZ' = sD*xD.
                     aZ := mulmod(sD, xD, PRIME)
                     // aY' = sN*(bX * xD - xN) - bY*z = -bY * z + sN * (-xN + xD*bX).
-                    aY :=
-                        addmod(
-                            sub(PRIME, mulmod(bY, aZ, PRIME)),
-                            mulmod(sN, add(sub(PRIME, xN), mulmod(xD, bX, PRIME)), PRIME),
-                            PRIME
-                        )
+                    aY := addmod(
+                        sub(PRIME, mulmod(bY, aZ, PRIME)),
+                        mulmod(sN, add(sub(PRIME, xN), mulmod(xD, bX, PRIME)), PRIME),
+                        PRIME
+                    )
 
                     // As the value of the affine x coordinate is xN/xD and z=sD*xD,
                     // the projective x coordinate is xN*sD.
@@ -322,8 +321,10 @@ contract VaultEscapeProofVerifier is IVaultProofVerifier {
             proof := add(proof, 0x20)
             starkKey := shr(4, mload(proof))
             assetId := and(mload(add(proof, 0x1f)), 0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
-            quantizedAmount :=
-                and(mload(add(proof, 0x5f)), 0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
+            quantizedAmount := and(
+                mload(add(proof, 0x5f)),
+                0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+            )
         }
 
         require(starkKey != 0 && starkKey < K_MODULUS, InvalidVaultProof("Invalid Stark key."));

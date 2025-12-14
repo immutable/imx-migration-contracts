@@ -23,6 +23,14 @@ contract VaultWithdrawalProcessor is
     AccountProofVerifier,
     BridgedTokenMapping
 {
+    /// @notice Enable or disable overriding of account and vault roots
+    /// @param oldValue prior value
+    /// @param newValue new value for override flag. True indicates override enabled.
+    event RootOverrideSet(bool oldValue, bool newValue);
+
+    /// @notice Thrown if attempting to set the root override value to the existing value
+    error NoChangeInOverrideValue();
+
     using SafeERC20 for IERC20;
 
     /// @dev Upper bound for valid Stark keys (2^251 + 17 * 2^192 + 1)
@@ -137,6 +145,9 @@ contract VaultWithdrawalProcessor is
         emit RootOverrideSet(oldAllowed, allowed);
     }
 
+    /**
+     * @inheritdoc BridgedTokenMapping
+     */
     function registerTokenMappings(TokenMapping[] calldata assets) external override onlyRole(TOKEN_MAPPING_MANAGER) {
         _registerTokenMappings(assets);
     }
@@ -146,6 +157,15 @@ contract VaultWithdrawalProcessor is
      */
     receive() external payable {}
 
+    /**
+     * @notice Transfers funds from the contract to the recipient
+     * @dev This function is internal and can be called by derived contracts to transfer funds
+     * @param recipient The address to transfer the funds to
+     * @param assetId The ID of the asset to transfer
+     * @param asset The address of the asset to transfer
+     * @param quantizedBalance The quantized balance of the asset to transfer
+     * @return The amount of funds transferred
+     */
     function _transferFunds(address recipient, uint256 assetId, address asset, uint256 quantizedBalance)
         internal
         returns (uint256)
@@ -164,6 +184,11 @@ contract VaultWithdrawalProcessor is
         return transferAmount;
     }
 
+    /**
+     * @notice Validates the structure of a vault
+     * @dev This function is internal and can be called by derived contracts to validate a vault
+     * @param vault The vault to validate
+     */
     function _validateVaultStructure(IVaultProofVerifier.Vault memory vault) internal pure {
         require(
             vault.starkKey != 0 && vault.starkKey < STARK_KEY_UPPER_BOUND,

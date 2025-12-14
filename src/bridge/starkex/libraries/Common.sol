@@ -47,8 +47,10 @@ library Addresses {
     */
     function validateContractId(address contractAddress, bytes32 expectedIdHash) internal {
         require(isContract(contractAddress), "ADDRESS_NOT_CONTRACT");
-        (bool success, bytes memory returndata) = contractAddress.call( // NOLINT: low-level-calls.
-        abi.encodeWithSignature("identify()"));
+        (bool success, bytes memory returndata) =
+            contractAddress.call( // NOLINT: low-level-calls.
+                abi.encodeWithSignature("identify()")
+            );
         require(success, "FAILED_TO_IDENTIFY_CONTRACT");
         string memory realContractId = abi.decode(returndata, (string));
         require(keccak256(abi.encodePacked(realContractId)) == expectedIdHash, "UNEXPECTED_CONTRACT_IDENTIFIER");
