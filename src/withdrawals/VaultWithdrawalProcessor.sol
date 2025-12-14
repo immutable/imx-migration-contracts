@@ -124,8 +124,17 @@ contract VaultWithdrawalProcessor is
         _setAccountRoot(newRoot, rootOverrideAllowed);
     }
 
+    /**
+     * @notice Enables or disables the ability to override vault and account roots after initial setting
+     * @dev Only accounts with DEFAULT_ADMIN_ROLE can call this function
+     * @dev Reverts if the new value is the same as the current value
+     * @param allowed True to allow root overrides, false to lock roots after first setting
+     */
     function setRootOverrideAllowed(bool allowed) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(rootOverrideAllowed != allowed, NoChangeInOverrideValue());
+        bool oldAllowed = rootOverrideAllowed;
         rootOverrideAllowed = allowed;
+        emit RootOverrideSet(oldAllowed, allowed);
     }
 
     function registerTokenMappings(TokenMapping[] calldata assets) external override onlyRole(TOKEN_MAPPING_MANAGER) {
