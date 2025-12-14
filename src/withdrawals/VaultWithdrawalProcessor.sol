@@ -23,10 +23,9 @@ contract VaultWithdrawalProcessor is
     AccountProofVerifier,
     BridgedTokenMapping
 {
-    /// @notice Enable or disable overriding of account and vault roots
-    /// @param oldValue prior value
-    /// @param newValue new value for override flag. True indicates override enabled.
-    event RootOverrideSet(bool oldValue, bool newValue);
+    /// @notice Emitted when the root override setting is changed
+    /// @param newValue The new value for the override flag. True indicates override enabled.
+    event RootOverrideSet(bool newValue);
 
     /// @notice Thrown if attempting to set the root override value to the existing value
     error NoChangeInOverrideValue();
@@ -145,9 +144,8 @@ contract VaultWithdrawalProcessor is
      */
     function setRootOverrideAllowed(bool allowed) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(rootOverrideAllowed != allowed, NoChangeInOverrideValue());
-        bool oldAllowed = rootOverrideAllowed;
         rootOverrideAllowed = allowed;
-        emit RootOverrideSet(oldAllowed, allowed);
+        emit RootOverrideSet(allowed);
     }
 
     /**

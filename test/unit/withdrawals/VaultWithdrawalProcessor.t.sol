@@ -475,13 +475,13 @@ contract VaultWithdrawalProcessorTest is
     function test_SetRootOverrideAllowed() public {
         // Initial value is true, set to false
         vm.expectEmit(true, true, true, true);
-        emit VaultWithdrawalProcessor.RootOverrideSet(true, false);
+        emit VaultWithdrawalProcessor.RootOverrideSet(false);
         vaultWithdrawalProcessor.setRootOverrideAllowed(false);
         assertEq(vaultWithdrawalProcessor.rootOverrideAllowed(), false, "rootOverrideAllowed should be set to false");
 
         // Set back to true
         vm.expectEmit(true, true, true, true);
-        emit VaultWithdrawalProcessor.RootOverrideSet(false, true);
+        emit VaultWithdrawalProcessor.RootOverrideSet(true);
         vaultWithdrawalProcessor.setRootOverrideAllowed(true);
         assertEq(vaultWithdrawalProcessor.rootOverrideAllowed(), true, "rootOverrideAllowed should be set to true");
     }

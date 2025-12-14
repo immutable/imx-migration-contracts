@@ -13,7 +13,7 @@ import {Hashes} from "@openzeppelin/contracts/utils/cryptography/Hashes.sol";
  *      This creates a theoretical collision risk if a user's starkKey < 2^160. However, this risk is mitigated by:
  *      (1) Withdrawals are executed by a trusted DISBURSER_ROLE, not directly by users - attackers cannot exploit directly.
  *      (2) The account Merkle tree is generated off-chain by trusted infrastructure - attackers cannot insert collisions.
- *      (3) The probability of a starkKey being < 2^160 is ~2^-91 (cryptographically negligible).
+ *      (3) The probability of this collision is negligible.
  */
 abstract contract AccountProofVerifier {
     /// @notice Thrown when the provided account proof is invalid or malformed
