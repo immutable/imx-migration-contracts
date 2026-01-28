@@ -24,6 +24,9 @@
   * [Cross-Chain Integration](#cross-chain-integration)
 <!-- TOC -->
 
+## External Audit status
+As of January 28th, 2026 an external audit is currently underway for these contracts. Results of this will be committed into this repository once they are available.
+
 ## Overview
 The IMX Migration Contracts facilitate the migration of ETH and ERC-20 assets from the legacy Immutable X bridge to Immutable zkEVM. This system provides secure, verifiable asset migration with cryptographic proof verification.
 
