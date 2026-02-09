@@ -235,9 +235,7 @@ contract VaultWithdrawalProcessorTest is
     function test_RevertIf_EmptyVaultProof() public {
         uint256[] memory emptyProof = new uint256[](0);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length.")
-        );
+        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length."));
         vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, sampleAccount.proof, emptyProof);
     }
 
@@ -248,9 +246,7 @@ contract VaultWithdrawalProcessorTest is
             wrongLengthProof[i] = i;
         }
 
-        vm.expectRevert(
-            abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length.")
-        );
+        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length."));
         vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, sampleAccount.proof, wrongLengthProof);
     }
 

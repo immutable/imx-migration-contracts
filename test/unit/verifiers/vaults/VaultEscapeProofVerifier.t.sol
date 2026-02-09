@@ -193,19 +193,13 @@ contract VaultEscapeProofVerifierTest is Test, FixtureVaultEscapes, FixtureLooku
     function test_RevertIf_ExtractFunctions_WithWrongLength() public {
         uint256[] memory wrongLengthProof = new uint256[](69);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length.")
-        );
+        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length."));
         verifier.extractLeafFromProof(wrongLengthProof);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length.")
-        );
+        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length."));
         verifier.extractRootFromProof(wrongLengthProof);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length.")
-        );
+        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length."));
         verifier.extractVaultAndRootFromProof(wrongLengthProof);
     }
 }
