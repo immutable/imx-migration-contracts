@@ -69,17 +69,13 @@ contract VaultWithdrawalProcessorTest is
         assertEq(address(vaultWithdrawalProcessor.VAULT_PROOF_VERIFIER()), address(vaultVerifier));
         assertEq(vaultWithdrawalProcessor.VAULT_ROOT_PROVIDER(), address(this));
         assertEq(vaultWithdrawalProcessor.vaultRoot(), fixVaultEscapes[0].root);
+        assertEq(vaultWithdrawalProcessor.rootOverrideAllowed(), true, "rootOverrideAllowed should be true initially");
 
         for (uint256 i = 0; i < fixAssets.length; i++) {
             uint256 id = fixAssets[i].tokenOnIMX.id;
             assertEq(vaultWithdrawalProcessor.getZKEVMAddress(id), fixAssets[i].tokenOnZKEVM);
             assertEq(vaultWithdrawalProcessor.getTokenMapping(id).tokenOnIMX.quantum, fixAssets[i].tokenOnIMX.quantum);
         }
-    }
-
-    function test_Constants() public view {
-        assertEq(vaultWithdrawalProcessor.VAULT_PROOF_LENGTH(), 68, "VAULT_PROOF_LENGTH should be 68");
-        assertEq(vaultWithdrawalProcessor.rootOverrideAllowed(), true, "rootOverrideAllowed should be true initially");
     }
 
     function test_Constructor_RootOverrideAllowed() public {
@@ -240,7 +236,7 @@ contract VaultWithdrawalProcessorTest is
         uint256[] memory emptyProof = new uint256[](0);
 
         vm.expectRevert(
-            abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid vault proof length")
+            abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length.")
         );
         vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, sampleAccount.proof, emptyProof);
     }
@@ -253,7 +249,7 @@ contract VaultWithdrawalProcessorTest is
         }
 
         vm.expectRevert(
-            abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid vault proof length")
+            abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length.")
         );
         vaultWithdrawalProcessor.verifyAndProcessWithdrawal(recipient, sampleAccount.proof, wrongLengthProof);
     }

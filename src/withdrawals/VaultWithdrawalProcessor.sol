@@ -43,7 +43,6 @@ contract VaultWithdrawalProcessor is
     /// @dev Upper bound for valid Stark keys (2^251 + 17 * 2^192 + 1)
     uint256 internal constant STARK_KEY_UPPER_BOUND = 0x800000000000011000000000000000000000000000000000000000000000001;
 
-    uint256 public constant VAULT_PROOF_LENGTH = 68;
     uint256 public constant ACCOUNT_PROOF_LENGTH = 27;
 
     /// @notice The vault proof verifier contract
@@ -92,11 +91,9 @@ contract VaultWithdrawalProcessor is
 
         require(receiver != address(0), ZeroAddress());
         require(accountProof.length == ACCOUNT_PROOF_LENGTH, InvalidAccountProof("Invalid account proof length"));
-        require(
-            vaultProof.length == VAULT_PROOF_LENGTH, IVaultProofVerifier.InvalidVaultProof("Invalid vault proof length")
-        );
 
         // Extract the vault and vault root information from the submitted proof
+        // Note: the verifier validates the proof length strictly (must be exactly 68)
         (IVaultProofVerifier.Vault memory vault, uint256 _vaultRoot) =
             VAULT_PROOF_VERIFIER.extractVaultAndRootFromProof(vaultProof);
 

@@ -68,37 +68,30 @@ contract VaultEscapeProofVerifierTest is Test, FixtureVaultEscapes, FixtureLooku
         verifier.verifyVaultProof(invalidProofBadPath);
     }
 
-    function test_RevertIf_VerifyProof_WithInvalidLength_Short() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Proof too short."));
+    function test_RevertIf_VerifyProof_WithInvalidLength_TooShort() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length."));
         verifier.verifyVaultProof(new uint256[](67));
     }
 
-    function test_RevertIf_VerifyProof_WithInvalidLength_Long() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Proof too long."));
-        verifier.verifyVaultProof(new uint256[](200));
-    }
-
-    function test_RevertIf_VerifyProof_WithInvalidLength_Odd() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Proof length must be even.")
-        );
+    function test_RevertIf_VerifyProof_WithInvalidLength_TooLong() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length."));
         verifier.verifyVaultProof(new uint256[](69));
     }
 
-    function test_VerifyProof_MinimumValidLength() public view {
-        // Create a proof with minimum valid length (68)
-        uint256[] memory minProof = new uint256[](68);
-        // Copy a valid proof structure
-        for (uint256 i = 0; i < 68; i++) {
-            minProof[i] = fixVaultEscapes[0].proof[i];
-        }
-        bool result = verifier.verifyVaultProof(minProof);
-        assertTrue(result, "Minimum length proof should be valid");
+    function test_RevertIf_VerifyProof_WithInvalidLength_Empty() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length."));
+        verifier.verifyVaultProof(new uint256[](0));
     }
 
-    function test_RevertIf_VerifyProof_ExactlyAtLongLimit() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Proof too long."));
-        verifier.verifyVaultProof(new uint256[](200));
+    function test_VerifyProof_ExactValidLength() public view {
+        // Create a proof with exact valid length (68)
+        uint256[] memory validLengthProof = new uint256[](68);
+        // Copy a valid proof structure
+        for (uint256 i = 0; i < 68; i++) {
+            validLengthProof[i] = fixVaultEscapes[0].proof[i];
+        }
+        bool result = verifier.verifyVaultProof(validLengthProof);
+        assertTrue(result, "Proof with exact valid length should pass");
     }
 
     function test_ExtractLeafFromProof() public view {
@@ -183,49 +176,36 @@ contract VaultEscapeProofVerifierTest is Test, FixtureVaultEscapes, FixtureLooku
     }
 
     function test_RevertIf_ExtractLeafFromInvalidProof() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Proof too short."));
+        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length."));
         verifier.extractLeafFromProof(new uint256[](67));
     }
 
     function test_RevertIf_ExtractRootFromInvalidProof() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Proof too short."));
+        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length."));
         verifier.extractRootFromProof(new uint256[](67));
     }
 
     function test_RevertIf_ExtractLeafAndRootFromInvalidProof() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Proof too short."));
+        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length."));
         verifier.extractVaultAndRootFromProof(new uint256[](67));
     }
 
-    function test_RevertIf_ExtractFunctions_WithOddLength() public {
-        uint256[] memory oddLengthProof = new uint256[](69);
+    function test_RevertIf_ExtractFunctions_WithWrongLength() public {
+        uint256[] memory wrongLengthProof = new uint256[](69);
 
         vm.expectRevert(
-            abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Proof length must be even.")
+            abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length.")
         );
-        verifier.extractLeafFromProof(oddLengthProof);
+        verifier.extractLeafFromProof(wrongLengthProof);
 
         vm.expectRevert(
-            abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Proof length must be even.")
+            abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length.")
         );
-        verifier.extractRootFromProof(oddLengthProof);
+        verifier.extractRootFromProof(wrongLengthProof);
 
         vm.expectRevert(
-            abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Proof length must be even.")
+            abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Invalid proof length.")
         );
-        verifier.extractVaultAndRootFromProof(oddLengthProof);
-    }
-
-    function test_RevertIf_ExtractFunctions_WithLongProof() public {
-        uint256[] memory longProof = new uint256[](200);
-
-        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Proof too long."));
-        verifier.extractLeafFromProof(longProof);
-
-        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Proof too long."));
-        verifier.extractRootFromProof(longProof);
-
-        vm.expectRevert(abi.encodeWithSelector(IVaultProofVerifier.InvalidVaultProof.selector, "Proof too long."));
-        verifier.extractVaultAndRootFromProof(longProof);
+        verifier.extractVaultAndRootFromProof(wrongLengthProof);
     }
 }

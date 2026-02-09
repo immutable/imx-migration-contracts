@@ -337,22 +337,11 @@ contract VaultEscapeProofVerifier is IVaultProofVerifier {
         return escapeProof[escapeProof.length - 2] >> 4;
     }
 
-    function _validateProofStructure(uint256[] calldata escapeProof) private pure returns (bool) {
-        uint256 proofLength = escapeProof.length;
-
-        // The minimal supported proof length is for a tree height of 31 in a 68 word representation as follows:
+    function _validateProofStructure(uint256[] calldata escapeProof) private pure {
+        // The only supported proof length is for a tree height of 31 in a 68 word representation as follows:
         // 1. 2 word pairs representing the vault contents + one hash of the 1st pair.
-        // 2. 31  word pairs representing the authentication path.
+        // 2. 31 word pairs representing the authentication path.
         // 3. 1 word pair representing the root and the leaf index.
-        require(proofLength >= VAULT_PROOF_LENGTH, InvalidVaultProof("Proof too short."));
-
-        // The contract supports verification paths of lengths up to 97 in a 200 word representation as described above.
-        // This limitation is imposed in order to avoid potential attacks.
-        require(proofLength < 200, InvalidVaultProof("Proof too long."));
-
-        // Ensure proofs are always a series of word pairs.
-        require((proofLength & 1) == 0, InvalidVaultProof("Proof length must be even."));
-
-        return true;
+        require(escapeProof.length == VAULT_PROOF_LENGTH, InvalidVaultProof("Invalid proof length."));
     }
 }
