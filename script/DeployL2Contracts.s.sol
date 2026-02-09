@@ -13,6 +13,7 @@ import {ProcessorAccessControl} from "@src/withdrawals/ProcessorAccessControl.so
 contract DeployL2Contracts is Script {
     bool private allowRootOverride;
     address private vaultVerifier;
+    address private vaultRootProvider;
     address[63] private lookupTables;
     VaultWithdrawalProcessor private withdrawalProcessor;
     VaultWithdrawalProcessor.RoleOperators private operators;
@@ -23,6 +24,7 @@ contract DeployL2Contracts is Script {
         allowRootOverride = vm.parseJsonBool(config, "$.allow_root_override");
 
         vaultVerifier = vm.parseJsonAddress(config, "$.vault_verifier");
+        vaultRootProvider = vm.parseJsonAddress(config, "$.vault_root_provider");
 
         operators = abi.decode(vm.parseJson(config, "$.operators"), (ProcessorAccessControl.RoleOperators));
 
@@ -48,7 +50,8 @@ contract DeployL2Contracts is Script {
             vaultVerifier = address(new VaultEscapeProofVerifier(lookupTables));
         }
 
-        withdrawalProcessor = new VaultWithdrawalProcessor(vaultVerifier, operators, allowRootOverride);
+        withdrawalProcessor =
+            new VaultWithdrawalProcessor(vaultVerifier, vaultRootProvider, operators, allowRootOverride);
         withdrawalProcessor.registerTokenMappings(assetMappings);
 
         _logDeploymentDetails();

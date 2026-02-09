@@ -30,6 +30,9 @@ contract VaultWithdrawalProcessor is
     /// @notice Thrown if attempting to set the root override value to the existing value
     error NoChangeInOverrideValue();
 
+    /// @notice Thrown when a caller other than the authorised vault root provider attempts to set the vault root
+    error UnauthorizedVaultRootProvider();
+
     /// @notice Thrown if dequantization would cause an overflow
     /// @param quantizedBalance The quantized balance that caused the overflow
     /// @param quantum The quantum value that caused the overflow
@@ -46,20 +49,31 @@ contract VaultWithdrawalProcessor is
     /// @notice The vault proof verifier contract
     IVaultProofVerifier public immutable VAULT_PROOF_VERIFIER;
 
+    /// @notice The address authorised to set the vault root (expected to be a VaultRootReceiverAdapter instance)
+    address public immutable VAULT_ROOT_PROVIDER;
+
     /// @notice Flag indicating whether the vault root can be overridden after initial setting
     bool public rootOverrideAllowed = false;
 
     /**
      * @notice Constructs the VaultWithdrawalProcessor contract
      * @param _vaultProofVerifier The address of the vault proof verifier contract
+     * @param _vaultRootProvider The address authorised to set the vault root (e.g. a VaultRootReceiverAdapter instance)
      * @param _operators The list of addresses to be granted specific roles
      * @param _rootOverrideAllowed Whether the vault and account roots can be overridden after initial setting
      */
-    constructor(address _vaultProofVerifier, RoleOperators memory _operators, bool _rootOverrideAllowed) {
+    constructor(
+        address _vaultProofVerifier,
+        address _vaultRootProvider,
+        RoleOperators memory _operators,
+        bool _rootOverrideAllowed
+    ) {
         require(_vaultProofVerifier != address(0), ZeroAddress());
+        require(_vaultRootProvider != address(0), ZeroAddress());
         _validateOperators(_operators);
 
         VAULT_PROOF_VERIFIER = IVaultProofVerifier(_vaultProofVerifier);
+        VAULT_ROOT_PROVIDER = _vaultRootProvider;
         _grantRoleOperators(_operators);
         rootOverrideAllowed = _rootOverrideAllowed;
     }
@@ -118,11 +132,12 @@ contract VaultWithdrawalProcessor is
 
     /**
      * @notice Sets the vault root hash for proof verification
-     * @dev Only the vault root provider can call this function
+     * @dev Only the immutable vault root provider address can call this function
      * @dev The vault root can only be set once unless rootOverrideAllowed is true
      * @param newRoot The new vault root hash
      */
-    function setVaultRoot(uint256 newRoot) external override onlyRole(VAULT_ROOT_PROVIDER_ROLE) {
+    function setVaultRoot(uint256 newRoot) external override {
+        require(msg.sender == VAULT_ROOT_PROVIDER, UnauthorizedVaultRootProvider());
         _setVaultRoot(newRoot, rootOverrideAllowed);
     }
 
