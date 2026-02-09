@@ -6,6 +6,8 @@ import "@src/bridge/starkex/StarkExchangeMigration.sol";
 import "@src/bridge/starkex/IStarkExchangeMigration.sol";
 import "@src/bridge/zkEVM/IRootERC20Bridge.sol";
 import "@src/bridge/messaging/VaultRootSenderAdapter.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
@@ -103,37 +105,43 @@ contract StarkExchangeMigrationTest is Test {
     uint256 private constant BRIDGE_FEE = 0.001 ether;
 
     function setUp() public {
-        starkExBridge = new StarkExchangeMigration();
+        StarkExchangeMigration implementation = new StarkExchangeMigration();
         mockBridge = new MockRootERC20Bridge();
         mockSenderAdapter = new MockVaultRootSenderAdapter();
         testToken = new MockERC20("Test Token", "TEST", 18);
 
         bytes memory initData =
             abi.encode(MIGRATION_MANAGER, address(mockBridge), address(mockSenderAdapter), WITHDRAWAL_PROCESSOR);
-        starkExBridge.initialize(initData);
+        bytes memory initCallData = abi.encodeWithSelector(StarkExchangeMigration.initialize.selector, initData);
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initCallData);
+        starkExBridge = StarkExchangeMigration(address(proxy));
 
         vm.store(address(starkExBridge), bytes32(uint256(13)), bytes32(TEST_VAULT_ROOT));
         vm.deal(MIGRATION_MANAGER, 10 ether);
     }
 
-    function test_Initialize_ValidParameters() public {
-        StarkExchangeMigration newMigration = new StarkExchangeMigration();
-
+    function test_Constructor_DisablesInitializers_InitializeRevertsWhenCalledOnImplementation() public {
+        StarkExchangeMigration implementation = new StarkExchangeMigration();
         bytes memory initData =
             abi.encode(MIGRATION_MANAGER, address(mockBridge), address(mockSenderAdapter), WITHDRAWAL_PROCESSOR);
 
-        newMigration.initialize(initData);
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        implementation.initialize(initData);
+    }
 
-        assertEq(newMigration.migrationManager(), MIGRATION_MANAGER, "Migration manager should be set");
-        assertEq(newMigration.zkEVMBridge(), address(mockBridge), "zkEVM bridge should be set");
+    function test_Initialize_ValidParameters() public view {
+        assertEq(starkExBridge.migrationManager(), MIGRATION_MANAGER, "Migration manager should be set");
+        assertEq(starkExBridge.zkEVMBridge(), address(mockBridge), "zkEVM bridge should be set");
         assertEq(
-            address(newMigration.rootSenderAdapter()), address(mockSenderAdapter), "Root sender adapter should be set"
+            address(starkExBridge.rootSenderAdapter()), address(mockSenderAdapter), "Root sender adapter should be set"
         );
-        assertEq(newMigration.zkEVMWithdrawalProcessor(), WITHDRAWAL_PROCESSOR, "Withdrawal processor should be set");
+        assertEq(starkExBridge.zkEVMWithdrawalProcessor(), WITHDRAWAL_PROCESSOR, "Withdrawal processor should be set");
     }
 
     function test_RevertIf_Initialize_InvalidMigrationManager() public {
-        StarkExchangeMigration newMigration = new StarkExchangeMigration();
+        StarkExchangeMigration implementation = new StarkExchangeMigration();
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), "");
+        StarkExchangeMigration newMigration = StarkExchangeMigration(address(proxy));
 
         bytes memory initData = abi.encode(
             address(0), // Invalid migration manager
@@ -147,7 +155,9 @@ contract StarkExchangeMigrationTest is Test {
     }
 
     function test_RevertIf_Initialize_InvalidZkEVMBridge() public {
-        StarkExchangeMigration newMigration = new StarkExchangeMigration();
+        StarkExchangeMigration implementation = new StarkExchangeMigration();
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), "");
+        StarkExchangeMigration newMigration = StarkExchangeMigration(address(proxy));
 
         bytes memory initData = abi.encode(
             MIGRATION_MANAGER,
@@ -161,7 +171,9 @@ contract StarkExchangeMigrationTest is Test {
     }
 
     function test_RevertIf_Initialize_InvalidRootSenderAdapter() public {
-        StarkExchangeMigration newMigration = new StarkExchangeMigration();
+        StarkExchangeMigration implementation = new StarkExchangeMigration();
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), "");
+        StarkExchangeMigration newMigration = StarkExchangeMigration(address(proxy));
 
         bytes memory initData = abi.encode(
             MIGRATION_MANAGER,
@@ -175,7 +187,9 @@ contract StarkExchangeMigrationTest is Test {
     }
 
     function test_RevertIf_Initialize_InvalidWithdrawalProcessor() public {
-        StarkExchangeMigration newMigration = new StarkExchangeMigration();
+        StarkExchangeMigration implementation = new StarkExchangeMigration();
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), "");
+        StarkExchangeMigration newMigration = StarkExchangeMigration(address(proxy));
 
         bytes memory initData = abi.encode(
             MIGRATION_MANAGER,
@@ -189,15 +203,11 @@ contract StarkExchangeMigrationTest is Test {
     }
 
     function test_RevertIf_Initialize_Twice() public {
-        StarkExchangeMigration newMigration = new StarkExchangeMigration();
-
         bytes memory initData =
             abi.encode(MIGRATION_MANAGER, address(mockBridge), address(mockSenderAdapter), WITHDRAWAL_PROCESSOR);
 
-        newMigration.initialize(initData);
-
-        vm.expectRevert();
-        newMigration.initialize(initData);
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        starkExBridge.initialize(initData);
     }
 
     function test_MigrateVaultRoot() public {
