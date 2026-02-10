@@ -6,7 +6,7 @@
 
 <!-- TOC -->
 * [Immutable X Asset Migration Contracts](#immutable-x-asset-migration-contracts)
-  * [External Audit status](#external-audit-status)
+  * [External Audit](#external-audit)
   * [Overview](#overview)
   * [Capabilities](#capabilities)
     * [Legacy Bridge Lifecycle](#legacy-bridge-lifecycle)
@@ -28,7 +28,9 @@
   * [Deployment](#deployment)
     * [Configuration](#configuration)
     * [Deploy L2 Contracts](#deploy-l2-contracts)
+  * [Supporting Documents](#supporting-documents)
 <!-- TOC -->
+
 
 ## External Audit
 The contracts in this repository were independently audited by Nethermind Security in February 2026. The full audit report is available [here](./audit/20260209-nethermind-audit.pdf).
