@@ -63,11 +63,10 @@ contract VaultWithdrawalProcessorIntegrationTest is
             disburser: address(this),
             defaultAdmin: address(this),
             accountRootProvider: address(this),
-            vaultRootProvider: address(rootReceiver),
             tokenMappingManager: address(this)
         });
 
-        vaultProcessor = new VaultWithdrawalProcessor(address(vaultVerifier), operators, true);
+        vaultProcessor = new VaultWithdrawalProcessor(address(vaultVerifier), address(rootReceiver), operators, true);
 
         vaultProcessor.setAccountRoot(accountsRoot);
         vaultProcessor.registerTokenMappings(fixAssets);

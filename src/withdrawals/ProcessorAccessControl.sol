@@ -17,15 +17,12 @@ abstract contract ProcessorAccessControl is AccessControlEnumerable, Pausable {
     bytes32 public constant DISBURSER_ROLE = keccak256("DISBURSER_ROLE");
     /// @notice Role for setting the account root
     bytes32 public constant ACCOUNT_ROOT_PROVIDER_ROLE = keccak256("ACCOUNT_ROOT_PROVIDER_ROLE");
-    /// @notice Role for setting the vault root
-    bytes32 public constant VAULT_ROOT_PROVIDER_ROLE = keccak256("VAULT_ROOT_PROVIDER_ROLE");
     /// @notice Role for managing token mappings
     bytes32 public constant TOKEN_MAPPING_MANAGER = keccak256("TOKEN_MAPPING_MANAGER");
 
     /// @notice Struct encapsulating addresses that can perform privileged operations
     struct RoleOperators {
         address accountRootProvider;
-        address vaultRootProvider;
         address tokenMappingManager;
         address disburser;
         address pauser;
@@ -51,7 +48,6 @@ abstract contract ProcessorAccessControl is AccessControlEnumerable, Pausable {
 
     function _validateOperators(RoleOperators memory operators) internal pure {
         require(operators.accountRootProvider != address(0), InvalidOperatorAddress());
-        require(operators.vaultRootProvider != address(0), InvalidOperatorAddress());
         require(operators.tokenMappingManager != address(0), InvalidOperatorAddress());
         require(operators.disburser != address(0), InvalidOperatorAddress());
         require(operators.pauser != address(0), InvalidOperatorAddress());
@@ -61,7 +57,6 @@ abstract contract ProcessorAccessControl is AccessControlEnumerable, Pausable {
 
     function _grantRoleOperators(RoleOperators memory operators) internal {
         _grantRole(ACCOUNT_ROOT_PROVIDER_ROLE, operators.accountRootProvider);
-        _grantRole(VAULT_ROOT_PROVIDER_ROLE, operators.vaultRootProvider);
         _grantRole(TOKEN_MAPPING_MANAGER, operators.tokenMappingManager);
         _grantRole(DISBURSER_ROLE, operators.disburser);
         _grantRole(PAUSER_ROLE, operators.pauser);

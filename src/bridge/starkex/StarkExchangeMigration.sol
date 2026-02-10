@@ -34,6 +34,10 @@ contract StarkExchangeMigration is IStarkExchangeMigration, LegacyStarkExchangeB
     /// @dev Reference to native ETH, based on the value used to represent ETH on the zkEVM bridge.
     address public constant NATIVE_ETH = address(0xeee);
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /**
      * @notice Initializes the contract with migration configuration
      * @param data Encoded initialization data containing addresses

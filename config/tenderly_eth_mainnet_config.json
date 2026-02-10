@@ -1,13 +1,13 @@
 {
   "allow_root_override": true,
   "vault_verifier": "0x0000000000000000000000000000000000000000",
+  "vault_root_provider": "0xBc6E5103D599FaEC8f4D2911efAEb98814cb5Aaa",
   "operators": {
     "pauser": "0xBc6E5103D599FaEC8f4D2911efAEb98814cb5Aaa",
     "unpauser": "0xBc6E5103D599FaEC8f4D2911efAEb98814cb5Aaa",
     "disburser": "0xBc6E5103D599FaEC8f4D2911efAEb98814cb5Aaa",
     "defaultAdmin": "0xBc6E5103D599FaEC8f4D2911efAEb98814cb5Aaa",
     "accountRootManager": "0xBc6E5103D599FaEC8f4D2911efAEb98814cb5Aaa",
-    "vaultRootManager": "0xBc6E5103D599FaEC8f4D2911efAEb98814cb5Aaa",
     "tokenMappingManager": "0xBc6E5103D599FaEC8f4D2911efAEb98814cb5Aaa"
   },
   "lookup_tables": [
