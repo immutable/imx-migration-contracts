@@ -30,8 +30,8 @@
     * [Deploy L2 Contracts](#deploy-l2-contracts)
 <!-- TOC -->
 
-## External Audit status
-As of January 28th, 2026 an external audit is currently underway for these contracts. Results of this will be committed into this repository once they are available.
+## External Audit
+The contracts in this repository were independently audited by Nethermind in February 2026. The full audit report is available [here](./audit/20260209-nethermind-audit.pdf).
 
 ## Overview
 The Immutable X chain will be sunset in early 2026. Most users will withdraw their assets before the sunset date. However, for some users, the cost and friction of standard withdrawals may exceed the value of their remaining on-chain assets.
