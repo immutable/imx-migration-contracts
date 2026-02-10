@@ -31,7 +31,7 @@
 <!-- TOC -->
 
 ## External Audit
-The contracts in this repository were independently audited by Nethermind in February 2026. The full audit report is available [here](./audit/20260209-nethermind-audit.pdf).
+The contracts in this repository were independently audited by Nethermind Security in February 2026. The full audit report is available [here](./audit/20260209-nethermind-audit.pdf).
 
 ## Overview
 The Immutable X chain will be sunset in early 2026. Most users will withdraw their assets before the sunset date. However, for some users, the cost and friction of standard withdrawals may exceed the value of their remaining on-chain assets.
