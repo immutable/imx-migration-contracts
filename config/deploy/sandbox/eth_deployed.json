@@ -1,0 +1,13 @@
+{
+  "vault_root_sender_adapter": {
+    "address": "0xedaEB8eFc7270ed6CecfB2007719C602EfC0C114",
+    "vault_root_sender": "0x2d5C349fD8464DA06a3f90b4B0E9195F3d1b7F98",
+    "root_receiver": "0x0d1df69a26EEDf744F891FE3D09c3e8E32404d1b",
+    "root_receiver_chain": "immutable",
+    "axelar_gas_service": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+    "axelar_gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31"
+  },
+  "stark_exchange_migration": {
+    "implementation_address": "0x6Cd4568077D1061BDEd7251bA20B3c7ebc2c9dB1"
+  }
+}

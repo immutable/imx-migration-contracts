@@ -4,64 +4,114 @@ Solidity scripts for deploying and configuring the migration contracts using Fou
 
 ## Scripts Overview
 
-| Script | Purpose | Executed By |
-|--------|---------|-------------|
-| `DeployL2Contracts.s.sol` | Deploy VaultWithdrawalProcessor and VaultEscapeProofVerifier | Deployer |
-| `GenerateAssetMappings.s.sol` | Generate asset mappings by querying bridge contract | Utility (offline) |
-| `RegisterTokenMappings.s.sol` | Register token mappings on the processor | TOKEN_MAPPING_MANAGER |
+| Script | Chain | Purpose | Executed By |
+|--------|-------|---------|-------------|
+| `DeployZkEVMContracts.s.sol` | zkEVM | Deploy VaultEscapeProofVerifier, VaultRootReceiverAdapter, VaultWithdrawalProcessor | Deployer |
+| `DeployEthContracts.s.sol` | Ethereum | Deploy VaultRootSenderAdapter and StarkExchangeMigration implementation | Deployer |
+| `GenerateAssetMappings.s.sol` | - | Generate asset mappings by querying bridge contract | Utility (offline) |
+| `RegisterTokenMappings.s.sol` | zkEVM | Register token mappings on the processor | TOKEN_MAPPING_MANAGER |
 
-## Typical Workflow
+### Legacy
+
+| Script | Purpose |
+|--------|---------|
+| `DeployL2Contracts.s.sol` | (Superseded by `DeployZkEVMContracts.s.sol`) Deploys VaultWithdrawalProcessor and VaultEscapeProofVerifier only |
+
+## Cross-Chain Deployment Workflow
+
+Deployment spans two chains with cross-chain dependencies. **zkEVM must be deployed first** since Ethereum contracts reference zkEVM addresses.
 
 ```mermaid
-flowchart LR
-    A[config.json] --> B[DeployL2Contracts]
-    B --> C[config_deployed.json]
-    C --> D[GenerateAssetMappings]
-    D --> E[config with asset_mappings]
-    E --> F[RegisterTokenMappings]
-    F --> G[Processor Ready]
+flowchart TD
+    subgraph zkEVM ["Step 1: zkEVM"]
+        A[zkevm_config.json] --> B[DeployZkEVMContracts]
+        B --> C[zkevm_deployed.json]
+        C --> D[GenerateAssetMappings]
+        D --> E[config with asset_mappings]
+        E --> F[RegisterTokenMappings]
+        F --> G[zkEVM Ready]
+    end
+
+    subgraph Ethereum ["Step 2: Ethereum"]
+        H[eth_config.json] --> I[DeployEthContracts]
+        I --> J[eth_deployed.json]
+        J --> K["Upgrade proxy via governance"]
+    end
+
+    C -.->|"populate root_receiver + zkevm_withdrawal_processor"| H
 ```
 
-### Step 1: Deploy Contracts
+### Step 1: Deploy zkEVM Contracts
 
-Deploy the `VaultWithdrawalProcessor` and `VaultEscapeProofVerifier` contracts.
+Deploy `VaultEscapeProofVerifier`, `VaultRootReceiverAdapter`, and `VaultWithdrawalProcessor`.
+
+The script automatically wires intra-chain dependencies:
+- `VaultWithdrawalProcessor._vaultProofVerifier` = deployed `VaultEscapeProofVerifier` address
+- `VaultWithdrawalProcessor._vaultRootProvider` = deployed `VaultRootReceiverAdapter` address
 
 ```bash
-DEPLOYMENT_CONFIG_FILE=config/mainnet.json \
-DEPLOYMENT_OUTPUT_FILE=config/mainnet_deployed.json \
-forge script script/DeployL2Contracts.s.sol \
-    --rpc-url $RPC_URL \
+DEPLOYMENT_CONFIG_FILE=config/zkevm_config.json \
+DEPLOYMENT_OUTPUT_FILE=config/zkevm_deployed.json \
+forge script script/DeployZkEVMContracts.s.sol \
+    --rpc-url $ZKEVM_RPC_URL \
     --broadcast \
     --slow
 ```
 
-**Output:** Creates `config/mainnet_deployed.json` with deployed addresses:
-- `vault_verifier`: VaultEscapeProofVerifier address
-- `withdrawal_processor`: VaultWithdrawalProcessor address
+**Output:** Creates `config/zkevm_deployed.json` with deployed addresses populated in:
+- `vault_escape_proof_verifier.address`
+- `vault_root_receiver_adapter.address`
+- `vault_withdrawal_processor.address`
 
-### Step 2: Generate Asset Mappings
+### Step 2: Populate Ethereum Config with zkEVM Addresses
 
-Query the bridge contract to populate `asset_mappings` in the config.
+Before deploying Ethereum contracts, update the Ethereum config with addresses from the zkEVM deployment:
+
+- `vault_root_sender_adapter.root_receiver` = `vault_root_receiver_adapter.address` from zkEVM output
+- (For governance upgrade) `VaultWithdrawalProcessor` address from zkEVM output will be needed when calling `StarkExchangeMigration.initialize`
+
+### Step 3: Deploy Ethereum Contracts
+
+Deploy `VaultRootSenderAdapter` and the `StarkExchangeMigration` implementation.
+
+```bash
+DEPLOYMENT_CONFIG_FILE=config/eth_config.json \
+DEPLOYMENT_OUTPUT_FILE=config/eth_deployed.json \
+forge script script/DeployEthContracts.s.sol \
+    --rpc-url $ETH_RPC_URL \
+    --broadcast \
+    --slow
+```
+
+**Output:** Creates `config/eth_deployed.json` with deployed addresses populated in:
+- `vault_root_sender_adapter.address`
+- `stark_exchange_migration.implementation_address`
+
+**Note:** The `StarkExchangeMigration` is deployed as an implementation only. The existing StarkEx bridge proxy on-chain must be upgraded to point to this implementation separately (e.g., via governance), at which point `initialize` is called with the migration parameters.
+
+### Step 4: Generate Asset Mappings (zkEVM)
+
+Query the bridge contract to populate `asset_mappings` in the zkEVM config.
 
 ```bash
 TOKENS_FILE=config/tokens.json \
-DEPLOYMENT_CONFIG_FILE=config/mainnet_deployed.json \
+DEPLOYMENT_CONFIG_FILE=config/zkevm_deployed.json \
 BRIDGE_CONTRACT=0x... \
 ETH_MAPPING=0x... \
 forge script script/GenerateAssetMappings.s.sol \
-    --rpc-url $RPC_URL
+    --rpc-url $ZKEVM_RPC_URL
 ```
 
 **Output:** Updates `asset_mappings` in the config file in place.
 
-### Step 3: Register Token Mappings
+### Step 5: Register Token Mappings (zkEVM)
 
 Register the token mappings on the deployed processor (requires `TOKEN_MAPPING_MANAGER` role).
 
 ```bash
-DEPLOYMENT_CONFIG_FILE=config/mainnet_deployed.json \
+DEPLOYMENT_CONFIG_FILE=config/zkevm_deployed.json \
 forge script script/RegisterTokenMappings.s.sol \
-    --rpc-url $RPC_URL \
+    --rpc-url $ZKEVM_RPC_URL \
     --broadcast
 ```
 
@@ -69,39 +119,92 @@ forge script script/RegisterTokenMappings.s.sol \
 
 ## Script Details
 
-### DeployL2Contracts.s.sol
+### DeployZkEVMContracts.s.sol
 
-Deploys the core L2 contracts for the migration system.
+Deploys the zkEVM contracts for the migration system.
 
 **Environment Variables:**
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DEPLOYMENT_CONFIG_FILE` | Yes | Path to input config JSON |
+| `DEPLOYMENT_CONFIG_FILE` | Yes | Path to input config JSON (see `config/sample_zkevm_config.json`) |
 | `DEPLOYMENT_OUTPUT_FILE` | Yes | Path to write output config with deployed addresses |
 
-**Config File Requirements:**
+**Config File Structure** (see `config/sample_zkevm_config.json`):
 
 ```json
 {
-  "allow_root_override": true,
-  "vault_verifier": "0x0000...",  // Set to 0x0 to deploy new verifier
-  "operators": {
-    "pauser": "0x...",
-    "unpauser": "0x...",
-    "disburser": "0x...",
-    "defaultAdmin": "0x...",
-    "accountRootManager": "0x...",
-    "vaultRootManager": "0x...",
-    "tokenMappingManager": "0x..."
+  "vault_escape_proof_verifier": {
+    "address": "0x0000...",
+    "lookup_tables": ["0x...", "...63 addresses..."]
   },
-  "lookup_tables": ["0x...", ...]  // 63 addresses
+  "vault_root_receiver_adapter": {
+    "address": "0x0000...",
+    "owner": "0x...",
+    "axelar_gateway": "0x..."
+  },
+  "vault_withdrawal_processor": {
+    "address": "0x0000...",
+    "allow_root_override": true,
+    "operators": {
+      "accountRootProvider": "0x...",
+      "tokenMappingManager": "0x...",
+      "disburser": "0x...",
+      "pauser": "0x...",
+      "unpauser": "0x...",
+      "defaultAdmin": "0x..."
+    }
+  }
 }
 ```
 
 **Notes:**
+- Set any contract's `address` to the zero address (`0x0000...`) to deploy a new instance
+- Set a non-zero `address` to skip deployment and use the existing contract
 - Use `--slow` or `--batch-size 1` for Tenderly to ensure correct deployment order
-- If `vault_verifier` is zero address, a new `VaultEscapeProofVerifier` is deployed
+
+---
+
+### DeployEthContracts.s.sol
+
+Deploys the Ethereum contracts for the migration system.
+
+**Environment Variables:**
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DEPLOYMENT_CONFIG_FILE` | Yes | Path to input config JSON (see `config/sample_eth_config.json`) |
+| `DEPLOYMENT_OUTPUT_FILE` | Yes | Path to write output config with deployed addresses |
+
+**Config File Structure** (see `config/sample_eth_config.json`):
+
+```json
+{
+  "vault_root_sender_adapter": {
+    "address": "0x0000...",
+    "vault_root_sender": "0x...",
+    "root_receiver": "0x...",
+    "root_receiver_chain": "immutable",
+    "axelar_gas_service": "0x...",
+    "axelar_gateway": "0x..."
+  },
+  "stark_exchange_migration": {
+    "implementation_address": "0x0000..."
+  }
+}
+```
+
+**Config fields:**
+- `vault_root_sender`: The existing StarkEx bridge proxy address on Ethereum
+- `root_receiver`: The `VaultRootReceiverAdapter` address on zkEVM (from zkEVM deployment output)
+- `root_receiver_chain`: The Axelar chain identifier for zkEVM (e.g., `"immutable"`)
+- `axelar_gas_service`: The Axelar gas service contract on Ethereum
+- `axelar_gateway`: The Axelar gateway contract on Ethereum
+
+**Notes:**
+- Run this script **after** `DeployZkEVMContracts.s.sol`
+- The `StarkExchangeMigration` is deployed as implementation only (no proxy deployment)
+- Use `--slow` or `--batch-size 1` for Tenderly to ensure correct deployment order
 
 ---
 
@@ -167,24 +270,4 @@ Registers token mappings on an existing `VaultWithdrawalProcessor`.
     }
   ]
 }
-```
-
----
-
-## Config File Flow
-
-```
-config.json                          # Initial config with operators, lookup_tables
-    │
-    ▼ DeployL2Contracts.s.sol
-    │
-config_deployed.json                 # + vault_verifier, withdrawal_processor
-    │
-    ▼ GenerateAssetMappings.s.sol
-    │
-config_deployed.json                 # + asset_mappings (updated in place)
-    │
-    ▼ RegisterTokenMappings.s.sol
-    │
-    ✓ Token mappings registered on-chain
 ```

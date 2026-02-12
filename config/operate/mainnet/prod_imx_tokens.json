@@ -1,0 +1,182 @@
+[
+	{
+		"token_int": 1015922532137787982946651776980869339398815931061497279724058213836132190095,
+		"token_hex": "0x023efde50c5bb32292bca9f847528b1c9eff10879048d6192f8aa9dd8fdc078f",
+		"token_address": "0x4d224452801aced8b2f0aebe155379bb5d594381",
+		"ticker_symbol": "APE",
+		"quantum": 100000000,
+		"eth_exchange_rate": 0.0001653,
+		"token_weight": 20
+	},
+	{
+		"token_int": 313505229384936965539156700002111859723492368677210314696313758091297420165,
+		"token_hex": "0x00b1700b40464e72a75e3583b68b0d6ba9037f0cbe6bf0a8cd9958181b4ff385",
+		"token_address": "0xe21363bf33620a291a6c354dc3bb99e40cb3086b",
+		"ticker_symbol": "BR",
+		"quantum": 100000000,
+		"eth_exchange_rate": 0.00000000001,
+		"token_weight": 20
+	},
+	{
+		"token_int": 1670413597475604293967066736840650619123375215270437228479873503062842925101,
+		"token_hex": "0x03b16babe64497b2831beb3590817ffe6da52c7664cd15ed8336a63b1a93e02d",
+		"token_address": "0xe910c2a090516fb7a7be07f96a464785f2d5dc18",
+		"ticker_symbol": "CMT",
+		"quantum": 100000000,
+		"eth_exchange_rate": 0.00000000001,
+		"token_weight": 20
+	},
+	{
+		"token_int": 990917105548321882863790743692016363780882772911795288852111915173114800720,
+		"token_hex": "0x0230d6d63a2a92dbd1b2bf589517b7823587dae986da2a63a8f11092ea4bea50",
+		"token_address": "0x90685e300a4c4532efcefe91202dfe1dfd572f47",
+		"ticker_symbol": "CTA",
+		"quantum": 100000000,
+		"eth_exchange_rate": 0.00001224,
+		"token_weight": 20
+	},
+	{
+		"token_int": 1707776506599369959662713172170118390106404453517106730194996143842397299232,
+		"token_hex": "0x03c69137390804d0bd32e452ae71ea42f236b74fb81da3106c6a7a3e1f50a220",
+		"token_address": "0xa3d59c6d24f428dcfedc09724869e7af4d281fdd",
+		"ticker_symbol": "DEV",
+		"quantum": 1,
+		"eth_exchange_rate": 0.00000000001,
+		"token_weight": 20
+	},
+	{
+		"token_int": 127313621446881611467827816653547345717404185327457088545463981166261510791,
+		"token_hex": "0x00480e94ad68296b0bd050666fa696219d667d8fcce307206af6af4679612287",
+		"token_address": "0x35f3bad2fcc8053869086885f7898a3d4309db4e",
+		"ticker_symbol": "EMBER",
+		"quantum": 100000000,
+		"eth_exchange_rate": 0.00000006869,
+		"token_weight": 20
+	},
+	{
+		"token_int": 1103114524755001640548555873671808205895038091681120606634696969331999845790,
+		"token_hex": "0x02705737cd248ac819034b5de474c8f0368224f72a0fda9e031499d519992d9e",
+		"token_address": "eth",
+		"ticker_symbol": "ETH",
+		"quantum": 100000000,
+		"eth_exchange_rate": 1,
+		"token_weight": 100
+	},
+	{
+		"token_int": 427042314744200788989839114132810697143887157126058739219120820878172477593,
+		"token_hex": "0x00f1b287cdf5aac7ceb8de77b253c60aa648c550460cf9adc63254649957d899",
+		"token_address": "0x19997289163ce4659d447617a0877da36770ab4d",
+		"ticker_symbol": "FGL",
+		"quantum": 100000000,
+		"eth_exchange_rate": 0.00000000001,
+		"token_weight": 20
+	},
+	{
+		"token_int": 636117700839179604858620718832286872417390350654465827892936533551518041557,
+		"token_hex": "0x016807a4e2986bc9d4c2c6a2fff6b2c6f351989c0f7a6d2164377848aac7c5d5",
+		"token_address": "0xccc8cb5229b0ac8069c51fd58367fd1e622afd97",
+		"ticker_symbol": "GODS",
+		"quantum": 100000000,
+		"eth_exchange_rate": 0.00003042,
+		"token_weight": 20
+	},
+	{
+		"token_int": 1125223003001074656178455529439603029082973884966680368655489058248875828864,
+		"token_hex": "0x027cda88d6158016cc3b1e489ab2733f1e22ff9803ee838963e0b88a4593e680",
+		"token_address": "0x9ab7bb7fdc60f4357ecfef43986818a2a3569c62",
+		"ticker_symbol": "GOG",
+		"quantum": 100000000,
+		"eth_exchange_rate": 0.000003253,
+		"token_weight": 20
+	},
+	{
+		"token_int": 634028667897844324040908450156043846954664548107344752361156161409532472444,
+		"token_hex": "0x0166d8f658c71f52c5ed1a120850a0a2141eb620ac766a4aa2dcb154d0d2ac7c",
+		"token_address": "0x767fe9edc9e0df98e07454847909b5e959d7ca0e",
+		"ticker_symbol": "ILV",
+		"quantum": 100000000,
+		"eth_exchange_rate": 0.003963,
+		"token_weight": 20
+	},
+	{
+		"token_int": 88914301944088089141574999348394996493546404963067902156417732601144566237,
+		"token_hex": "0x003252dec1ad51e115659dcfab7cbf9489e2ab1d7a81b747ec1a9e5daa0261dd",
+		"token_address": "0xf57e7e7c23978c3caec3c3548e3d615c346e79ff",
+		"ticker_symbol": "IMX",
+		"quantum": 100000000,
+		"eth_exchange_rate": 0.0001536,
+		"token_weight": 60
+	},
+	{
+		"token_int": 103129661469142187932697195709967826790010599230686898125218855467795622233,
+		"token_hex": "0x003a5e8bbf13d7ef6b65d7456b9c9d46562821012149e2fcf14b3710b6302959",
+		"token_address": "0x71854072ce51cc8859c8c178e33581034fa75753",
+		"ticker_symbol": "LOST",
+		"quantum": 100000000,
+		"eth_exchange_rate": 0.00000000001,
+		"token_weight": 20
+	},
+	{
+		"token_int": 881983512215682697930791077345670677400334790145955708894204513777355240488,
+		"token_hex": "0x01f32f5aaee31e3bca862904ba913222e307d33b00f2546f15fae9352fa6b428",
+		"token_address": "0xed35af169af46a02ee13b9d79eb57d6d68c1749e",
+		"ticker_symbol": "OMI",
+		"quantum": 100000000,
+		"eth_exchange_rate": 0.0000000504,
+		"token_weight": 20
+	},
+	{
+		"token_int": 525164948494449116421805041713913612934056483342602240145121349090983728353,
+		"token_hex": "0x01293b9a9220a3a4e6d2a947bd142c693b7e3e4664503baa7bab694ec58ad4e1",
+		"token_address": "0xed35af169af46a02ee13b9d79eb57d6d68c1749e",
+		"ticker_symbol": "OMI",
+		"quantum": 100000000000,
+		"eth_exchange_rate": 0.0000000504,
+		"token_weight": 20
+	},
+	{
+		"token_int": 227716095600406046651136589472266806698090667547081713813841569445055346153,
+		"token_hex": "0x0080e1fb6c92d583a9504b2aa9d1f665355f7a380c19fb64b8a2bc639f8cb5e9",
+		"token_address": "0x7e77dcb127f99ece88230a64db8d595f31f1b068",
+		"ticker_symbol": "SILV2",
+		"quantum": 100000000,
+		"eth_exchange_rate": 0.001856,
+		"token_weight": 20
+	},
+	{
+		"token_int": 1147032829293317481173155891309375254605214077236177772270270553197624560221,
+		"token_hex": "0x02893294412a4c8f915f75892b395ebbf6859ec246ec365c3b1f56f47c3a0a5d",
+		"token_address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+		"ticker_symbol": "USDC",
+		"quantum": 1,
+		"eth_exchange_rate": 0.0002541,
+		"token_weight": 100
+	},
+	{
+		"token_int": 1485183671027309009439509871835489442660821279230223034298428454062208985878,
+		"token_hex": "0x0348958c1322d3fc34f89b91b0b6473594725847184ee590e990bb70ef322b16",
+		"token_address": "0x2caa4021e580b07d92adf8a40ec53b33a215d620",
+		"ticker_symbol": "VCO",
+		"quantum": 100000000,
+		"eth_exchange_rate": 0.00000000001,
+		"token_weight": 20
+	},
+	{
+		"token_int": 1796496801014838733778624354279754962911198551343321171219226048470100654417,
+		"token_hex": "0x03f8c7f9d713c0e2f8e049f3e9199667adc83a5e254a4142af43b82c2acab951",
+		"token_address": "0x733b5056a0697e7a4357305fe452999a0c409feb",
+		"ticker_symbol": "VCORE",
+		"quantum": 100000000,
+		"eth_exchange_rate": 0.00000000001,
+		"token_weight": 20
+	},
+	{
+		"token_int": 915177440183500088607294558883023442174593163187193385150232248105465289242,
+		"token_hex": "0x0205f8d9e6a74938443ec9e626b12d5d513c09ade66bd71642fcdc185e3c1a1a",
+		"token_address": "0x3b604747ad1720c01ded0455728b62c0d2f100f0",
+		"ticker_symbol": "WAGMI",
+		"quantum": 100000000,
+		"eth_exchange_rate": 0.000000001783,
+		"token_weight": 20
+	}
+]
