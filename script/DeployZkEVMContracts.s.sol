@@ -56,8 +56,7 @@ contract DeployZkEVMContracts is Script {
 
         // --- VaultEscapeProofVerifier ---
         vaultVerifier = vm.parseJsonAddress(config, "$.vault_escape_proof_verifier.address");
-        address[] memory _lookupTables =
-            vm.parseJsonAddressArray(config, "$.vault_escape_proof_verifier.lookup_tables");
+        address[] memory _lookupTables = vm.parseJsonAddressArray(config, "$.vault_escape_proof_verifier.lookup_tables");
         require(_lookupTables.length == 63, "Lookup tables must contain exactly 63 addresses");
         for (uint256 i = 0; i < _lookupTables.length; i++) {
             lookupTables[i] = _lookupTables[i];
@@ -131,14 +130,19 @@ contract DeployZkEVMContracts is Script {
         // VaultEscapeProofVerifier: validate lookup tables if deploying
         if (vaultVerifier == address(0)) {
             for (uint256 i = 0; i < lookupTables.length; i++) {
-                require(lookupTables[i] != address(0), string.concat("Lookup table at index ", vm.toString(i), " is zero address"));
+                require(
+                    lookupTables[i] != address(0),
+                    string.concat("Lookup table at index ", vm.toString(i), " is zero address")
+                );
             }
         }
 
         // VaultRootReceiverAdapter: validate owner and gateway if deploying
         if (receiverAdapter == address(0)) {
             require(receiverAdapterOwner != address(0), "vault_root_receiver_adapter.owner is zero address");
-            require(receiverAdapterAxelarGateway != address(0), "vault_root_receiver_adapter.axelar_gateway is zero address");
+            require(
+                receiverAdapterAxelarGateway != address(0), "vault_root_receiver_adapter.axelar_gateway is zero address"
+            );
         }
 
         // VaultWithdrawalProcessor: validate operators if deploying

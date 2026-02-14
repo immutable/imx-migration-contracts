@@ -74,7 +74,9 @@ contract DeployEthContracts is Script {
         // 1. Deploy VaultRootSenderAdapter (if not already deployed)
         if (senderAdapter == address(0)) {
             senderAdapter = address(
-                new VaultRootSenderAdapter(vaultRootSender, rootReceiver, rootReceiverChain, axelarGasService, axelarGateway)
+                new VaultRootSenderAdapter(
+                    vaultRootSender, rootReceiver, rootReceiverChain, axelarGasService, axelarGateway
+                )
             );
             console.log("Deployed VaultRootSenderAdapter:", senderAdapter);
         } else {

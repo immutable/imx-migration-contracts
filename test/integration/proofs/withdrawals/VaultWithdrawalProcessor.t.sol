@@ -90,6 +90,8 @@ contract VaultWithdrawalProcessorIntegrationTest is
             abi.encode(rootReceiver.SET_VAULT_ROOT(), fixVaultEscapes[0].root)
         );
 
+        assertEq(vaultProcessor.vaultRoot(), fixVaultEscapes[0].root, "Vault root not correctly set");
+
         address vaultProcessorAddr = address(vaultProcessor);
 
         AccountAssociation memory account = fixAccounts[fixVaultEscapes[2].vault.starkKey];
@@ -123,6 +125,8 @@ contract VaultWithdrawalProcessorIntegrationTest is
             rootProviderContract,
             abi.encode(rootReceiver.SET_VAULT_ROOT(), fixVaultEscapes[1].root)
         );
+
+        assertEq(vaultProcessor.vaultRoot(), fixVaultEscapes[1].root, "Vault root not correctly set");
 
         address vaultProcessorAddr = address(vaultProcessor);
 
