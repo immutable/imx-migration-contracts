@@ -1,6 +1,6 @@
 {
   "vault_escape_proof_verifier": {
-    "address": "0xC4CA3b4Fa6F7325d009c05ae9e72BB9E345bD696",
+    "address": "0x9Fabd9Cc71f15b9Cfd717E117FBb9cfD9fC7cd32",
     "lookup_tables": [
       "0x2818ff7556fb634061385423f8794a858fc656ae",
       "0xc87a6ee0c5650a833b0f7b7c3d1f14ee66a99468",
@@ -68,20 +68,20 @@
     ]
   },
   "vault_root_receiver_adapter": {
-    "address": "0x0d1df69a26EEDf744F891FE3D09c3e8E32404d1b",
-    "owner": "0xBc6E5103D599FaEC8f4D2911efAEb98814cb5Aaa",
+    "address": "0x58b5484F489f7858DC83a5a677338074b57de806",
+    "owner": "0x2E9EE2Df8037dE744C0b4D1b9A3aeE4E88816915",
     "axelar_gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31"
   },
   "vault_withdrawal_processor": {
-    "address": "0xB210A1CC8029C4c4FD133395C3499aA9060E4184",
+    "address": "0xCeA34C706C4A18E103575832Dd21fD3656026D1E",
     "allow_root_override": true,
     "operators": {
-      "accountRootProvider": "0xBc6E5103D599FaEC8f4D2911efAEb98814cb5Aaa",
-      "tokenMappingManager": "0xBc6E5103D599FaEC8f4D2911efAEb98814cb5Aaa",
+      "accountRootProvider": "0x2E9EE2Df8037dE744C0b4D1b9A3aeE4E88816915",
+      "tokenMappingManager": "0x2E9EE2Df8037dE744C0b4D1b9A3aeE4E88816915",
       "disburser": "0xeff042fd9bcfcd46d9f90eafcda69ba398b3748f",
-      "pauser": "0x0bB8BDC645821bf997e182647d86bb0bbcdC97bB",
-      "unpauser": "0x0bB8BDC645821bf997e182647d86bb0bbcdC97bB",
-      "defaultAdmin": "0xBc6E5103D599FaEC8f4D2911efAEb98814cb5Aaa"
+      "pauser": "0x2E9EE2Df8037dE744C0b4D1b9A3aeE4E88816915",
+      "unpauser": "0x2E9EE2Df8037dE744C0b4D1b9A3aeE4E88816915",
+      "defaultAdmin": "0x2E9EE2Df8037dE744C0b4D1b9A3aeE4E88816915"
     }
   }
 }

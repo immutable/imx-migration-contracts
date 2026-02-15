@@ -69,19 +69,19 @@
   },
   "vault_root_receiver_adapter": {
     "address": "0x0000000000000000000000000000000000000000",
-    "owner": "0xBc6E5103D599FaEC8f4D2911efAEb98814cb5Aaa",
+    "owner": "0x2E9EE2Df8037dE744C0b4D1b9A3aeE4E88816915",
     "axelar_gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31"
   },
   "vault_withdrawal_processor": {
     "address": "0x0000000000000000000000000000000000000000",
     "allow_root_override": true,
     "operators": {
-      "accountRootProvider": "0xBc6E5103D599FaEC8f4D2911efAEb98814cb5Aaa",
-      "tokenMappingManager": "0xBc6E5103D599FaEC8f4D2911efAEb98814cb5Aaa",
+      "accountRootProvider": "0x2E9EE2Df8037dE744C0b4D1b9A3aeE4E88816915",
+      "tokenMappingManager": "0x2E9EE2Df8037dE744C0b4D1b9A3aeE4E88816915",
       "disburser": "0xeff042fd9bcfcd46d9f90eafcda69ba398b3748f",
-      "pauser": "0x0bB8BDC645821bf997e182647d86bb0bbcdC97bB",
-      "unpauser": "0x0bB8BDC645821bf997e182647d86bb0bbcdC97bB",
-      "defaultAdmin": "0xBc6E5103D599FaEC8f4D2911efAEb98814cb5Aaa"
+      "pauser": "0x2E9EE2Df8037dE744C0b4D1b9A3aeE4E88816915",
+      "unpauser": "0x2E9EE2Df8037dE744C0b4D1b9A3aeE4E88816915",
+      "defaultAdmin": "0x2E9EE2Df8037dE744C0b4D1b9A3aeE4E88816915"
     }
   }
 }
