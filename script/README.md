@@ -9,7 +9,9 @@ Solidity scripts for deploying and configuring the migration contracts using Fou
 | `DeployZkEVMContracts.s.sol` | zkEVM | Deploy VaultEscapeProofVerifier, VaultRootReceiverAdapter, VaultWithdrawalProcessor | Deployer |
 | `DeployEthContracts.s.sol` | Ethereum | Deploy VaultRootSenderAdapter and StarkExchangeMigration implementation | Deployer |
 | `GenerateAssetMappings.s.sol` | - | Generate asset mappings by querying bridge contract | Utility (offline) |
+| `VerifyAssetMappings.s.sol` | - | Verify asset mappings against bridge contract | Utility (read-only) |
 | `RegisterTokenMappings.s.sol` | zkEVM | Register token mappings on the processor | TOKEN_MAPPING_MANAGER |
+| `MigrateHoldings.s.sol` | Ethereum | Migrate token holdings for a given phase via `migrateHoldings()` | Migration Manager |
 
 ### Legacy
 
@@ -271,3 +273,106 @@ Registers token mappings on an existing `VaultWithdrawalProcessor`.
   ]
 }
 ```
+
+---
+
+### VerifyAssetMappings.s.sol
+
+Verifies that the `asset_mappings` in a token mappings config file are consistent with the bridge contract's `rootTokenToChildToken()` results.
+
+For each token in the tokens file, the script:
+1. Finds the matching entry in `asset_mappings` (by `token_int` == `tokenOnIMX.id`)
+2. Queries `rootTokenToChildToken(token_address)` on the bridge contract
+3. Compares the bridge result with `tokenOnZKEVM` in the config
+
+**Environment Variables:**
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `TOKENS_FILE` | Yes | Path to imx_tokens JSON file |
+| `DEPLOYMENT_CONFIG_FILE` | Yes | Path to token_mappings JSON file (with `asset_mappings` array) |
+| `BRIDGE_CONTRACT` | Yes | Address of contract with `rootTokenToChildToken(address)` |
+| `ETH_MAPPING` | Yes | zkEVM address for ETH ERC20 (for the special `"eth"` token) |
+
+**Usage:**
+
+```bash
+TOKENS_FILE=config/operate/sandbox/imx_tokens.json \
+DEPLOYMENT_CONFIG_FILE=config/operate/sandbox/token_mappings.json \
+BRIDGE_CONTRACT=0x... \
+ETH_MAPPING=0x... \
+forge script script/VerifyAssetMappings.s.sol \
+    --rpc-url $RPC_URL
+```
+
+**Output:** Prints `PASS`, `FAIL`, or `MISSING` for each token and a summary. This is a read-only script (no broadcast needed).
+
+**Special Cases:**
+- `token_address: "eth"` → Expected zkEVM address is `ETH_MAPPING`
+- `ticker_symbol: "IMX"` → Expected zkEVM address is `0x0000000000000000000000000000000000000FfF`
+
+---
+
+### MigrateHoldings.s.sol
+
+Calls `migrateHoldings()` on the `StarkExchangeMigration` contract for a given phase. Reads a token phases config, filters by phase number, aggregates amounts for duplicate token addresses, and invokes the migration.
+
+The script simulates by default. Add `--broadcast` to send the transaction on-chain.
+
+**Environment Variables:**
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `PHASES_FILE` | Yes | Path to token phases JSON file |
+| `PHASE` | Yes | The phase number to migrate |
+| `BRIDGE_FEE` | Yes | Bridge fee in wei to use for each token |
+| `MIGRATION_CONTRACT` | Yes | Address of the `StarkExchangeMigration` contract |
+
+**Phases File Format:**
+
+```json
+[
+  {
+    "phase": 2,
+    "token_address": "0x...",
+    "ticker_symbol": "TOKEN",
+    "unquantised_sum": 1000000000000000000
+  }
+]
+```
+
+**Special Cases:**
+- `token_address: "eth"` → Mapped to `address(0xeee)` (native ETH on the migration contract)
+- Duplicate `token_address` entries within the same phase are aggregated (amounts summed)
+
+**Usage (simulate):**
+
+```bash
+PHASES_FILE=config/operate/sandbox/token_phases.json \
+PHASE=2 \
+BRIDGE_FEE=100000000000000 \
+MIGRATION_CONTRACT=0x... \
+forge script script/MigrateHoldings.s.sol \
+    --rpc-url $ETH_RPC_URL
+```
+
+**Usage (broadcast):**
+
+```bash
+PHASES_FILE=config/operate/sandbox/token_phases.json \
+PHASE=2 \
+BRIDGE_FEE=100000000000000 \
+MIGRATION_CONTRACT=0x... \
+forge script script/MigrateHoldings.s.sol \
+    --rpc-url $ETH_RPC_URL \
+    --broadcast
+```
+
+**Output:** Before executing, the script logs:
+1. Every raw entry from the phases file for the selected phase
+2. The aggregated `TokenMigrationDetails[]` (unique tokens with summed amounts)
+3. The full transaction details: target address, `msg.value`, calldata (hex), and calldata keccak256 hash
+
+**Requirements:**
+- The signing account must be the `migrationManager` on the `StarkExchangeMigration` contract
+- The signer must have sufficient ETH to cover `BRIDGE_FEE * num_tokens`
