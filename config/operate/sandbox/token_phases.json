@@ -25,12 +25,6 @@
 	},
 	{
 		"phase": 2,
-		"token_address": "0xc7bc6619082b8cced2cc936203eff41891edb76b",
-		"ticker_symbol": "BR",
-		"unquantised_sum": 10987240000000000000000000
-	},
-	{
-		"phase": 2,
 		"token_address": "0x655dfe9d7ec1a74d45841f79ec6b4f6160a4c031",
 		"ticker_symbol": "CRYPI",
 		"unquantised_sum": 9770927499999848000000000
@@ -112,12 +106,6 @@
 		"token_address": "0x00e49f72e3ff96f50e98d8533f2eb5a9b69b002f",
 		"ticker_symbol": "ARG",
 		"unquantised_sum": 710000000000000000000
-	},
-	{
-		"phase": 3,
-		"token_address": "0xc7bc6619082b8cced2cc936203eff41891edb76b",
-		"ticker_symbol": "BR",
-		"unquantised_sum": 12760000000000000000000
 	},
 	{
 		"phase": 3,

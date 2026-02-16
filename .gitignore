@@ -15,6 +15,7 @@ broadcast/
 snapshots/
 
 node_modules
+data/
 
 .DS_Store
 docs/superpowers/
