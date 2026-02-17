@@ -6,7 +6,6 @@
 
 <!-- TOC -->
 * [Immutable X Asset Migration Contracts](#immutable-x-asset-migration-contracts)
-  * [External Audit](#external-audit)
   * [Overview](#overview)
   * [Capabilities](#capabilities)
     * [Legacy Bridge Lifecycle](#legacy-bridge-lifecycle)
@@ -21,13 +20,11 @@
       * [Ethereum](#ethereum)
       * [Immutable zkEVM](#immutable-zkevm)
     * [Cross-chain Components](#cross-chain-components)
-  * [Project Structure](#project-structure)
-  * [Prerequisites](#prerequisites)
-  * [Installation](#installation)
-  * [Build and Test](#build-and-test)
-  * [Deployment](#deployment)
-    * [Configuration](#configuration)
-    * [Deploy L2 Contracts](#deploy-l2-contracts)
+  * [Deployed Contracts](#deployed-contracts)
+    * [Mainnet](#mainnet)
+    * [Testnet](#testnet-)
+  * [External Audit](#external-audit)
+  * [Build, Test and Deploy](#build-test-and-deploy)
   * [Supporting Documents](#supporting-documents)
 <!-- TOC -->
 
