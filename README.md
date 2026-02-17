@@ -31,10 +31,6 @@
   * [Supporting Documents](#supporting-documents)
 <!-- TOC -->
 
-
-## External Audit
-The contracts in this repository were independently audited by Nethermind Security in February 2026. The full audit report is available [here](./audit/20260209-nethermind-audit.pdf).
-
 ## Overview
 The Immutable X chain will be sunset in early 2026. Most users will withdraw their assets before the sunset date. However, for some users, the cost and friction of standard withdrawals may exceed the value of their remaining on-chain assets.
 
@@ -125,103 +121,39 @@ The overall automated migration system consists of both off-chain and on-chain c
 
 ---
 
+## Deployed Contracts
+The final deployed contract addresses are listed below. 
+A high-level description of each component is provided in the [Core Contracts](#core-contracts) section above.
 
-## Project Structure
+### Mainnet
+- **Ethereum**
+  - [StarkExchangeMigration](https://etherscan.io/address/0x58b5484F489f7858DC83a5a677338074b57de806)
+  - [VaultRootSenderAdapter](https://etherscan.io/address/0x9Fabd9Cc71f15b9Cfd717E117FBb9cfD9fC7cd32)
+- **Immutable zkEVM**
+  - [VaultWithdrawalProcessor](https://explorer.immutable.com/address/0xCeA34C706C4A18E103575832Dd21fD3656026D1E)
+  - [VaultEscapeProofVerifier](https://explorer.immutable.com/address/0x9Fabd9Cc71f15b9Cfd717E117FBb9cfD9fC7cd32)
+  - [VaultRootReceiverAdapter](https://explorer.immutable.com/address/0x58b5484F489f7858DC83a5a677338074b57de806)
 
-```
-src/
-├── bridge/                  # Bridge and messaging contracts
-│   ├── starkex/               # Immutable X bridge contracts
-│   ├── zkEVM/                 # zkEVM bridge interfaces
-│   └── messaging/             # Cross-chain messaging adapters
-├── verifiers/              # Proof verification contracts
-│   ├── vaults/                # Vault proof verification
-│   └── accounts/              # Account proof verification
-├── withdrawals/            # Withdrawal processing contracts
-└── assets/                 # Asset mapping and management
-```
+### Testnet 
+- **Sepolia**
+  - [StarkExchangeMigration](https://sepolia.etherscan.io/address/0x9F9b4A495A62191A4225759Ae7C00906Cc6417B8)
+  - [VaultRootSenderAdapter](https://sepolia.etherscan.io/address/0xCeA34C706C4A18E103575832Dd21fD3656026D1E)
+- **Immutable zkEVM Testnet**
+  - [VaultWithdrawalProcessor](https://explorer.testnet.immutable.com/address/0xCeA34C706C4A18E103575832Dd21fD3656026D1E)
+  - [VaultEscapeProofVerifier](https://explorer.testnet.immutable.com/address/0x9Fabd9Cc71f15b9Cfd717E117FBb9cfD9fC7cd32)
+  - [VaultRootReceiverAdapter](https://explorer.testnet.immutable.com/address/0x58b5484F489f7858DC83a5a677338074b57de806)
 
-## Prerequisites
+---- 
 
-- [Foundry](https://getfoundry.sh/) 1.0+
-- Solidity 0.8.27+
-- Node.js 18+ (for deployment scripts)
+## External Audit
+The contracts in this repository were independently audited by Nethermind Security in February 2026. The full audit report is available [here](./audit/20260209-nethermind-audit.pdf).
 
-## Installation
+----
 
-1. Clone the repository:
-```bash
-git clone https://github.com/immutable/imx-migration-contracts.git
-cd imx-migration-contracts
-```
+## Build, Test and Deploy
+Instruction for building, testing and deploying these contracts can be found [here](./docs/build-test-deploy.md).
 
-2. Install Foundry dependencies:
-```bash
-forge install
-```
-
-## Build and Test
-Build the contracts:
-```bash
-forge build
-```
-
-Run the test suite:
-```bash
-# Run all tests
-forge test
-
-# Run specific test file
-forge test --match-path test/unit/StarkExchangeMigration.t.sol
-```
-
-## Deployment
-### Configuration
-The system uses configuration files for deployment. Create a deployment configuration file with the following structure:
-
-```json
-{
-  "allow_root_override": false,
-  "vault_verifier": "0x...",
-  "operators": {
-    "disburser": "0x...",
-    "pauser": "0x...",
-    "unpauser": "0x..."
-  },
-  "lookup_tables": ["0x...", "0x...", ...],
-  "asset_mappings": [
-    {
-      "tokenOnIMX": {
-        "id": 123,
-        "quantum": 1000000000000000000
-      },
-      "tokenOnZKEVM": "0x..."
-    }
-  ]
-}
-```
-
-### Deploy L2 Contracts
-
-1. Set environment variables:
-```bash
-export DEPLOYMENT_CONFIG_FILE="path/to/config.json"
-export PRIVATE_KEY="your-private-key"
-export RPC_URL="your-rpc-url"
-```
-
-2. Run deployment script:
-```bash
-forge script script/DeployL2Contracts.s.sol:DeployL2Contracts \
-  --rpc-url $RPC_URL \
-  --private-key $PRIVATE_KEY \
-  --broadcast \
-  --verify
-```
-
-**Note**: Use `--slow` or `-batch-size 1` when deploying to Tenderly to avoid out-of-order deployments.
-
-
+---
 
 ## Supporting Documents
 - [Key Decisions and Technical Considerations](https://immutable.atlassian.net/wiki/spaces/~712020640315cc7a594fb28a6b452c5a8ef6a3/pages/3186852061/Key+Technical+Decisions)
