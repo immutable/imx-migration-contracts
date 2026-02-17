@@ -15,3 +15,5 @@ broadcast/
 snapshots/
 
 node_modules
+
+.DS_Store
