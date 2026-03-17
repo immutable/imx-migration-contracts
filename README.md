@@ -4,6 +4,15 @@
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.27+-brightgreen.svg)](https://soliditylang.org/)
 [![Foundry](https://img.shields.io/badge/Foundry-1.0+-orange.svg)](https://getfoundry.sh/)
 
+> **Migration Complete.** The Immutable X chain was sunset on **11 February 2026**. Automated migration of remaining funds to Immutable zkEVM was carried out between **5–9 March 2026** and has now concluded. This repository contains the contracts that facilitated the migration.
+>
+> | Milestone | Date |
+> |-----------|------|
+> | Last day for manual withdrawals from Immutable X | 11 February 2026 |
+> | Automated fund migration to Immutable zkEVM | 5–9 March 2026 |
+
+> **Have a pending withdrawal from Immutable X?** If you initiated a withdrawal on Immutable X on or before 11 February 2026 and have not yet finalised it on Ethereum, your funds are still held by the bridge contract. This is separate from the automated migration. See the **[Finalise Manually Initiated Withdrawals Guide](./docs/finalise-pending-withdrawals.md)** for step-by-step instructions on how to claim your funds.
+
 <!-- TOC -->
 * [Immutable X Asset Migration Contracts](#immutable-x-asset-migration-contracts)
   * [Overview](#overview)
@@ -34,8 +43,6 @@ The Immutable X chain will be sunset in early 2026. Most users will withdraw the
 To address this, an automated post-sunset migration process will transfer remaining user funds from the legacy Immutable X bridge to Immutable zkEVM, where assets will be automatically disbursed to their rightful owners.
 
 The migration contracts in this repository implement this process while minimising additional trust assumptions. The mechanism anchors on the final StarkEx vault root of the Immutable X chain at shutdown, and strictly constrains all fund disbursements on zkEVM to require valid proofs against this root, ensuring migrated assets are disbursed only to their rightful owners.
-
----
 
 ## Capabilities
 ### Legacy Bridge Lifecycle
@@ -124,7 +131,7 @@ A high-level description of each component is provided in the [Core Contracts](#
 
 ### Mainnet
 - **Ethereum**
-  - [StarkExchangeMigration](https://etherscan.io/address/0x58b5484F489f7858DC83a5a677338074b57de806)
+  - [StarkExchangeMigration (Proxy)](https://etherscan.io/address/0x5FDCCA53617f4d2b9134B29090C87D01058e27e9) | [Implementation](https://etherscan.io/address/0x58b5484F489f7858DC83a5a677338074b57de806)
   - [VaultRootSenderAdapter](https://etherscan.io/address/0x9Fabd9Cc71f15b9Cfd717E117FBb9cfD9fC7cd32)
 - **Immutable zkEVM**
   - [VaultWithdrawalProcessor](https://explorer.immutable.com/address/0xCeA34C706C4A18E103575832Dd21fD3656026D1E)
@@ -133,7 +140,7 @@ A high-level description of each component is provided in the [Core Contracts](#
 
 ### Testnet 
 - **Sepolia**
-  - [StarkExchangeMigration](https://sepolia.etherscan.io/address/0x9F9b4A495A62191A4225759Ae7C00906Cc6417B8)
+  - [StarkExchangeMigration (Proxy)](https://sepolia.etherscan.io/address/0x2d5c349fd8464da06a3f90b4b0e9195f3d1b7f98) | [Implementation](https://sepolia.etherscan.io/address/0x9F9b4A495A62191A4225759Ae7C00906Cc6417B8)
   - [VaultRootSenderAdapter](https://sepolia.etherscan.io/address/0xCeA34C706C4A18E103575832Dd21fD3656026D1E)
 - **Immutable zkEVM Testnet**
   - [VaultWithdrawalProcessor](https://explorer.testnet.immutable.com/address/0xCeA34C706C4A18E103575832Dd21fD3656026D1E)
