@@ -45,7 +45,7 @@ contract StarkExchangeMigration is IStarkExchangeMigration, LegacyStarkExchangeB
      * @dev Initializer is called by the proxy during the `upgradeTo()` function call which can only be called by Governance
      * @dev The hash of the data used to initialize the contract is pre-committed to when the contract upgrade is proposed in the Proxy's timelock upgrade.
      */
-    function initialize(bytes calldata data) external initializer {
+    function initialize(bytes calldata data) external virtual initializer {
         (
             address _migrationManager,
             address _zkEVMBridge,
