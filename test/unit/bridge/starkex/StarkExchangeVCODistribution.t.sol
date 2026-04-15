@@ -110,4 +110,205 @@ contract StarkExchangeVCODistributionTest is Test {
             "VCO asset type should match"
         );
     }
+
+    // -----------------------------------------------------------------------
+    // Task 3: Initialization correctness and guards
+    // -----------------------------------------------------------------------
+
+    function test_Initialize_SetsAllPendingWithdrawals() public view {
+        uint256 vcoAssetType = bridge.VCO_ASSET_TYPE();
+
+        assertEq(bridge.getWithdrawalBalance(bridge.HOLDER_1_KEY(), vcoAssetType), bridge.HOLDER_1_AMOUNT());
+        assertEq(bridge.getWithdrawalBalance(bridge.HOLDER_2_KEY(), vcoAssetType), bridge.HOLDER_2_AMOUNT());
+        assertEq(bridge.getWithdrawalBalance(bridge.HOLDER_3_KEY(), vcoAssetType), bridge.HOLDER_3_AMOUNT());
+        assertEq(bridge.getWithdrawalBalance(bridge.HOLDER_4_KEY(), vcoAssetType), bridge.HOLDER_4_AMOUNT());
+        assertEq(bridge.getWithdrawalBalance(bridge.HOLDER_5_KEY(), vcoAssetType), bridge.HOLDER_5_AMOUNT());
+        assertEq(bridge.getWithdrawalBalance(bridge.HOLDER_6_KEY(), vcoAssetType), bridge.HOLDER_6_AMOUNT());
+        assertEq(bridge.getWithdrawalBalance(bridge.HOLDER_7_KEY(), vcoAssetType), bridge.HOLDER_7_AMOUNT());
+    }
+
+    function test_RevertIf_Initialize_CalledTwice() public {
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        bridge.initialize(bytes(""));
+    }
+
+    function test_Constructor_DisablesInitializers_OnImplementation() public {
+        StarkExchangeVCODistribution implementation = new StarkExchangeVCODistribution();
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        implementation.initialize(bytes(""));
+    }
+
+    // -----------------------------------------------------------------------
+    // Task 4: VCO withdrawal flow
+    // -----------------------------------------------------------------------
+
+    function test_Withdraw_SingleHolder() public {
+        uint256 holderKey = bridge.HOLDER_1_KEY();
+        uint256 vcoAssetType = bridge.VCO_ASSET_TYPE();
+        uint256 expectedAmount = bridge.HOLDER_1_AMOUNT() * VCO_QUANTUM;
+        address recipient = address(uint160(holderKey));
+
+        // Fund the bridge with VCO tokens
+        vcoToken.mint(address(bridge), expectedAmount);
+
+        // Withdraw
+        bridge.withdraw(holderKey, vcoAssetType);
+
+        // Verify: recipient received tokens, pending balance is zero
+        assertEq(vcoToken.balanceOf(recipient), expectedAmount, "Recipient should receive VCO tokens");
+        assertEq(bridge.getWithdrawalBalance(holderKey, vcoAssetType), 0, "Pending balance should be zero after withdrawal");
+    }
+
+    function test_Withdraw_AllHolders() public {
+        uint256 vcoAssetType = bridge.VCO_ASSET_TYPE();
+
+        uint256[7] memory keys = [
+            bridge.HOLDER_1_KEY(), bridge.HOLDER_2_KEY(), bridge.HOLDER_3_KEY(),
+            bridge.HOLDER_4_KEY(), bridge.HOLDER_5_KEY(), bridge.HOLDER_6_KEY(),
+            bridge.HOLDER_7_KEY()
+        ];
+        uint256[7] memory amounts = [
+            bridge.HOLDER_1_AMOUNT(), bridge.HOLDER_2_AMOUNT(), bridge.HOLDER_3_AMOUNT(),
+            bridge.HOLDER_4_AMOUNT(), bridge.HOLDER_5_AMOUNT(), bridge.HOLDER_6_AMOUNT(),
+            bridge.HOLDER_7_AMOUNT()
+        ];
+
+        // Fund bridge with total VCO needed
+        uint256 total = 0;
+        for (uint256 i = 0; i < 7; i++) {
+            total += amounts[i] * VCO_QUANTUM;
+        }
+        vcoToken.mint(address(bridge), total);
+
+        // Withdraw for each holder and verify
+        for (uint256 i = 0; i < 7; i++) {
+            address recipient = address(uint160(keys[i]));
+            uint256 expectedAmount = amounts[i] * VCO_QUANTUM;
+
+            bridge.withdraw(keys[i], vcoAssetType);
+
+            assertEq(vcoToken.balanceOf(recipient), expectedAmount, "Holder should receive correct VCO amount");
+            assertEq(bridge.getWithdrawalBalance(keys[i], vcoAssetType), 0, "Pending balance should be cleared");
+        }
+    }
+
+    function test_RevertIf_Withdraw_NoPendingBalance() public {
+        uint256 vcoAssetType = bridge.VCO_ASSET_TYPE();
+
+        // First withdraw succeeds
+        uint256 holderKey = bridge.HOLDER_1_KEY();
+        uint256 amount = bridge.HOLDER_1_AMOUNT() * VCO_QUANTUM;
+        vcoToken.mint(address(bridge), amount);
+        bridge.withdraw(holderKey, vcoAssetType);
+
+        // Second withdraw for same holder reverts
+        vm.expectRevert("NO_PENDING_WITHDRAWAL");
+        bridge.withdraw(holderKey, vcoAssetType);
+    }
+
+    function test_Withdraw_EmitsLogWithdrawalPerformed() public {
+        uint256 holderKey = bridge.HOLDER_1_KEY();
+        uint256 vcoAssetType = bridge.VCO_ASSET_TYPE();
+        uint256 quantizedAmount = bridge.HOLDER_1_AMOUNT();
+        uint256 nonQuantizedAmount = quantizedAmount * VCO_QUANTUM;
+        address recipient = address(uint160(holderKey));
+
+        vcoToken.mint(address(bridge), nonQuantizedAmount);
+
+        vm.expectEmit(true, true, true, true);
+        emit LegacyStarkExchangeBridge.LogWithdrawalPerformed(
+            holderKey, vcoAssetType, nonQuantizedAmount, quantizedAmount, recipient
+        );
+
+        bridge.withdraw(holderKey, vcoAssetType);
+    }
+
+    // -----------------------------------------------------------------------
+    // Task 5: Preserved StarkExchangeMigration functionality
+    // -----------------------------------------------------------------------
+
+    function test_MigrateHoldings_PreservedFunctionality() public {
+        address migrationManager = address(0xBEEF);
+        MockRootERC20Bridge mockZkEVMBridge = new MockRootERC20Bridge();
+        MockSenderAdapter mockSender = new MockSenderAdapter();
+        address withdrawalProcessor = address(0xDEAD);
+
+        bridge.setupMigrationConfig(
+            migrationManager,
+            address(mockZkEVMBridge),
+            address(mockSender),
+            withdrawalProcessor
+        );
+
+        // Create and fund a test ERC20
+        MockERC20 testToken = new MockERC20("Test", "TST", 18);
+        uint256 tokenAmount = 1 ether;
+        testToken.mint(address(bridge), tokenAmount);
+
+        IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
+            new IStarkExchangeMigration.TokenMigrationDetails[](1);
+        assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
+            token: address(testToken),
+            amount: tokenAmount,
+            bridgeFee: 0.001 ether
+        });
+
+        vm.deal(migrationManager, 1 ether);
+        vm.prank(migrationManager);
+        bridge.migrateHoldings{value: 0.001 ether}(assets);
+
+        assertEq(testToken.balanceOf(address(mockZkEVMBridge)), tokenAmount, "Tokens should be migrated to zkEVM bridge");
+    }
+
+    function test_MigrateVaultRoot_PreservedFunctionality() public {
+        address migrationManager = address(0xBEEF);
+        MockSenderAdapter mockSender = new MockSenderAdapter();
+
+        bridge.setupMigrationConfig(
+            migrationManager,
+            address(new MockRootERC20Bridge()),
+            address(mockSender),
+            address(0xDEAD)
+        );
+
+        // Set vault root in storage (slot 13)
+        uint256 testVaultRoot = 0x1234567890abcdef;
+        vm.store(address(bridge), bytes32(uint256(13)), bytes32(testVaultRoot));
+
+        vm.deal(migrationManager, 1 ether);
+        vm.prank(migrationManager);
+        bridge.migrateVaultRoot{value: 0.001 ether}();
+
+        // If it didn't revert, the function works. The mock sender doesn't store state,
+        // so we verify via non-revert and the vault root is unchanged.
+        assertEq(
+            uint256(vm.load(address(bridge), bytes32(uint256(13)))),
+            testVaultRoot,
+            "Vault root should be preserved"
+        );
+    }
+
+    function test_RevertIf_MigrateHoldings_Unauthorized() public {
+        address migrationManager = address(0xBEEF);
+        bridge.setupMigrationConfig(
+            migrationManager,
+            address(new MockRootERC20Bridge()),
+            address(new MockSenderAdapter()),
+            address(0xDEAD)
+        );
+
+        IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
+            new IStarkExchangeMigration.TokenMigrationDetails[](1);
+        assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
+            token: address(vcoToken),
+            amount: 1 ether,
+            bridgeFee: 0.001 ether
+        });
+
+        address unauthorized = address(0xBAD);
+        vm.deal(unauthorized, 1 ether);
+        vm.prank(unauthorized);
+        vm.expectRevert(IStarkExchangeMigration.UnauthorizedMigrationInitiator.selector);
+        bridge.migrateHoldings{value: 0.001 ether}(assets);
+    }
 }
