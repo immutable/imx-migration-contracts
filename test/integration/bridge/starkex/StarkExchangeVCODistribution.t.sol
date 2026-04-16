@@ -48,7 +48,7 @@ contract StarkExchangeVCODistributionIntegrationTest is Test {
 
     function setUp() public {
         string memory RPC_URL = vm.envString("ETH_RPC_URL");
-        vm.createSelectFork(RPC_URL);
+        vm.createSelectFork(RPC_URL, 24890212);
     }
 
     function _upgradeToVCODistribution() internal returns (address) {
