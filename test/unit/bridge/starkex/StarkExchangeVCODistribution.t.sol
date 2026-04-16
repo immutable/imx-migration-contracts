@@ -448,6 +448,14 @@ contract StarkExchangeVCODistributionTest is Test {
         bridge.registerEthAddress(wrongEthKey, starkKey, sig);
     }
 
+    function test_RevertIf_RegisterEthAddress_OffCurveKey() public {
+        // Use a value that is in range (< K_MODULUS) but not on the Stark curve.
+        // For y^2 = x^3 + x + beta (mod p), approximately half of x values are off-curve.
+        uint256 offCurveKey = 5;
+        vm.expectRevert("INVALID_STARK_KEY");
+        bridge.registerEthAddress(address(0x1234), offCurveKey, bytes(new bytes(96)));
+    }
+
     // -----------------------------------------------------------------------
     // Task 6: Register-then-withdraw end-to-end test
     // -----------------------------------------------------------------------
