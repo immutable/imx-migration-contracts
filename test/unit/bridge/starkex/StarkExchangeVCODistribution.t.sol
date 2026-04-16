@@ -392,7 +392,7 @@ contract StarkExchangeVCODistributionTest is Test {
         bytes memory sig = _signRegistration(TEST_STARK_PRIVATE_KEY, TEST_NONCE, ethKey, starkKey, starkKeyY);
 
         vm.expectEmit(true, true, true, true);
-        emit StarkExchangeVCODistribution.LogUserRegistered(ethKey, starkKey, caller);
+        emit LegacyStarkExchangeBridge.LogUserRegistered(ethKey, starkKey, caller);
 
         vm.prank(caller);
         bridge.registerEthAddress(ethKey, starkKey, sig);
