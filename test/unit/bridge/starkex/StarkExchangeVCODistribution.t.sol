@@ -9,6 +9,8 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {LegacyStarkExchangeBridge} from "@src/bridge/starkex/LegacyStarkExchangeBridge.sol";
+import {EllipticCurve} from "@src/bridge/starkex/libraries/EllipticCurve.sol";
+import {StarkCurveECDSA} from "@src/bridge/starkex/libraries/StarkCurveECDSA.sol";
 
 /**
  * @title MockERC20
@@ -310,5 +312,135 @@ contract StarkExchangeVCODistributionTest is Test {
         vm.prank(unauthorized);
         vm.expectRevert(IStarkExchangeMigration.UnauthorizedMigrationInitiator.selector);
         bridge.migrateHoldings{value: 0.001 ether}(assets);
+    }
+
+    // -----------------------------------------------------------------------
+    // STARK key test helpers
+    // -----------------------------------------------------------------------
+
+    uint256 constant TEST_STARK_PRIVATE_KEY = 0x1234567890abcdef;
+    uint256 constant TEST_NONCE = 0xfedcba9876543210;
+
+    function _generateStarkKeyPair(uint256 privateKey) internal pure returns (uint256 pubX, uint256 pubY) {
+        (pubX, pubY) = EllipticCurve.ecMul(
+            privateKey,
+            StarkCurveECDSA.EC_GEN_X,
+            StarkCurveECDSA.EC_GEN_Y,
+            StarkCurveECDSA.ALPHA,
+            StarkCurveECDSA.FIELD_PRIME
+        );
+    }
+
+    function _signRegistration(uint256 privateKey, uint256 nonce, address ethKey, uint256 starkKey, uint256 starkKeyY)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        uint256 msgHash =
+            uint256(keccak256(abi.encodePacked("UserRegistration:", ethKey, starkKey))) % StarkCurveECDSA.EC_ORDER;
+
+        // r = (nonce * G).x
+        (uint256 r,) = EllipticCurve.ecMul(
+            nonce, StarkCurveECDSA.EC_GEN_X, StarkCurveECDSA.EC_GEN_Y, StarkCurveECDSA.ALPHA, StarkCurveECDSA.FIELD_PRIME
+        );
+
+        // s = nonce^(-1) * (msgHash + r * privateKey) mod EC_ORDER
+        uint256 rk = mulmod(r, privateKey, StarkCurveECDSA.EC_ORDER);
+        uint256 sum = addmod(msgHash, rk, StarkCurveECDSA.EC_ORDER);
+        uint256 nonceInv = EllipticCurve.invMod(nonce, StarkCurveECDSA.EC_ORDER);
+        uint256 s = mulmod(nonceInv, sum, StarkCurveECDSA.EC_ORDER);
+
+        return abi.encode(r, s, starkKeyY);
+    }
+
+    // -----------------------------------------------------------------------
+    // registerEthAddress tests
+    // -----------------------------------------------------------------------
+
+    function test_RegisterEthAddress_Valid() public {
+        (uint256 starkKey, uint256 starkKeyY) = _generateStarkKeyPair(TEST_STARK_PRIVATE_KEY);
+        address ethKey = address(0x9876543210987654321098765432109876543210);
+
+        bytes memory sig = _signRegistration(TEST_STARK_PRIVATE_KEY, TEST_NONCE, ethKey, starkKey, starkKeyY);
+
+        bridge.registerEthAddress(ethKey, starkKey, sig);
+
+        assertEq(bridge.getEthKey(starkKey), ethKey, "Registered eth key should match");
+    }
+
+    function test_RegisterSender_Valid() public {
+        (uint256 starkKey, uint256 starkKeyY) = _generateStarkKeyPair(TEST_STARK_PRIVATE_KEY);
+        address sender = address(0xABCDabcdABcDabcDaBCDAbcdABcdAbCdABcDABCd);
+
+        bytes memory sig = _signRegistration(TEST_STARK_PRIVATE_KEY, TEST_NONCE, sender, starkKey, starkKeyY);
+
+        vm.prank(sender);
+        bridge.registerSender(starkKey, sig);
+
+        assertEq(bridge.getEthKey(starkKey), sender, "Registered eth key should be msg.sender");
+    }
+
+    function test_RegisterEthAddress_EmitsLogUserRegistered() public {
+        (uint256 starkKey, uint256 starkKeyY) = _generateStarkKeyPair(TEST_STARK_PRIVATE_KEY);
+        address ethKey = address(0x9876543210987654321098765432109876543210);
+        address caller = address(0x1111111111111111111111111111111111111111);
+
+        bytes memory sig = _signRegistration(TEST_STARK_PRIVATE_KEY, TEST_NONCE, ethKey, starkKey, starkKeyY);
+
+        vm.expectEmit(true, true, true, true);
+        emit StarkExchangeVCODistribution.LogUserRegistered(ethKey, starkKey, caller);
+
+        vm.prank(caller);
+        bridge.registerEthAddress(ethKey, starkKey, sig);
+    }
+
+    function test_RevertIf_RegisterEthAddress_ZeroStarkKey() public {
+        vm.expectRevert("INVALID_STARK_KEY");
+        bridge.registerEthAddress(address(0x1234), 0, bytes(new bytes(96)));
+    }
+
+    function test_RevertIf_RegisterEthAddress_StarkKeyTooLarge() public {
+        uint256 kModulus = 0x800000000000011000000000000000000000000000000000000000000000001;
+        vm.expectRevert("INVALID_STARK_KEY");
+        bridge.registerEthAddress(address(0x1234), kModulus, bytes(new bytes(96)));
+    }
+
+    function test_RevertIf_RegisterEthAddress_ZeroEthAddress() public {
+        (uint256 starkKey,) = _generateStarkKeyPair(TEST_STARK_PRIVATE_KEY);
+        vm.expectRevert("INVALID_ETH_ADDRESS");
+        bridge.registerEthAddress(address(0), starkKey, bytes(new bytes(96)));
+    }
+
+    function test_RevertIf_RegisterEthAddress_DuplicateRegistration() public {
+        (uint256 starkKey, uint256 starkKeyY) = _generateStarkKeyPair(TEST_STARK_PRIVATE_KEY);
+        address ethKey = address(0x9876543210987654321098765432109876543210);
+
+        bytes memory sig = _signRegistration(TEST_STARK_PRIVATE_KEY, TEST_NONCE, ethKey, starkKey, starkKeyY);
+        bridge.registerEthAddress(ethKey, starkKey, sig);
+
+        // Second registration with same stark key should fail
+        address ethKey2 = address(0x1111111111111111111111111111111111111111);
+        bytes memory sig2 = _signRegistration(TEST_STARK_PRIVATE_KEY, TEST_NONCE, ethKey2, starkKey, starkKeyY);
+
+        vm.expectRevert("STARK_KEY_UNAVAILABLE");
+        bridge.registerEthAddress(ethKey2, starkKey, sig2);
+    }
+
+    function test_RevertIf_RegisterEthAddress_InvalidSignatureLength() public {
+        (uint256 starkKey,) = _generateStarkKeyPair(TEST_STARK_PRIVATE_KEY);
+        vm.expectRevert("INVALID_STARK_SIGNATURE_LENGTH");
+        bridge.registerEthAddress(address(0x1234), starkKey, bytes(new bytes(64)));
+    }
+
+    function test_RevertIf_RegisterEthAddress_InvalidSignature() public {
+        (uint256 starkKey, uint256 starkKeyY) = _generateStarkKeyPair(TEST_STARK_PRIVATE_KEY);
+        address ethKey = address(0x9876543210987654321098765432109876543210);
+        address wrongEthKey = address(0x1111111111111111111111111111111111111111);
+
+        // Sign for ethKey but try to register wrongEthKey
+        bytes memory sig = _signRegistration(TEST_STARK_PRIVATE_KEY, TEST_NONCE, ethKey, starkKey, starkKeyY);
+
+        vm.expectRevert("INVALID_STARK_SIGNATURE");
+        bridge.registerEthAddress(wrongEthKey, starkKey, sig);
     }
 }
