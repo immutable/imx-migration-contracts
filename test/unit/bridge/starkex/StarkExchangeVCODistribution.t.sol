@@ -94,6 +94,15 @@ contract StarkExchangeVCODistributionTest is Test {
 
     uint256 constant VCO_QUANTUM = 1;
 
+    // Ethereum addresses corresponding to each holder's Stark key
+    address constant HOLDER_1_ETH = 0x5eBb994EBC1c44815FbF2fA61a6E1f8368dcB0C7;
+    address constant HOLDER_2_ETH = 0x216e8577B504aC3dB213eDd261e47fffBb354248;
+    address constant HOLDER_3_ETH = 0x10cbBBb225BBEA137aC01F0F6D91CDB126BccaA6;
+    address constant HOLDER_4_ETH = 0x409F85D2207796b543b8abdB6a0E2490BB1483D1;
+    address constant HOLDER_5_ETH = 0xCE5A537D4dA620DE59efA6F74a0A065732600c71;
+    address constant HOLDER_6_ETH = 0x941f54cb53Dc1478Cb126a2Ba8a83b2130419dB5;
+    address constant HOLDER_7_ETH = 0xBC6EeB5111fEa2B5e9B2Bc534bBcbCa9568999a4;
+
     function setUp() public {
         // Deploy mock VCO token
         vcoToken = new MockERC20("VCO Token", "VCO", 18);
@@ -107,6 +116,15 @@ contract StarkExchangeVCODistributionTest is Test {
 
         // Register VCO asset type in legacy storage (required for withdraw to work)
         bridge.setupAssetType(bridge.VCO_ASSET_TYPE(), VCO_QUANTUM, address(vcoToken));
+
+        // Register Stark key → Ethereum address mappings (simulates registerEthAddress calls)
+        bridge.setupEthKey(bridge.HOLDER_1_KEY(), HOLDER_1_ETH);
+        bridge.setupEthKey(bridge.HOLDER_2_KEY(), HOLDER_2_ETH);
+        bridge.setupEthKey(bridge.HOLDER_3_KEY(), HOLDER_3_ETH);
+        bridge.setupEthKey(bridge.HOLDER_4_KEY(), HOLDER_4_ETH);
+        bridge.setupEthKey(bridge.HOLDER_5_KEY(), HOLDER_5_ETH);
+        bridge.setupEthKey(bridge.HOLDER_6_KEY(), HOLDER_6_ETH);
+        bridge.setupEthKey(bridge.HOLDER_7_KEY(), HOLDER_7_ETH);
     }
 
     function test_Initialize_DeploysSuccessfully() public view {
@@ -152,7 +170,6 @@ contract StarkExchangeVCODistributionTest is Test {
         uint256 holderKey = bridge.HOLDER_1_KEY();
         uint256 vcoAssetType = bridge.VCO_ASSET_TYPE();
         uint256 expectedAmount = bridge.HOLDER_1_AMOUNT() * VCO_QUANTUM;
-        address recipient = address(uint160(holderKey));
 
         // Fund the bridge with VCO tokens
         vcoToken.mint(address(bridge), expectedAmount);
@@ -161,7 +178,7 @@ contract StarkExchangeVCODistributionTest is Test {
         bridge.withdraw(holderKey, vcoAssetType);
 
         // Verify: recipient received tokens, pending balance is zero
-        assertEq(vcoToken.balanceOf(recipient), expectedAmount, "Recipient should receive VCO tokens");
+        assertEq(vcoToken.balanceOf(HOLDER_1_ETH), expectedAmount, "Recipient should receive VCO tokens");
         assertEq(bridge.getWithdrawalBalance(holderKey, vcoAssetType), 0, "Pending balance should be zero after withdrawal");
     }
 
@@ -178,6 +195,11 @@ contract StarkExchangeVCODistributionTest is Test {
             bridge.HOLDER_4_AMOUNT(), bridge.HOLDER_5_AMOUNT(), bridge.HOLDER_6_AMOUNT(),
             bridge.HOLDER_7_AMOUNT()
         ];
+        address[7] memory ethAddresses = [
+            HOLDER_1_ETH, HOLDER_2_ETH, HOLDER_3_ETH,
+            HOLDER_4_ETH, HOLDER_5_ETH, HOLDER_6_ETH,
+            HOLDER_7_ETH
+        ];
 
         // Fund bridge with total VCO needed
         uint256 total = 0;
@@ -188,12 +210,11 @@ contract StarkExchangeVCODistributionTest is Test {
 
         // Withdraw for each holder and verify
         for (uint256 i = 0; i < 7; i++) {
-            address recipient = address(uint160(keys[i]));
             uint256 expectedAmount = amounts[i] * VCO_QUANTUM;
 
             bridge.withdraw(keys[i], vcoAssetType);
 
-            assertEq(vcoToken.balanceOf(recipient), expectedAmount, "Holder should receive correct VCO amount");
+            assertEq(vcoToken.balanceOf(ethAddresses[i]), expectedAmount, "Holder should receive correct VCO amount");
             assertEq(bridge.getWithdrawalBalance(keys[i], vcoAssetType), 0, "Pending balance should be cleared");
         }
     }
@@ -217,13 +238,12 @@ contract StarkExchangeVCODistributionTest is Test {
         uint256 vcoAssetType = bridge.VCO_ASSET_TYPE();
         uint256 quantizedAmount = bridge.HOLDER_1_AMOUNT();
         uint256 nonQuantizedAmount = quantizedAmount * VCO_QUANTUM;
-        address recipient = address(uint160(holderKey));
 
         vcoToken.mint(address(bridge), nonQuantizedAmount);
 
         vm.expectEmit(true, true, true, true);
         emit LegacyStarkExchangeBridge.LogWithdrawalPerformed(
-            holderKey, vcoAssetType, nonQuantizedAmount, quantizedAmount, recipient
+            holderKey, vcoAssetType, nonQuantizedAmount, quantizedAmount, HOLDER_1_ETH
         );
 
         bridge.withdraw(holderKey, vcoAssetType);
