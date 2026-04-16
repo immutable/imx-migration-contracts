@@ -110,7 +110,7 @@ contract StarkExchangeVCODistributionIntegrationTest is Test {
     function test_Upgrade_VCOWithdrawalWorks() public {
         _upgradeToVCODistribution();
 
-        uint256 holderKey = starkExProxy.HOLDER_1_KEY();
+        uint256 holderKey = starkExProxy.HOLDER_6_KEY();
         uint256 vcoAssetType = starkExProxy.VCO_ASSET_TYPE();
         address recipient = starkExProxy.getEthKey(holderKey);
         require(recipient != address(0), "Holder key must resolve to valid address");
