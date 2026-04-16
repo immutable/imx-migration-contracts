@@ -16,4 +16,5 @@ snapshots/
 
 node_modules
 
-.DS_Storedocs/superpowers/
+.DS_Store
+docs/superpowers/
