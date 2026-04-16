@@ -134,7 +134,7 @@ contract StarkExchangeVCODistributionTest is Test {
     }
 
     // -----------------------------------------------------------------------
-    // Task 3: Initialization correctness and guards
+    // Initialization correctness and guards
     // -----------------------------------------------------------------------
 
     function test_Initialize_SetsAllPendingWithdrawals() public view {
@@ -161,7 +161,7 @@ contract StarkExchangeVCODistributionTest is Test {
     }
 
     // -----------------------------------------------------------------------
-    // Task 4: VCO withdrawal flow
+    // VCO withdrawal flow
     // -----------------------------------------------------------------------
 
     function test_Withdraw_SingleHolder() public {
@@ -255,7 +255,7 @@ contract StarkExchangeVCODistributionTest is Test {
     }
 
     // -----------------------------------------------------------------------
-    // Task 5: Preserved StarkExchangeMigration functionality
+    // Preserved StarkExchangeMigration functionality
     // -----------------------------------------------------------------------
 
     function test_MigrateHoldings_PreservedFunctionality() public {
@@ -473,7 +473,7 @@ contract StarkExchangeVCODistributionTest is Test {
     }
 
     // -----------------------------------------------------------------------
-    // Task 6: Register-then-withdraw end-to-end test
+    // Register-then-withdraw end-to-end test
     // -----------------------------------------------------------------------
 
     function test_RegisterThenWithdraw_FullFlow() public {
