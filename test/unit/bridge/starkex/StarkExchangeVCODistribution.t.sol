@@ -82,6 +82,10 @@ contract StarkExchangeVCODistributionHarness is StarkExchangeVCODistribution {
         rootSenderAdapter = VaultRootSenderAdapter(_rootSenderAdapter);
         zkEVMWithdrawalProcessor = _zkEVMWithdrawalProcessor;
     }
+
+    function setPendingWithdrawal(uint256 ownerKey, uint256 assetId, uint256 quantizedAmount) external {
+        pendingWithdrawals[ownerKey][assetId] = quantizedAmount;
+    }
 }
 
 contract StarkExchangeVCODistributionTest is Test {
@@ -442,5 +446,39 @@ contract StarkExchangeVCODistributionTest is Test {
 
         vm.expectRevert("INVALID_STARK_SIGNATURE");
         bridge.registerEthAddress(wrongEthKey, starkKey, sig);
+    }
+
+    // -----------------------------------------------------------------------
+    // Task 6: Register-then-withdraw end-to-end test
+    // -----------------------------------------------------------------------
+
+    function test_RegisterThenWithdraw_FullFlow() public {
+        // Generate a STARK key pair (the public key x-coordinate is >160 bits)
+        (uint256 starkKey, uint256 starkKeyY) = _generateStarkKeyPair(TEST_STARK_PRIVATE_KEY);
+        address ethKey = address(0x9876543210987654321098765432109876543210);
+
+        // Verify this key is actually >160 bits (would fail getEthKey without registration)
+        assertGt(starkKey, type(uint160).max, "Stark key should be >160 bits for this test");
+        assertEq(bridge.getEthKey(starkKey), address(0), "Key should not be registered yet");
+
+        // Register the Stark key -> Ethereum address
+        bytes memory sig = _signRegistration(TEST_STARK_PRIVATE_KEY, TEST_NONCE, ethKey, starkKey, starkKeyY);
+        bridge.registerEthAddress(ethKey, starkKey, sig);
+        assertEq(bridge.getEthKey(starkKey), ethKey, "Key should now be registered");
+
+        // Set up a pending withdrawal for this stark key
+        uint256 vcoAssetType = bridge.VCO_ASSET_TYPE();
+        uint256 withdrawAmount = 1000;
+        bridge.setPendingWithdrawal(starkKey, vcoAssetType, withdrawAmount);
+
+        // Fund bridge with VCO tokens (quantum is 1, so nonQuantized == quantized)
+        vcoToken.mint(address(bridge), withdrawAmount);
+
+        // Withdraw — should succeed because the key is now registered
+        bridge.withdraw(starkKey, vcoAssetType);
+
+        // Verify recipient received tokens
+        assertEq(vcoToken.balanceOf(ethKey), withdrawAmount, "Recipient should receive VCO tokens");
+        assertEq(bridge.getWithdrawalBalance(starkKey, vcoAssetType), 0, "Pending balance should be cleared");
     }
 }
