@@ -37,11 +37,17 @@ contract StarkExchangeVCODistribution is StarkExchangeMigration {
 
     /**
      * @notice Populates `pendingWithdrawals` with VCO token entries for the 7 holders.
-     * @param data Unused — required to match the parent function signature for StarkEx proxy compatibility.
-     * @dev Uses `reinitializer(2)` because the parent's `initialize` used `initializer` (equivalent to
+     * @dev The bytes parameter is unused but required to match the parent function signature for StarkEx proxy compatibility.
+     *      Uses `reinitializer(2)` because the parent's `initialize` used `initializer` (equivalent to
      *      reinitializer(1)). This ensures the function can only execute once.
      */
-    function initialize(bytes calldata data) external override reinitializer(2) {
+    function initialize(
+        bytes calldata /* data */
+    )
+        external
+        override
+        reinitializer(2)
+    {
         pendingWithdrawals[HOLDER_1_KEY][VCO_ASSET_TYPE] = HOLDER_1_AMOUNT;
         pendingWithdrawals[HOLDER_2_KEY][VCO_ASSET_TYPE] = HOLDER_2_AMOUNT;
         pendingWithdrawals[HOLDER_3_KEY][VCO_ASSET_TYPE] = HOLDER_3_AMOUNT;
