@@ -11,18 +11,13 @@ import {EllipticCurve} from "./EllipticCurve.sol";
 library StarkCurveECDSA {
     using EllipticCurve for uint256;
 
-    uint256 internal constant FIELD_PRIME =
-        0x800000000000011000000000000000000000000000000000000000000000001;
+    uint256 internal constant FIELD_PRIME = 0x800000000000011000000000000000000000000000000000000000000000001;
     uint256 internal constant ALPHA = 1;
-    uint256 internal constant BETA =
-        3141592653589793238462643383279502884197169399375105820974944592307816406665;
-    uint256 internal constant EC_ORDER =
-        3618502788666131213697322783095070105526743751716087489154079457884512865583;
+    uint256 internal constant BETA = 3141592653589793238462643383279502884197169399375105820974944592307816406665;
+    uint256 internal constant EC_ORDER = 3618502788666131213697322783095070105526743751716087489154079457884512865583;
     uint256 internal constant N_ELEMENT_BITS_ECDSA = 251;
-    uint256 internal constant EC_GEN_X =
-        0x1ef15c18599971b7beced415a40f0c7deacfd9b0d1819e03d723d8bc943cfca;
-    uint256 internal constant EC_GEN_Y =
-        0x5668060aa49730b7be4801df46ec62de53ecd11abe43a32873000c36e8dc1f;
+    uint256 internal constant EC_GEN_X = 0x1ef15c18599971b7beced415a40f0c7deacfd9b0d1819e03d723d8bc943cfca;
+    uint256 internal constant EC_GEN_Y = 0x5668060aa49730b7be4801df46ec62de53ecd11abe43a32873000c36e8dc1f;
 
     function verify(uint256 msgHash, uint256 r, uint256 s, uint256 pubX, uint256 pubY) internal pure {
         require(msgHash % EC_ORDER == msgHash, "msgHash out of range");

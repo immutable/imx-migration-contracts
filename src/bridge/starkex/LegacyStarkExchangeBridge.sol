@@ -283,12 +283,10 @@ abstract contract LegacyStarkExchangeBridge is MainStorage {
     // -----------------------------------------------------------------------
 
     /// @notice Stark-friendly elliptic curve prime field modulus
-    uint256 private constant K_MODULUS =
-        0x800000000000011000000000000000000000000000000000000000000000001;
+    uint256 private constant K_MODULUS = 0x800000000000011000000000000000000000000000000000000000000000001;
 
     /// @notice Stark curve beta constant
-    uint256 private constant K_BETA =
-        0x6f21413efbe40de150e596d72f7a8c5609ad26c15c915c1f4cdfcb99cee9e89;
+    uint256 private constant K_BETA = 0x6f21413efbe40de150e596d72f7a8c5609ad26c15c915c1f4cdfcb99cee9e89;
 
     /// @notice Emitted when a user registers their Stark key to an Ethereum address
     event LogUserRegistered(address ethKey, uint256 starkKey, address sender);

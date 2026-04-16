@@ -54,11 +54,7 @@ library EllipticCurve {
     }
 
     /// @dev Converts a point (x, y, z) expressed in Jacobian coordinates to affine coordinates (x', y', 1).
-    function toAffine(uint256 _x, uint256 _y, uint256 _z, uint256 _pp)
-        internal
-        pure
-        returns (uint256, uint256)
-    {
+    function toAffine(uint256 _x, uint256 _y, uint256 _z, uint256 _pp) internal pure returns (uint256, uint256) {
         uint256 zInv = invMod(_z, _pp);
         uint256 zInv2 = mulmod(zInv, zInv, _pp);
         uint256 x2 = mulmod(_x, zInv2, _pp);
@@ -98,15 +94,11 @@ library EllipticCurve {
     }
 
     /// @dev Adds two points (x1, y1, z1) and (x2 y2, z2) in Jacobian coordinates.
-    function jacAdd(
-        uint256 _x1,
-        uint256 _y1,
-        uint256 _z1,
-        uint256 _x2,
-        uint256 _y2,
-        uint256 _z2,
-        uint256 _pp
-    ) internal pure returns (uint256, uint256, uint256) {
+    function jacAdd(uint256 _x1, uint256 _y1, uint256 _z1, uint256 _x2, uint256 _y2, uint256 _z2, uint256 _pp)
+        internal
+        pure
+        returns (uint256, uint256, uint256)
+    {
         if (_x1 == 0 && _y1 == 0) return (_x2, _y2, _z2);
         if (_x2 == 0 && _y2 == 0) return (_x1, _y1, _z1);
 
@@ -116,12 +108,7 @@ library EllipticCurve {
         zs[2] = mulmod(_z2, _z2, _pp);
         zs[3] = mulmod(_z2, zs[2], _pp);
 
-        zs = [
-            mulmod(_x1, zs[2], _pp),
-            mulmod(_y1, zs[3], _pp),
-            mulmod(_x2, zs[0], _pp),
-            mulmod(_y2, zs[1], _pp)
-        ];
+        zs = [mulmod(_x1, zs[2], _pp), mulmod(_y1, zs[3], _pp), mulmod(_x2, zs[0], _pp), mulmod(_y2, zs[1], _pp)];
 
         require(zs[0] != zs[2] || zs[1] != zs[3], "Use jacDouble function instead");
 

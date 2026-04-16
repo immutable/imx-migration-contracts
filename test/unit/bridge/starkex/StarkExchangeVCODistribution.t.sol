@@ -38,6 +38,7 @@ contract MockERC20 is ERC20 {
  */
 contract MockRootERC20Bridge {
     function deposit(IERC20Metadata, uint256) external payable {}
+
     function depositTo(IERC20Metadata rootToken, address, uint256 amount) external payable {
         rootToken.transferFrom(msg.sender, address(this), amount);
     }
@@ -61,10 +62,8 @@ contract StarkExchangeVCODistributionHarness is StarkExchangeVCODistribution {
     function setupAssetType(uint256 assetType, uint256 quantum, address tokenAddress) external {
         registeredAssetType[assetType] = true;
         assetTypeToQuantum[assetType] = quantum;
-        assetTypeToAssetInfo[assetType] = abi.encodePacked(
-            bytes4(keccak256("ERC20Token(address)")),
-            abi.encode(tokenAddress)
-        );
+        assetTypeToAssetInfo[assetType] =
+            abi.encodePacked(bytes4(keccak256("ERC20Token(address)")), abi.encode(tokenAddress));
     }
 
     function setupEthKey(uint256 ownerKey, address ethAddress) external {
@@ -109,8 +108,7 @@ contract StarkExchangeVCODistributionTest is Test {
 
         // Deploy harness behind ERC1967Proxy
         StarkExchangeVCODistributionHarness implementation = new StarkExchangeVCODistributionHarness();
-        bytes memory initCallData =
-            abi.encodeWithSelector(StarkExchangeVCODistribution.initialize.selector, bytes(""));
+        bytes memory initCallData = abi.encodeWithSelector(StarkExchangeVCODistribution.initialize.selector, bytes(""));
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initCallData);
         bridge = StarkExchangeVCODistributionHarness(address(proxy));
 
@@ -179,27 +177,34 @@ contract StarkExchangeVCODistributionTest is Test {
 
         // Verify: recipient received tokens, pending balance is zero
         assertEq(vcoToken.balanceOf(HOLDER_1_ETH), expectedAmount, "Recipient should receive VCO tokens");
-        assertEq(bridge.getWithdrawalBalance(holderKey, vcoAssetType), 0, "Pending balance should be zero after withdrawal");
+        assertEq(
+            bridge.getWithdrawalBalance(holderKey, vcoAssetType), 0, "Pending balance should be zero after withdrawal"
+        );
     }
 
     function test_Withdraw_AllHolders() public {
         uint256 vcoAssetType = bridge.VCO_ASSET_TYPE();
 
         uint256[7] memory keys = [
-            bridge.HOLDER_1_KEY(), bridge.HOLDER_2_KEY(), bridge.HOLDER_3_KEY(),
-            bridge.HOLDER_4_KEY(), bridge.HOLDER_5_KEY(), bridge.HOLDER_6_KEY(),
+            bridge.HOLDER_1_KEY(),
+            bridge.HOLDER_2_KEY(),
+            bridge.HOLDER_3_KEY(),
+            bridge.HOLDER_4_KEY(),
+            bridge.HOLDER_5_KEY(),
+            bridge.HOLDER_6_KEY(),
             bridge.HOLDER_7_KEY()
         ];
         uint256[7] memory amounts = [
-            bridge.HOLDER_1_AMOUNT(), bridge.HOLDER_2_AMOUNT(), bridge.HOLDER_3_AMOUNT(),
-            bridge.HOLDER_4_AMOUNT(), bridge.HOLDER_5_AMOUNT(), bridge.HOLDER_6_AMOUNT(),
+            bridge.HOLDER_1_AMOUNT(),
+            bridge.HOLDER_2_AMOUNT(),
+            bridge.HOLDER_3_AMOUNT(),
+            bridge.HOLDER_4_AMOUNT(),
+            bridge.HOLDER_5_AMOUNT(),
+            bridge.HOLDER_6_AMOUNT(),
             bridge.HOLDER_7_AMOUNT()
         ];
-        address[7] memory ethAddresses = [
-            HOLDER_1_ETH, HOLDER_2_ETH, HOLDER_3_ETH,
-            HOLDER_4_ETH, HOLDER_5_ETH, HOLDER_6_ETH,
-            HOLDER_7_ETH
-        ];
+        address[7] memory ethAddresses =
+            [HOLDER_1_ETH, HOLDER_2_ETH, HOLDER_3_ETH, HOLDER_4_ETH, HOLDER_5_ETH, HOLDER_6_ETH, HOLDER_7_ETH];
 
         // Fund bridge with total VCO needed
         uint256 total = 0;
@@ -260,10 +265,7 @@ contract StarkExchangeVCODistributionTest is Test {
         address withdrawalProcessor = address(0xDEAD);
 
         bridge.setupMigrationConfig(
-            migrationManager,
-            address(mockZkEVMBridge),
-            address(mockSender),
-            withdrawalProcessor
+            migrationManager, address(mockZkEVMBridge), address(mockSender), withdrawalProcessor
         );
 
         // Create and fund a test ERC20
@@ -274,16 +276,16 @@ contract StarkExchangeVCODistributionTest is Test {
         IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
             new IStarkExchangeMigration.TokenMigrationDetails[](1);
         assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
-            token: address(testToken),
-            amount: tokenAmount,
-            bridgeFee: 0.001 ether
+            token: address(testToken), amount: tokenAmount, bridgeFee: 0.001 ether
         });
 
         vm.deal(migrationManager, 1 ether);
         vm.prank(migrationManager);
         bridge.migrateHoldings{value: 0.001 ether}(assets);
 
-        assertEq(testToken.balanceOf(address(mockZkEVMBridge)), tokenAmount, "Tokens should be migrated to zkEVM bridge");
+        assertEq(
+            testToken.balanceOf(address(mockZkEVMBridge)), tokenAmount, "Tokens should be migrated to zkEVM bridge"
+        );
     }
 
     function test_MigrateVaultRoot_PreservedFunctionality() public {
@@ -291,10 +293,7 @@ contract StarkExchangeVCODistributionTest is Test {
         MockSenderAdapter mockSender = new MockSenderAdapter();
 
         bridge.setupMigrationConfig(
-            migrationManager,
-            address(new MockRootERC20Bridge()),
-            address(mockSender),
-            address(0xDEAD)
+            migrationManager, address(new MockRootERC20Bridge()), address(mockSender), address(0xDEAD)
         );
 
         // Set vault root in storage (slot 13)
@@ -308,27 +307,20 @@ contract StarkExchangeVCODistributionTest is Test {
         // If it didn't revert, the function works. The mock sender doesn't store state,
         // so we verify via non-revert and the vault root is unchanged.
         assertEq(
-            uint256(vm.load(address(bridge), bytes32(uint256(13)))),
-            testVaultRoot,
-            "Vault root should be preserved"
+            uint256(vm.load(address(bridge), bytes32(uint256(13)))), testVaultRoot, "Vault root should be preserved"
         );
     }
 
     function test_RevertIf_MigrateHoldings_Unauthorized() public {
         address migrationManager = address(0xBEEF);
         bridge.setupMigrationConfig(
-            migrationManager,
-            address(new MockRootERC20Bridge()),
-            address(new MockSenderAdapter()),
-            address(0xDEAD)
+            migrationManager, address(new MockRootERC20Bridge()), address(new MockSenderAdapter()), address(0xDEAD)
         );
 
         IStarkExchangeMigration.TokenMigrationDetails[] memory assets =
             new IStarkExchangeMigration.TokenMigrationDetails[](1);
         assets[0] = IStarkExchangeMigration.TokenMigrationDetails({
-            token: address(vcoToken),
-            amount: 1 ether,
-            bridgeFee: 0.001 ether
+            token: address(vcoToken), amount: 1 ether, bridgeFee: 0.001 ether
         });
 
         address unauthorized = address(0xBAD);
@@ -365,7 +357,11 @@ contract StarkExchangeVCODistributionTest is Test {
 
         // r = (nonce * G).x
         (uint256 r,) = EllipticCurve.ecMul(
-            nonce, StarkCurveECDSA.EC_GEN_X, StarkCurveECDSA.EC_GEN_Y, StarkCurveECDSA.ALPHA, StarkCurveECDSA.FIELD_PRIME
+            nonce,
+            StarkCurveECDSA.EC_GEN_X,
+            StarkCurveECDSA.EC_GEN_Y,
+            StarkCurveECDSA.ALPHA,
+            StarkCurveECDSA.FIELD_PRIME
         );
 
         // s = nonce^(-1) * (msgHash + r * privateKey) mod EC_ORDER
