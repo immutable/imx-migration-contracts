@@ -18,6 +18,7 @@ interface IStarkExchangeProxy {
     function getWithdrawalBalance(uint256 ownerKey, uint256 assetId) external view returns (uint256);
     function getEthKey(uint256 ownerKey) external view returns (address);
     function getQuantum(uint256 assetType) external view returns (uint256);
+    function registerEthAddress(address ethKey, uint256 starkKey, bytes calldata starkSignature) external;
 
     // StarkExchangeVCODistribution constants
     function VCO_ASSET_TYPE() external view returns (uint256);
@@ -126,6 +127,44 @@ contract StarkExchangeVCODistributionIntegrationTest is Test {
 
         assertEq(
             IERC20(VCO_TOKEN).balanceOf(recipient),
+            vcoBalanceBefore + expectedWithdrawal,
+            "Recipient should receive VCO tokens"
+        );
+        assertEq(starkExProxy.getWithdrawalBalance(holderKey, vcoAssetType), 0, "Pending balance should be cleared");
+    }
+
+    function test_Upgrade_UnregisteredKeyCannotWithdrawUntilRegistered() public {
+        _upgradeToVCODistribution();
+
+        uint256 holderKey = starkExProxy.HOLDER_1_KEY();
+        uint256 vcoAssetType = starkExProxy.VCO_ASSET_TYPE();
+
+        // Holder 1 has no ethKeys registration on-chain
+        assertEq(starkExProxy.getEthKey(holderKey), address(0), "Holder 1 should not be registered");
+
+        // Withdrawal should revert for unregistered key
+        vm.expectRevert("USER_UNREGISTERED");
+        starkExProxy.withdraw(holderKey, vcoAssetType);
+
+        // Simulate registration by writing directly to ethKeys mapping
+        // ethKeys is at storage slot 24 (verified via forge inspect)
+        // slot = keccak256(abi.encode(starkKey, 24))
+        address holder1Eth = 0x5eBb994EBC1c44815FbF2fA61a6E1f8368dcB0C7;
+        bytes32 slot = keccak256(abi.encode(holderKey, uint256(24)));
+        vm.store(address(starkExProxy), slot, bytes32(uint256(uint160(holder1Eth))));
+
+        // Verify registration worked
+        assertEq(starkExProxy.getEthKey(holderKey), holder1Eth, "Holder 1 should now be registered");
+
+        // Withdrawal should now succeed
+        uint256 vcoBalanceBefore = IERC20(VCO_TOKEN).balanceOf(holder1Eth);
+        uint256 expectedWithdrawal = starkExProxy.getWithdrawalBalance(holderKey, vcoAssetType);
+        assertGt(expectedWithdrawal, 0, "Expected withdrawal should be non-zero");
+
+        starkExProxy.withdraw(holderKey, vcoAssetType);
+
+        assertEq(
+            IERC20(VCO_TOKEN).balanceOf(holder1Eth),
             vcoBalanceBefore + expectedWithdrawal,
             "Recipient should receive VCO tokens"
         );
