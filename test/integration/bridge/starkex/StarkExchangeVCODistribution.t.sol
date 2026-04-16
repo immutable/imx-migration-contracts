@@ -116,19 +116,16 @@ contract StarkExchangeVCODistributionIntegrationTest is Test {
         require(recipient != address(0), "Holder key must resolve to valid address");
 
         uint256 vcoBalanceBefore = IERC20(VCO_TOKEN).balanceOf(recipient);
-        uint256 bridgeVCOBalance = IERC20(VCO_TOKEN).balanceOf(address(starkExProxy));
         uint256 expectedWithdrawal = starkExProxy.getWithdrawalBalance(holderKey, vcoAssetType);
+        assertGt(expectedWithdrawal, 0, "Expected withdrawal should be non-zero");
 
-        // Skip if bridge doesn't hold enough VCO (placeholder amounts may exceed actual balance)
-        if (bridgeVCOBalance >= expectedWithdrawal && expectedWithdrawal > 0) {
-            starkExProxy.withdraw(holderKey, vcoAssetType);
+        starkExProxy.withdraw(holderKey, vcoAssetType);
 
-            assertEq(
-                IERC20(VCO_TOKEN).balanceOf(recipient),
-                vcoBalanceBefore + expectedWithdrawal,
-                "Recipient should receive VCO tokens"
-            );
-            assertEq(starkExProxy.getWithdrawalBalance(holderKey, vcoAssetType), 0, "Pending balance should be cleared");
-        }
+        assertEq(
+            IERC20(VCO_TOKEN).balanceOf(recipient),
+            vcoBalanceBefore + expectedWithdrawal,
+            "Recipient should receive VCO tokens"
+        );
+        assertEq(starkExProxy.getWithdrawalBalance(holderKey, vcoAssetType), 0, "Pending balance should be cleared");
     }
 }
