@@ -46,9 +46,12 @@ contract StarkExchangeVCODistributionIntegrationTest is Test {
     address private constant STARKEX_PROXY_OWNER = 0xD2C37fC6fD89563187f3679304975655e448D192;
     address private constant VCO_TOKEN = 0x2Caa4021e580b07D92adf8A40Ec53b33a215D620;
 
+    /// @dev Mainnet block at which the StarkEx bridge holds VCO tokens pre-migration
+    uint256 private constant FORK_BLOCK = 24890212;
+
     function setUp() public {
         string memory RPC_URL = vm.envString("ETH_RPC_URL");
-        vm.createSelectFork(RPC_URL, 24890212);
+        vm.createSelectFork(RPC_URL, FORK_BLOCK);
     }
 
     function _upgradeToVCODistribution() internal returns (address) {
