@@ -107,36 +107,34 @@ contract StarkExchangeMigrationV2IntegrationTest is Test {
     }
 
     function test_Upgrade_EthKeysRegistered() public {
+        // Holder 1's stark key (hardcoded because proxy doesn't expose constants before upgrade)
+        uint256 holder1Key = 0x07d2ca42b17532a203fa5ed81a3a5abf5b16e05bd46b5583e05265b09a3f4753;
+
         // Holder 1 is not registered before upgrade
-        assertEq(
-            starkExProxy.getEthKey(starkExProxy.HOLDER_1_KEY()),
-            address(0),
-            "Holder 1 should not be registered before upgrade"
-        );
+        assertEq(starkExProxy.getEthKey(holder1Key), address(0), "Holder 1 should not be registered before upgrade");
 
         _upgradeTo();
 
         // After upgrade, holder 1 should be registered via initialize
         assertEq(
-            starkExProxy.getEthKey(starkExProxy.HOLDER_1_KEY()),
+            starkExProxy.getEthKey(holder1Key),
             starkExProxy.HOLDER_1_ETH(),
             "Holder 1 should be registered after upgrade"
         );
     }
 
     function test_Upgrade_EthKeysNotOverwrittenIfAlreadyRegistered() public {
+        // Holder 6's stark key (hardcoded because proxy doesn't expose constants before upgrade)
+        uint256 holder6Key = 0x025ee41b0f85758eab738070b553e0f966776481df6d3bc4c57858909080ca01;
+
         // Holder 6 is already registered on-chain before upgrade
-        address existingEth = starkExProxy.getEthKey(starkExProxy.HOLDER_6_KEY());
+        address existingEth = starkExProxy.getEthKey(holder6Key);
         assertNotEq(existingEth, address(0), "Holder 6 should already be registered");
 
         _upgradeTo();
 
         // Should not be overwritten
-        assertEq(
-            starkExProxy.getEthKey(starkExProxy.HOLDER_6_KEY()),
-            existingEth,
-            "Holder 6 ethKey should not be overwritten"
-        );
+        assertEq(starkExProxy.getEthKey(holder6Key), existingEth, "Holder 6 ethKey should not be overwritten");
     }
 
     function test_Upgrade_VCOWithdrawalWorks_PreviouslyRegisteredHolder() public {
