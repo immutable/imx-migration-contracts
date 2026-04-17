@@ -6,13 +6,12 @@ import {StarkExchangeMigration} from "./StarkExchangeMigration.sol";
 
 /**
  * @title StarkExchangeMigrationV2
- * @notice Upgrades the StarkEx bridge to:
- *         1. Distribute VCO tokens to 7 holders who were missed during the original migration
- *            due to a bug in the VCO token's `approve` method.
- *         2. Register Stark key → Ethereum address associations for holders whose keys are not
- *            yet registered on-chain, enabling them to call `withdraw`.
- * @dev Populates `pendingWithdrawals` and `ethKeys` entries during initialization. Holders can then
- *      withdraw using the standard `withdraw(uint256, uint256)` function inherited from LegacyStarkExchangeBridge.
+ * @notice Upgrades the StarkEx bridge to register Stark key → Ethereum address associations for
+ *         holders whose keys are not yet registered on-chain, enabling them to call `withdraw`.
+ * @dev VCO tokens were not migrated during the original migration due to a bug in the VCO token's
+ *      `approve` method. This contract populates `pendingWithdrawals` and `ethKeys` entries for
+ *      the 7 VCO holders during initialization. Holders can then withdraw using the standard
+ *      `withdraw(uint256, uint256)` function inherited from LegacyStarkExchangeBridge.
  *      All existing StarkExchangeMigration functionality is preserved.
  */
 contract StarkExchangeMigrationV2 is StarkExchangeMigration {
