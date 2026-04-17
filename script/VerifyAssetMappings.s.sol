@@ -199,7 +199,9 @@ contract VerifyAssetMappings is Script {
         }
         if (arrStart >= jsonBytes.length) return 0;
 
-        // Count objects at depth 1 within this array
+        // Count objects at depth 1 within this array. Track both '[' and '{' in
+        // depth so nested objects inside each mapping (e.g. tokenOnIMX) are not
+        // double-counted.
         uint256 depth = 0;
         bool inString = false;
         for (uint256 i = arrStart; i < jsonBytes.length; i++) {
@@ -215,8 +217,11 @@ contract VerifyAssetMappings is Script {
                 } else if (c == "]") {
                     if (depth == 1) break;
                     depth--;
-                } else if (c == "{" && depth == 1) {
-                    count++;
+                } else if (c == "{") {
+                    if (depth == 1) count++;
+                    depth++;
+                } else if (c == "}") {
+                    depth--;
                 }
             }
         }
