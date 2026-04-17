@@ -119,29 +119,6 @@ contract GenerateAssetMappings is Script {
             }
 
             if (!inString) {
-                if (c == "[" || c == "{") {
-                    depth++;
-                } else if (c == "]" || c == "}") {
-                    depth--;
-                } else if (c == "{" && depth == 1) {
-                    // We're at the start of a top-level object in the array
-                    count++;
-                }
-            }
-        }
-
-        // Re-count by looking for opening braces at depth 1
-        count = 0;
-        depth = 0;
-        inString = false;
-        for (uint256 i = 0; i < jsonBytes.length; i++) {
-            bytes1 c = jsonBytes[i];
-
-            if (c == '"' && (i == 0 || jsonBytes[i - 1] != "\\")) {
-                inString = !inString;
-            }
-
-            if (!inString) {
                 if (c == "[") {
                     depth++;
                 } else if (c == "]") {
