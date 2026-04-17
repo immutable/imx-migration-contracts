@@ -2,7 +2,7 @@
 pragma solidity ^0.8.27;
 
 import "forge-std/Test.sol";
-import "@src/bridge/starkex/StarkExchangeVCODistribution.sol";
+import "@src/bridge/starkex/StarkExchangeMigrationV2.sol";
 import {IStarkExchangeMigration} from "@src/bridge/starkex/IStarkExchangeMigration.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -20,21 +20,16 @@ interface IStarkExchangeProxy {
     function getQuantum(uint256 assetType) external view returns (uint256);
     function registerEthAddress(address ethKey, uint256 starkKey, bytes calldata starkSignature) external;
 
-    // StarkExchangeVCODistribution constants
+    // StarkExchangeMigrationV2 constants
     function VCO_ASSET_TYPE() external view returns (uint256);
     function HOLDER_1_KEY() external view returns (uint256);
+    function HOLDER_1_ETH() external view returns (address);
     function HOLDER_1_AMOUNT() external view returns (uint256);
-    function HOLDER_2_KEY() external view returns (uint256);
-    function HOLDER_2_AMOUNT() external view returns (uint256);
-    function HOLDER_3_KEY() external view returns (uint256);
-    function HOLDER_3_AMOUNT() external view returns (uint256);
-    function HOLDER_4_KEY() external view returns (uint256);
-    function HOLDER_4_AMOUNT() external view returns (uint256);
-    function HOLDER_5_KEY() external view returns (uint256);
-    function HOLDER_5_AMOUNT() external view returns (uint256);
     function HOLDER_6_KEY() external view returns (uint256);
+    function HOLDER_6_ETH() external view returns (address);
     function HOLDER_6_AMOUNT() external view returns (uint256);
     function HOLDER_7_KEY() external view returns (uint256);
+    function HOLDER_7_ETH() external view returns (address);
     function HOLDER_7_AMOUNT() external view returns (uint256);
 
     // StarkExchangeMigration functions
@@ -42,7 +37,7 @@ interface IStarkExchangeProxy {
     function zkEVMBridge() external view returns (address);
 }
 
-contract StarkExchangeVCODistributionIntegrationTest is Test {
+contract StarkExchangeMigrationV2IntegrationTest is Test {
     IStarkExchangeProxy public constant starkExProxy = IStarkExchangeProxy(0x5FDCCA53617f4d2b9134B29090C87D01058e27e9);
     address private constant STARKEX_PROXY_OWNER = 0xD2C37fC6fD89563187f3679304975655e448D192;
     address private constant VCO_TOKEN = 0x2Caa4021e580b07D92adf8A40Ec53b33a215D620;
@@ -55,10 +50,10 @@ contract StarkExchangeVCODistributionIntegrationTest is Test {
         vm.createSelectFork(RPC_URL, FORK_BLOCK);
     }
 
-    function _upgradeToVCODistribution() internal returns (address) {
+    function _upgradeTo() internal returns (address) {
         vm.startPrank(STARKEX_PROXY_OWNER);
 
-        address newImpl = address(new StarkExchangeVCODistribution());
+        address newImpl = address(new StarkExchangeMigrationV2());
         bytes memory initData = bytes("");
 
         starkExProxy.addImplementation(newImpl, initData, false);
@@ -70,7 +65,7 @@ contract StarkExchangeVCODistributionIntegrationTest is Test {
     }
 
     function test_Upgrade_ImplementationUpdated() public {
-        address newImpl = _upgradeToVCODistribution();
+        address newImpl = _upgradeTo();
         assertEq(starkExProxy.implementation(), newImpl, "Implementation should be updated");
     }
 
@@ -78,7 +73,7 @@ contract StarkExchangeVCODistributionIntegrationTest is Test {
         uint256 vaultRootBefore = starkExProxy.vaultRoot();
         assertNotEq(vaultRootBefore, 0, "Vault root should not be zero before upgrade");
 
-        _upgradeToVCODistribution();
+        _upgradeTo();
 
         assertEq(starkExProxy.vaultRoot(), vaultRootBefore, "Vault root should be preserved after upgrade");
     }
@@ -87,14 +82,14 @@ contract StarkExchangeVCODistributionIntegrationTest is Test {
         address managerBefore = starkExProxy.migrationManager();
         address bridgeBefore = starkExProxy.zkEVMBridge();
 
-        _upgradeToVCODistribution();
+        _upgradeTo();
 
         assertEq(starkExProxy.migrationManager(), managerBefore, "Migration manager should be preserved");
         assertEq(starkExProxy.zkEVMBridge(), bridgeBefore, "zkEVM bridge should be preserved");
     }
 
     function test_Upgrade_PendingWithdrawalsPopulated() public {
-        _upgradeToVCODistribution();
+        _upgradeTo();
 
         uint256 vcoAssetType = starkExProxy.VCO_ASSET_TYPE();
         uint256 quantum = starkExProxy.getQuantum(vcoAssetType);
@@ -111,8 +106,41 @@ contract StarkExchangeVCODistributionIntegrationTest is Test {
         );
     }
 
-    function test_Upgrade_VCOWithdrawalWorks() public {
-        _upgradeToVCODistribution();
+    function test_Upgrade_EthKeysRegistered() public {
+        // Holder 1 is not registered before upgrade
+        assertEq(
+            starkExProxy.getEthKey(starkExProxy.HOLDER_1_KEY()),
+            address(0),
+            "Holder 1 should not be registered before upgrade"
+        );
+
+        _upgradeTo();
+
+        // After upgrade, holder 1 should be registered via initialize
+        assertEq(
+            starkExProxy.getEthKey(starkExProxy.HOLDER_1_KEY()),
+            starkExProxy.HOLDER_1_ETH(),
+            "Holder 1 should be registered after upgrade"
+        );
+    }
+
+    function test_Upgrade_EthKeysNotOverwrittenIfAlreadyRegistered() public {
+        // Holder 6 is already registered on-chain before upgrade
+        address existingEth = starkExProxy.getEthKey(starkExProxy.HOLDER_6_KEY());
+        assertNotEq(existingEth, address(0), "Holder 6 should already be registered");
+
+        _upgradeTo();
+
+        // Should not be overwritten
+        assertEq(
+            starkExProxy.getEthKey(starkExProxy.HOLDER_6_KEY()),
+            existingEth,
+            "Holder 6 ethKey should not be overwritten"
+        );
+    }
+
+    function test_Upgrade_VCOWithdrawalWorks_PreviouslyRegisteredHolder() public {
+        _upgradeTo();
 
         uint256 holderKey = starkExProxy.HOLDER_6_KEY();
         uint256 vcoAssetType = starkExProxy.VCO_ASSET_TYPE();
@@ -133,38 +161,23 @@ contract StarkExchangeVCODistributionIntegrationTest is Test {
         assertEq(starkExProxy.getWithdrawalBalance(holderKey, vcoAssetType), 0, "Pending balance should be cleared");
     }
 
-    function test_Upgrade_UnregisteredKeyCannotWithdrawUntilRegistered() public {
-        _upgradeToVCODistribution();
+    function test_Upgrade_VCOWithdrawalWorks_NewlyRegisteredHolder() public {
+        _upgradeTo();
 
+        // Holder 1 was not registered on-chain before upgrade, but initialize registered them
         uint256 holderKey = starkExProxy.HOLDER_1_KEY();
         uint256 vcoAssetType = starkExProxy.VCO_ASSET_TYPE();
+        address recipient = starkExProxy.getEthKey(holderKey);
+        assertEq(recipient, starkExProxy.HOLDER_1_ETH(), "Holder 1 should be registered by initialize");
 
-        // Holder 1 has no ethKeys registration on-chain
-        assertEq(starkExProxy.getEthKey(holderKey), address(0), "Holder 1 should not be registered");
-
-        // Withdrawal should revert for unregistered key
-        vm.expectRevert("USER_UNREGISTERED");
-        starkExProxy.withdraw(holderKey, vcoAssetType);
-
-        // Simulate registration by writing directly to ethKeys mapping
-        // ethKeys is at storage slot 24 (verified via forge inspect)
-        // slot = keccak256(abi.encode(starkKey, 24))
-        address holder1Eth = 0x5eBb994EBC1c44815FbF2fA61a6E1f8368dcB0C7;
-        bytes32 slot = keccak256(abi.encode(holderKey, uint256(24)));
-        vm.store(address(starkExProxy), slot, bytes32(uint256(uint160(holder1Eth))));
-
-        // Verify registration worked
-        assertEq(starkExProxy.getEthKey(holderKey), holder1Eth, "Holder 1 should now be registered");
-
-        // Withdrawal should now succeed
-        uint256 vcoBalanceBefore = IERC20(VCO_TOKEN).balanceOf(holder1Eth);
+        uint256 vcoBalanceBefore = IERC20(VCO_TOKEN).balanceOf(recipient);
         uint256 expectedWithdrawal = starkExProxy.getWithdrawalBalance(holderKey, vcoAssetType);
         assertGt(expectedWithdrawal, 0, "Expected withdrawal should be non-zero");
 
         starkExProxy.withdraw(holderKey, vcoAssetType);
 
         assertEq(
-            IERC20(VCO_TOKEN).balanceOf(holder1Eth),
+            IERC20(VCO_TOKEN).balanceOf(recipient),
             vcoBalanceBefore + expectedWithdrawal,
             "Recipient should receive VCO tokens"
         );

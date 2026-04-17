@@ -42,12 +42,17 @@ forge build
 
 Run the test suite:
 ```bash
-# Run all tests
-forge test
+# Run unit tests (no external dependencies)
+forge test --no-match-path "test/integration/*"
 
-# Run specific test file
-forge test --match-path test/unit/StarkExchangeMigration.t.sol
+# Run integration tests (requires an Ethereum mainnet RPC endpoint)
+ETH_RPC_URL=<your-rpc-url> forge test --match-path "test/integration/*" -v
+
+# Run a specific test file
+forge test --match-path test/unit/bridge/starkex/StarkExchangeMigrationV2.t.sol
 ```
+
+**Note:** Some unit tests require `ZKEVM_RPC_URL` for zkEVM fork testing. Integration tests require `ETH_RPC_URL` for Ethereum mainnet fork testing.
 
 ## Deployment
 ### Configuration

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.27;
 
 import "forge-std/Test.sol";
-import "@src/bridge/starkex/StarkExchangeVCODistribution.sol";
+import "@src/bridge/starkex/StarkExchangeMigrationV2.sol";
 import "@src/bridge/starkex/IStarkExchangeMigration.sol";
 import "@src/bridge/messaging/VaultRootSenderAdapter.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
@@ -55,10 +55,10 @@ contract MockSenderAdapter {
 }
 
 /**
- * @title StarkExchangeVCODistributionHarness
+ * @title StarkExchangeMigrationV2Harness
  * @notice Test harness that exposes internal storage setters for legacy StarkEx state
  */
-contract StarkExchangeVCODistributionHarness is StarkExchangeVCODistribution {
+contract StarkExchangeMigrationV2Harness is StarkExchangeMigrationV2 {
     function setupAssetType(uint256 assetType, uint256 quantum, address tokenAddress) external {
         registeredAssetType[assetType] = true;
         assetTypeToQuantum[assetType] = quantum;
@@ -87,42 +87,24 @@ contract StarkExchangeVCODistributionHarness is StarkExchangeVCODistribution {
     }
 }
 
-contract StarkExchangeVCODistributionTest is Test {
-    StarkExchangeVCODistributionHarness public bridge;
+contract StarkExchangeMigrationV2Test is Test {
+    StarkExchangeMigrationV2Harness public bridge;
     MockERC20 public vcoToken;
 
     uint256 constant VCO_QUANTUM = 1;
-
-    // Ethereum addresses corresponding to each holder's Stark key
-    address constant HOLDER_1_ETH = 0x5eBb994EBC1c44815FbF2fA61a6E1f8368dcB0C7;
-    address constant HOLDER_2_ETH = 0x216e8577B504aC3dB213eDd261e47fffBb354248;
-    address constant HOLDER_3_ETH = 0x10cbBBb225BBEA137aC01F0F6D91CDB126BccaA6;
-    address constant HOLDER_4_ETH = 0x409F85D2207796b543b8abdB6a0E2490BB1483D1;
-    address constant HOLDER_5_ETH = 0xCE5A537D4dA620DE59efA6F74a0A065732600c71;
-    address constant HOLDER_6_ETH = 0x941f54cb53Dc1478Cb126a2Ba8a83b2130419dB5;
-    address constant HOLDER_7_ETH = 0xBC6EeB5111fEa2B5e9B2Bc534bBcbCa9568999a4;
 
     function setUp() public {
         // Deploy mock VCO token
         vcoToken = new MockERC20("VCO Token", "VCO", 18);
 
         // Deploy harness behind ERC1967Proxy
-        StarkExchangeVCODistributionHarness implementation = new StarkExchangeVCODistributionHarness();
-        bytes memory initCallData = abi.encodeWithSelector(StarkExchangeVCODistribution.initialize.selector, bytes(""));
+        StarkExchangeMigrationV2Harness implementation = new StarkExchangeMigrationV2Harness();
+        bytes memory initCallData = abi.encodeWithSelector(StarkExchangeMigrationV2.initialize.selector, bytes(""));
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initCallData);
-        bridge = StarkExchangeVCODistributionHarness(address(proxy));
+        bridge = StarkExchangeMigrationV2Harness(address(proxy));
 
         // Register VCO asset type in legacy storage (required for withdraw to work)
         bridge.setupAssetType(bridge.VCO_ASSET_TYPE(), VCO_QUANTUM, address(vcoToken));
-
-        // Register Stark key → Ethereum address mappings (simulates registerEthAddress calls)
-        bridge.setupEthKey(bridge.HOLDER_1_KEY(), HOLDER_1_ETH);
-        bridge.setupEthKey(bridge.HOLDER_2_KEY(), HOLDER_2_ETH);
-        bridge.setupEthKey(bridge.HOLDER_3_KEY(), HOLDER_3_ETH);
-        bridge.setupEthKey(bridge.HOLDER_4_KEY(), HOLDER_4_ETH);
-        bridge.setupEthKey(bridge.HOLDER_5_KEY(), HOLDER_5_ETH);
-        bridge.setupEthKey(bridge.HOLDER_6_KEY(), HOLDER_6_ETH);
-        bridge.setupEthKey(bridge.HOLDER_7_KEY(), HOLDER_7_ETH);
     }
 
     function test_Initialize_DeploysSuccessfully() public view {
@@ -149,13 +131,23 @@ contract StarkExchangeVCODistributionTest is Test {
         assertEq(bridge.getWithdrawalBalance(bridge.HOLDER_7_KEY(), vcoAssetType), bridge.HOLDER_7_AMOUNT());
     }
 
+    function test_Initialize_RegistersEthKeys() public view {
+        assertEq(bridge.getEthKey(bridge.HOLDER_1_KEY()), bridge.HOLDER_1_ETH());
+        assertEq(bridge.getEthKey(bridge.HOLDER_2_KEY()), bridge.HOLDER_2_ETH());
+        assertEq(bridge.getEthKey(bridge.HOLDER_3_KEY()), bridge.HOLDER_3_ETH());
+        assertEq(bridge.getEthKey(bridge.HOLDER_4_KEY()), bridge.HOLDER_4_ETH());
+        assertEq(bridge.getEthKey(bridge.HOLDER_5_KEY()), bridge.HOLDER_5_ETH());
+        assertEq(bridge.getEthKey(bridge.HOLDER_6_KEY()), bridge.HOLDER_6_ETH());
+        assertEq(bridge.getEthKey(bridge.HOLDER_7_KEY()), bridge.HOLDER_7_ETH());
+    }
+
     function test_RevertIf_Initialize_CalledTwice() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         bridge.initialize(bytes(""));
     }
 
     function test_Constructor_DisablesInitializers_OnImplementation() public {
-        StarkExchangeVCODistribution implementation = new StarkExchangeVCODistribution();
+        StarkExchangeMigrationV2 implementation = new StarkExchangeMigrationV2();
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         implementation.initialize(bytes(""));
     }
@@ -176,7 +168,7 @@ contract StarkExchangeVCODistributionTest is Test {
         bridge.withdraw(holderKey, vcoAssetType);
 
         // Verify: recipient received tokens, pending balance is zero
-        assertEq(vcoToken.balanceOf(HOLDER_1_ETH), expectedAmount, "Recipient should receive VCO tokens");
+        assertEq(vcoToken.balanceOf(bridge.HOLDER_1_ETH()), expectedAmount, "Recipient should receive VCO tokens");
         assertEq(
             bridge.getWithdrawalBalance(holderKey, vcoAssetType), 0, "Pending balance should be zero after withdrawal"
         );
@@ -203,8 +195,15 @@ contract StarkExchangeVCODistributionTest is Test {
             bridge.HOLDER_6_AMOUNT(),
             bridge.HOLDER_7_AMOUNT()
         ];
-        address[7] memory ethAddresses =
-            [HOLDER_1_ETH, HOLDER_2_ETH, HOLDER_3_ETH, HOLDER_4_ETH, HOLDER_5_ETH, HOLDER_6_ETH, HOLDER_7_ETH];
+        address[7] memory ethAddresses = [
+            bridge.HOLDER_1_ETH(),
+            bridge.HOLDER_2_ETH(),
+            bridge.HOLDER_3_ETH(),
+            bridge.HOLDER_4_ETH(),
+            bridge.HOLDER_5_ETH(),
+            bridge.HOLDER_6_ETH(),
+            bridge.HOLDER_7_ETH()
+        ];
 
         // Fund bridge with total VCO needed
         uint256 total = 0;
@@ -248,7 +247,7 @@ contract StarkExchangeVCODistributionTest is Test {
 
         vm.expectEmit(true, true, true, true);
         emit LegacyStarkExchangeBridge.LogWithdrawalPerformed(
-            holderKey, vcoAssetType, nonQuantizedAmount, quantizedAmount, HOLDER_1_ETH
+            holderKey, vcoAssetType, nonQuantizedAmount, quantizedAmount, bridge.HOLDER_1_ETH()
         );
 
         bridge.withdraw(holderKey, vcoAssetType);
