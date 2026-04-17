@@ -66,10 +66,6 @@ contract StarkExchangeMigrationV2Harness is StarkExchangeMigrationV2 {
             abi.encodePacked(bytes4(keccak256("ERC20Token(address)")), abi.encode(tokenAddress));
     }
 
-    function setupEthKey(uint256 ownerKey, address ethAddress) external {
-        ethKeys[ownerKey] = ethAddress;
-    }
-
     function setupMigrationConfig(
         address _migrationManager,
         address _zkEVMBridge,
