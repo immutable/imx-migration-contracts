@@ -108,7 +108,7 @@ SUCCESS_COUNT=0
 SKIP_COUNT=0
 FAIL_COUNT=0
 
-jq -c '.[]' "$TOKENS_FILE" | while read -r token; do
+while read -r token; do
     TOKEN_INT=$(echo "$token" | jq -r '.token_int')
     AMOUNT=$(echo "$token" | jq -r '.unquantised_sum')
     TICKER=$(echo "$token" | jq -r '.ticker_symbol')
@@ -167,7 +167,7 @@ jq -c '.[]' "$TOKENS_FILE" | while read -r token; do
             fi
         fi
     fi
-done
+done < <(jq -c '.[]' "$TOKENS_FILE")
 
 # Stop impersonation if we started it
 if [ -z "$PRIVATE_KEY" ]; then
