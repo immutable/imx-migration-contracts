@@ -90,6 +90,7 @@ contract DeployEthContracts is Script {
         //    The version is selected via stark_exchange_migration.version in the config.
         //    The constructor only calls _disableInitializers(). No proxy is deployed here.
         //    The existing StarkEx bridge proxy will be upgraded separately via governance.
+        require(migrationVersion == 1 || migrationVersion == 2, "stark_exchange_migration.version must be 1 or 2");
         if (migrationImpl == address(0)) {
             if (migrationVersion == 1) {
                 migrationImpl = address(new StarkExchangeMigration());
@@ -121,8 +122,7 @@ contract DeployEthContracts is Script {
             require(axelarGateway != address(0), "vault_root_sender_adapter.axelar_gateway is zero address");
         }
 
-        // StarkExchangeMigration: validate version selector
-        require(migrationVersion == 1 || migrationVersion == 2, "stark_exchange_migration.version must be 1 or 2");
+        // StarkExchangeMigration: no constructor params to validate (only calls _disableInitializers)
     }
 
     /**
