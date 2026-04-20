@@ -7,7 +7,7 @@ Solidity scripts for deploying and configuring the migration contracts using Fou
 | Script | Chain | Purpose | Executed By |
 |--------|-------|---------|-------------|
 | `DeployZkEVMContracts.s.sol` | zkEVM | Deploy VaultEscapeProofVerifier, VaultRootReceiverAdapter, VaultWithdrawalProcessor | Deployer |
-| `DeployEthContracts.s.sol` | Ethereum | Deploy VaultRootSenderAdapter and StarkExchangeMigration implementation | Deployer |
+| `DeployEthContracts.s.sol` | Ethereum | Deploy VaultRootSenderAdapter and StarkExchangeMigration implementation (version selected via config) | Deployer |
 | `GenerateAssetMappings.s.sol` | - | Generate asset mappings by querying bridge contract | Utility (offline) |
 | `VerifyAssetMappings.s.sol` | - | Verify asset mappings against bridge contract | Utility (read-only) |
 | `RegisterTokenMappings.s.sol` | zkEVM | Register token mappings on the processor | TOKEN_MAPPING_MANAGER |
@@ -89,7 +89,7 @@ forge script script/DeployEthContracts.s.sol \
 - `vault_root_sender_adapter.address`
 - `stark_exchange_migration.implementation_address`
 
-**Note:** The `StarkExchangeMigration` is deployed as an implementation only. The existing StarkEx bridge proxy on-chain must be upgraded to point to this implementation separately (e.g., via governance), at which point `initialize` is called with the migration parameters.
+**Note:** The `StarkExchangeMigration` is deployed as an implementation only (no proxy). The existing StarkEx bridge proxy on-chain must be upgraded to point to this implementation separately (e.g., via governance), at which point `initialize` is called with the appropriate parameters. Set `stark_exchange_migration.version` to `1` for `StarkExchangeMigration` or `2` for `StarkExchangeMigrationV2`.
 
 ### Step 4: Generate Asset Mappings (zkEVM)
 
@@ -191,6 +191,7 @@ Deploys the Ethereum contracts for the migration system.
     "axelar_gateway": "0x..."
   },
   "stark_exchange_migration": {
+    "version": 2,
     "implementation_address": "0x0000..."
   }
 }

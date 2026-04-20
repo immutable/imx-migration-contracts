@@ -6,12 +6,13 @@ import "forge-std/Script.sol";
 import "forge-std/console.sol";
 import {VaultRootSenderAdapter} from "../src/bridge/messaging/VaultRootSenderAdapter.sol";
 import {StarkExchangeMigration} from "../src/bridge/starkex/StarkExchangeMigration.sol";
+import {StarkExchangeMigrationV2} from "../src/bridge/starkex/StarkExchangeMigrationV2.sol";
 
 /**
  * @title DeployEthContracts
  * @notice Deploys the migration contracts on Ethereum:
  *         1. VaultRootSenderAdapter
- *         2. StarkExchangeMigration (implementation only, no proxy)
+ *         2. StarkExchangeMigration implementation (version selected via config)
  *
  * @dev The StarkExchangeMigration is deployed as an implementation contract only.
  *      The existing StarkEx bridge proxy on-chain will be upgraded to point to this
@@ -36,8 +37,9 @@ contract DeployEthContracts is Script {
     address private axelarGasService;
     address private axelarGateway;
 
-    // StarkExchangeMigration
+    // StarkExchangeMigration implementation (version 1 or 2, selected via config)
     address private migrationImpl;
+    uint256 private migrationVersion;
 
     string private configFilePath;
     string private outputFilePath;
@@ -62,6 +64,7 @@ contract DeployEthContracts is Script {
 
         // --- StarkExchangeMigration ---
         migrationImpl = vm.parseJsonAddress(config, "$.stark_exchange_migration.implementation_address");
+        migrationVersion = vm.parseJsonUint(config, "$.stark_exchange_migration.version");
     }
 
     /// @notice Deploys the Ethereum contracts.
@@ -83,14 +86,20 @@ contract DeployEthContracts is Script {
             console.log("Using existing VaultRootSenderAdapter:", senderAdapter);
         }
 
-        // 2. Deploy StarkExchangeMigration implementation (if not already deployed)
+        // 2. Deploy StarkExchangeMigration implementation (if not already deployed).
+        //    The version is selected via stark_exchange_migration.version in the config.
         //    The constructor only calls _disableInitializers(). No proxy is deployed here.
         //    The existing StarkEx bridge proxy will be upgraded separately via governance.
+        require(migrationVersion == 1 || migrationVersion == 2, "stark_exchange_migration.version must be 1 or 2");
         if (migrationImpl == address(0)) {
-            migrationImpl = address(new StarkExchangeMigration());
-            console.log("Deployed StarkExchangeMigration implementation:", migrationImpl);
+            if (migrationVersion == 1) {
+                migrationImpl = address(new StarkExchangeMigration());
+            } else {
+                migrationImpl = address(new StarkExchangeMigrationV2());
+            }
+            console.log("Deployed StarkExchangeMigration v%d implementation:", migrationVersion, migrationImpl);
         } else {
-            console.log("Using existing StarkExchangeMigration implementation:", migrationImpl);
+            console.log("Using existing StarkExchangeMigration v%d implementation:", migrationVersion, migrationImpl);
         }
 
         vm.stopBroadcast();
@@ -133,6 +142,6 @@ contract DeployEthContracts is Script {
     function _logSummary() private view {
         console.log("--- Ethereum Deployment Summary ---");
         console.log("VaultRootSenderAdapter:", senderAdapter);
-        console.log("StarkExchangeMigration (impl):", migrationImpl);
+        console.log("StarkExchangeMigration v%d (impl):", migrationVersion, migrationImpl);
     }
 }
