@@ -1,6 +1,6 @@
 {
   "vault_root_sender_adapter": {
-    "address": "0x0000000000000000000000000000000000000000",
+    "address": "0x9Fabd9Cc71f15b9Cfd717E117FBb9cfD9fC7cd32",
     "vault_root_sender": "0x5FDCCA53617f4d2b9134B29090C87D01058e27e9",
     "root_receiver": "0x58b5484F489f7858DC83a5a677338074b57de806",
     "root_receiver_chain": "immutable",
