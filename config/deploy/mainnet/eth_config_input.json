@@ -8,6 +8,7 @@
     "axelar_gateway": "0x4F4495243837681061C4743b74B3eEdf548D56A5"
   },
   "stark_exchange_migration": {
-    "implementation_address": "0x0000000000000000000000000000000000000000"
+    "implementation_address": "0x0000000000000000000000000000000000000000",
+    "v2_implementation_address": "0x0000000000000000000000000000000000000000"
   }
 }
