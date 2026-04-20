@@ -144,7 +144,9 @@ contract DeployEthContracts is Script {
 
         vm.writeJson(vm.toString(senderAdapter), outputFilePath, ".vault_root_sender_adapter.address");
         vm.writeJson(vm.toString(migrationImpl), outputFilePath, ".stark_exchange_migration.implementation_address");
-        vm.writeJson(vm.toString(migrationV2Impl), outputFilePath, ".stark_exchange_migration.v2_implementation_address");
+        vm.writeJson(
+            vm.toString(migrationV2Impl), outputFilePath, ".stark_exchange_migration.v2_implementation_address"
+        );
 
         console.log("Deployment output written to:", outputFilePath);
     }
