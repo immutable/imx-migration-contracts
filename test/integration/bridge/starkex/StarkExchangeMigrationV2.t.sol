@@ -42,8 +42,12 @@ contract StarkExchangeMigrationV2IntegrationTest is Test {
     address private constant STARKEX_PROXY_OWNER = 0xD2C37fC6fD89563187f3679304975655e448D192;
     address private constant VCO_TOKEN = 0x2Caa4021e580b07D92adf8A40Ec53b33a215D620;
 
+    /// @dev Deployed StarkExchangeMigrationV2 implementation on mainnet
+    address private constant DEPLOYED_IMPL = 0x273b65a7231321D4ee47a4c47408Ef43517455Ec;
+
     /// @dev Mainnet block at which the StarkEx bridge holds VCO tokens pre-migration
-    uint256 private constant FORK_BLOCK = 24890212;
+    ///      and the StarkExchangeMigrationV2 implementation is deployed
+    uint256 private constant FORK_BLOCK = 24920000;
 
     function setUp() public {
         string memory RPC_URL = vm.envString("ETH_RPC_URL");
@@ -53,15 +57,23 @@ contract StarkExchangeMigrationV2IntegrationTest is Test {
     function _upgradeTo() internal returns (address) {
         vm.startPrank(STARKEX_PROXY_OWNER);
 
-        address newImpl = address(new StarkExchangeMigrationV2());
         bytes memory initData = bytes("");
 
-        starkExProxy.addImplementation(newImpl, initData, false);
+        starkExProxy.addImplementation(DEPLOYED_IMPL, initData, false);
         skip(15 days);
-        starkExProxy.upgradeTo(newImpl, initData, false);
+        starkExProxy.upgradeTo(DEPLOYED_IMPL, initData, false);
 
         vm.stopPrank();
-        return newImpl;
+        return DEPLOYED_IMPL;
+    }
+
+    function test_DeployedBytecodeMatchesCompiled() public {
+        address freshImpl = address(new StarkExchangeMigrationV2());
+        assertEq(
+            DEPLOYED_IMPL.code,
+            freshImpl.code,
+            "Deployed implementation bytecode should match locally compiled bytecode"
+        );
     }
 
     function test_Upgrade_ImplementationUpdated() public {
