@@ -120,7 +120,7 @@ What the tool does to limit risk, and what it cannot do for you.
 - `@scure/starknet`: Stark curve keys and ECDSA.
 - `@noble/hashes`: SHA-256.
 
-`vite` builds and serves the page. `npm ci --omit=dev` installs nothing else. `@imtbl/core-sdk` is a development dependency, used only by the tests as the reference implementation.
+`vite` builds and serves the page. `npm ci --omit=dev` installs nothing else, and `npm audit` reports no known vulnerabilities in the full tree. `@imtbl/core-sdk` is not a dependency: its pinned `axios@0.26.1` has open advisories. Its outputs are recorded once in `test/vectors/sdk-3.6.1.json` (see [Development](#development)).
 
 The tool does not protect against a compromised computer, browser or wallet extension, or against approving a wallet prompt that does not match [the table above](#what-you-will-be-asked-to-sign).
 
@@ -156,11 +156,23 @@ ETH_RPC_URL=<mainnet RPC> npm run test:e2e       # built page in headless Chromi
 
 | Suite | Covers |
 | --- | --- |
-| `test/unit/derivation.test.ts` | Derived keys equal `@imtbl/core-sdk`'s `generateLegacyStarkPrivateKey`:<ul><li>typical wallets, with no API call;</li><li>each of the SDK's API-resolved branches for ambiguous wallets (API stubbed with nock), including a wallet with three distinct candidates;</li><li>public keys match the SDK's Stark signer.</li></ul> |
-| `test/unit/registration.test.ts` | Message hash matches `abi.encodePacked`. Signatures verify under the SDK's `elliptic` curve, stay within the contract's `r` and `s⁻¹` bounds, and fail for a different address. |
+| `test/unit/derivation.test.ts` | Derived keys equal the outputs of `@imtbl/core-sdk` 3.6.1's `generateLegacyStarkPrivateKey`, recorded in `test/vectors/sdk-3.6.1.json`:<ul><li>typical wallets, whose derivation needs no API call;</li><li>ambiguous wallets, where the candidate set equals exactly the keys the SDK returns across its API-resolved branches, including a wallet with three distinct candidates;</li><li>public keys match the SDK's Stark signer.</li></ul> |
+| `test/unit/registration.test.ts` | Message hash matches `abi.encodePacked`. Signatures pass a BigInt port of the contract's `StarkCurveECDSA.verify`, including its `r` and `s⁻¹` bounds, and fail for a different address. Public keys match an independent scalar multiplication. |
 | `test/fork/bridge.fork.test.ts` | Against the deployed bridge:<ul><li>register and withdraw ETH and USDC;</li><li>recover funds held by a non-primary candidate key;</li><li>signature replay from another wallet is rejected;</li><li>keys registered to another address are refused;</li><li>no withdrawal before registration;</li><li>detection of a changed implementation and of a non-mainnet chain;</li><li>the account from the originating support ticket reads as 0.45 ETH pending and unregistered.</li></ul> |
 | `test/e2e/page.e2e.test.ts` | Clicks through the built page with a stub wallet, from disclaimers to register to withdraw. Also checks the no-funds path and the hosted-copy block, asserts that the page makes no requests beyond its own files, and that no CSP violations occur. |
 
 Pending withdrawals for test wallets are written into the bridge's `pendingWithdrawals` mapping (storage slot 8) on the fork.
+
+### Regenerating the SDK vectors
+
+`test/vectors/generate-sdk-vectors.ts` drives the SDK directly. It stubs the retired Immutable X API with nock and answers with each candidate key in turn. The SDK checks the answer against its own candidates, so every recorded key is one the SDK produced. The SDK and nock are installed without being saved to `package.json` or the lockfile:
+
+```bash
+npm i --no-save @imtbl/core-sdk@3.6.1 nock@14.0.17
+npx tsx test/vectors/generate-sdk-vectors.ts
+npm ci
+```
+
+`@imtbl/core-sdk` 3.6.1 is the final release of the SDK that generated these keys, so the vectors do not need regenerating unless the test wallet selection changes.
 
 Before release, run the page once by hand with MetaMask and Rabby against a fork or with a funded test account. The end-to-end suite uses a stub provider, not a real extension.

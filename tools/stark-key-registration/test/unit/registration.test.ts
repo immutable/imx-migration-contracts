@@ -1,54 +1,74 @@
 import { describe, expect, it } from "vitest";
 import { AbiCoder, Wallet, concat, getBytes, keccak256, toBeHex, toUtf8Bytes } from "ethers";
-import elliptic from "elliptic";
-import hash from "hash.js";
 import { STARK_EC_ORDER } from "../../src/lib/derivation.js";
 import { registrationMessageHash, signRegistration, starkPublicKey } from "../../src/lib/registration.js";
 
+/**
+ * BigInt port of StarkCurveECDSA.verify (src/bridge/starkex/libraries/StarkCurveECDSA.sol),
+ * independent of the signing library, so signatures are checked by the same rule as on-chain.
+ */
+const FIELD_PRIME = 0x800000000000011000000000000000000000000000000000000000000000001n;
+const ALPHA = 1n;
+const BETA = 3141592653589793238462643383279502884197169399375105820974944592307816406665n;
+const GEN: Point = [
+  0x1ef15c18599971b7beced415a40f0c7deacfd9b0d1819e03d723d8bc943cfcan,
+  0x5668060aa49730b7be4801df46ec62de53ecd11abe43a32873000c36e8dc1fn,
+];
 const MAX_ELEMENT = 1n << 251n;
 
-/** Stark curve as configured in @imtbl/core-sdk, using the same elliptic library. */
-const starkEc = new elliptic.ec(
-  new elliptic.curves.PresetCurve({
-    type: "short",
-    prime: null,
-    p: "08000000 00000011 00000000 00000000 00000000 00000000 00000000 00000001",
-    a: "00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000001",
-    b: "06f21413 efbe40de 150e596d 72f7a8c5 609ad26c 15c915c1 f4cdfcb9 9cee9e89",
-    n: "08000000 00000010 ffffffff ffffffff b781126d cae7b232 1e66a241 adc64d2f",
-    hash: hash.sha256,
-    gRed: false,
-    g: [
-      "1ef15c18599971b7beced415a40f0c7deacfd9b0d1819e03d723d8bc943cfca",
-      "5668060aa49730b7be4801df46ec62de53ecd11abe43a32873000c36e8dc1f",
-    ],
-  } as never),
-);
+type Point = [bigint, bigint] | null;
 
-function decode(signature: string): [bigint, bigint, bigint] {
-  const [r, s, y] = AbiCoder.defaultAbiCoder().decode(["uint256", "uint256", "uint256"], signature);
-  return [r, s, y];
-}
-
-/**
- * elliptic truncates 32-byte message inputs by 4 bits for the 252-bit Stark
- * order; the SDK signer appends a nibble to 63-digit hashes to cancel that
- * (`fixMsgHashLen`), and the same adjustment applies to verification.
- */
-function ellipticMsg(msgHash: bigint): string {
-  const hex = msgHash.toString(16);
-  return hex.length === 63 ? hex + "0" : hex;
-}
+const mod = (a: bigint, m: bigint) => ((a % m) + m) % m;
 
 function modInverse(a: bigint, m: bigint): bigint {
-  let [oldR, r] = [a % m, m];
+  let [oldR, r] = [mod(a, m), m];
   let [oldS, s] = [1n, 0n];
   while (r !== 0n) {
     const q = oldR / r;
     [oldR, r] = [r, oldR - q * r];
     [oldS, s] = [s, oldS - q * s];
   }
-  return ((oldS % m) + m) % m;
+  return mod(oldS, m);
+}
+
+function ecAdd(p: Point, q: Point): Point {
+  if (p === null) return q;
+  if (q === null) return p;
+  const [x1, y1] = p;
+  const [x2, y2] = q;
+  if (x1 === x2 && mod(y1 + y2, FIELD_PRIME) === 0n) return null;
+  const lambda =
+    x1 === x2
+      ? mod((3n * x1 * x1 + ALPHA) * modInverse(2n * y1, FIELD_PRIME), FIELD_PRIME)
+      : mod((y2 - y1) * modInverse(x2 - x1, FIELD_PRIME), FIELD_PRIME);
+  const x3 = mod(lambda * lambda - x1 - x2, FIELD_PRIME);
+  return [x3, mod(lambda * (x1 - x3) - y1, FIELD_PRIME)];
+}
+
+function ecMul(k: bigint, p: Point): Point {
+  let result: Point = null;
+  let addend = p;
+  for (let n = k; n > 0n; n >>= 1n) {
+    if (n & 1n) result = ecAdd(result, addend);
+    addend = ecAdd(addend, addend);
+  }
+  return result;
+}
+
+function contractVerify(msgHash: bigint, r: bigint, s: bigint, pubX: bigint, pubY: bigint): boolean {
+  if (msgHash >= STARK_EC_ORDER) return false;
+  if (s < 1n || s >= STARK_EC_ORDER) return false;
+  const w = modInverse(s, STARK_EC_ORDER);
+  if (r < 1n || r >= MAX_ELEMENT || w < 1n || w >= MAX_ELEMENT) return false;
+  if (mod(pubY * pubY, FIELD_PRIME) !== mod(pubX ** 3n + pubX + BETA, FIELD_PRIME)) return false;
+  const b = ecAdd(ecMul(msgHash, GEN), ecMul(r, [pubX, pubY]));
+  const res = ecMul(w, b);
+  return res !== null && res[0] === r;
+}
+
+function decode(signature: string): [bigint, bigint, bigint] {
+  const [r, s, y] = AbiCoder.defaultAbiCoder().decode(["uint256", "uint256", "uint256"], signature);
+  return [r, s, y];
 }
 
 describe("registrationMessageHash", () => {
@@ -67,7 +87,7 @@ describe("signRegistration", () => {
     ethAddress: Wallet.createRandom().address,
   }));
 
-  it("produces signatures the SDK's elliptic curve accepts, within the contract's bounds", () => {
+  it("produces signatures the contract's verification accepts, within its bounds", () => {
     for (const { privateKey, ethAddress } of cases) {
       const { starkKey, signature } = signRegistration(privateKey, ethAddress);
       const [r, s, y] = decode(signature);
@@ -75,14 +95,14 @@ describe("signRegistration", () => {
       expect(starkKey).toBe(pub.x);
       expect(y).toBe(pub.y);
       expect(getBytes(signature)).toHaveLength(96);
+      expect(contractVerify(registrationMessageHash(ethAddress, starkKey), r, s, pub.x, pub.y)).toBe(true);
+    }
+  });
 
-      expect(r >= 1n && r < MAX_ELEMENT).toBe(true);
-      const w = modInverse(s, STARK_EC_ORDER);
-      expect(w >= 1n && w < MAX_ELEMENT).toBe(true);
-
-      const key = starkEc.keyFromPublic({ x: pub.x.toString(16), y: pub.y.toString(16) });
-      const msgHash = registrationMessageHash(ethAddress, starkKey);
-      expect(key.verify(ellipticMsg(msgHash), { r: r.toString(16), s: s.toString(16) })).toBe(true);
+  it("derives public keys that match an independent scalar multiplication", () => {
+    for (const { privateKey } of cases.slice(0, 5)) {
+      const pub = starkPublicKey(privateKey);
+      expect(ecMul(privateKey, GEN)).toEqual([pub.x, pub.y]);
     }
   });
 
@@ -92,9 +112,7 @@ describe("signRegistration", () => {
     const { starkKey, signature } = signRegistration(privateKey, ethAddress);
     const [r, s] = decode(signature);
     const pub = starkPublicKey(privateKey);
-    const key = starkEc.keyFromPublic({ x: pub.x.toString(16), y: pub.y.toString(16) });
-    const otherHash = registrationMessageHash(other, starkKey);
-    expect(key.verify(ellipticMsg(otherHash), { r: r.toString(16), s: s.toString(16) })).toBe(false);
+    expect(contractVerify(registrationMessageHash(other, starkKey), r, s, pub.x, pub.y)).toBe(false);
   });
 
   it("is deterministic for the same key and address", () => {
