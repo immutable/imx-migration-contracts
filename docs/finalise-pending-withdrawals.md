@@ -10,6 +10,7 @@ During normal Immutable X operation, withdrawals were a two-step process: users 
 
 - An Ethereum wallet (e.g. MetaMask) connected to the correct network (Ethereum Mainnet or Sepolia Testnet).
 - Your **Stark Key** (see [How to find your Stark Key](#how-to-find-your-stark-key)).
+- A small amount of ETH in the connected wallet for gas.
 - The **Asset ID** for the token you are withdrawing (see [Asset ID Reference Tables](#asset-id-reference-tables)).
 
 ---
@@ -37,7 +38,18 @@ Before withdrawing, you can verify that you have a pending withdrawal by calling
    - `assetId`: The Asset ID for the token (the `token_int` value from the [reference tables](#asset-id-reference-tables) below).
 5. Click **Query**. A non-zero result confirms you have a pending withdrawal for that asset.
 
-### 2. Finalise the withdrawal
+### 2. Check that your Stark key is registered
+
+The bridge sends withdrawn funds to the Ethereum address registered for your Stark key. Check that one is on record:
+
+1. On the same **Read as Proxy** page, find the `getEthKey` function.
+2. Enter your Stark Key (in decimal) as `ownerKey` and click **Query**.
+3. The result is the address that will receive your funds:
+   - **Your Ethereum address**: continue to step 3.
+   - **`0x0000000000000000000000000000000000000000`**: the Stark key is not registered, and `withdraw` will fail with `USER_UNREGISTERED`. Follow [If `withdraw` fails with `USER_UNREGISTERED`](#if-withdraw-fails-with-user_unregistered) first, then come back to step 3.
+   - **A different address**: withdrawals for this Stark key can only be sent to that address, and the registration cannot be changed. If that address is yours, you can continue. Otherwise, contact Immutable support.
+
+### 3. Finalise the withdrawal
 
 1. Go to the explorer link for the relevant network from the table above.
 2. Navigate to **Contract** > **Write as Proxy**.
@@ -50,7 +62,43 @@ Before withdrawing, you can verify that you have a pending withdrawal by calling
 
 Once the transaction is confirmed, the withdrawn funds will be sent to the Ethereum address associated with your Stark Key.
 
-> **Note:** The `withdraw` function can be called by anyone, not just the owner. The funds are always sent to the Ethereum address registered to the given Stark Key.
+> **Note:** The `withdraw` function can be called by anyone, not just the owner. The funds are always sent to the Ethereum address that `getEthKey` returns for the given Stark Key (see step 2).
+
+---
+
+## If `withdraw` fails with `USER_UNREGISTERED`
+
+Some Immutable X accounts have a Stark key that is not the decimal form of their Ethereum address; it is a much larger number, around 75 digits. Immutable X linked most of these keys to their Ethereum address off-chain, so the bridge contract has no address on record:
+
+- `getEthKey` returns `0x0000000000000000000000000000000000000000`;
+- `withdraw` reverts with `USER_UNREGISTERED`, even though `getWithdrawalBalance` shows the funds.
+
+The fix is to register the Stark key to your Ethereum address on the bridge, once, and then withdraw as usual. Registration is available on Ethereum Mainnet only.
+
+Registration needs a signature made with your **Stark private key**. Immutable X derived that key from a signature of your Ethereum wallet, so producing it takes code rather than an Etherscan form. Use the [Stark Key Registration Tool](../tools/stark-key-registration/README.md). It runs locally in your browser and walks you through:
+
+1. connecting the Ethereum wallet you used with Immutable X;
+2. signing the Immutable X key message, which recreates your Stark key in the browser tab;
+3. registering the Stark key to your connected wallet (one transaction);
+4. withdrawing each pending token to that wallet (one transaction per token).
+
+> [!WARNING]
+> **The Stark Key Registration Tool has not been independently audited** and is provided as-is, without warranty. Read its [security model](../tools/stark-key-registration/README.md#security-model) before using it.
+>
+> Only run it from the official repository on your own computer. Immutable does not host it on any website. The signature it asks for recreates your Immutable X key: a website asking you to sign `Only sign this request if you’ve initiated an action with Immutable X.` is a phishing attempt. Immutable staff will never ask for this signature, your private keys, your seed phrase, or anything the tool displays.
+
+Registration is permanent. After it, `getEthKey` returns your address and anyone, including you, can finalise the withdrawal using [step 3](#3-finalise-the-withdrawal) above or the tool itself.
+
+---
+
+## Troubleshooting
+
+| Error or result | Cause | What to do |
+|-----------------|-------|------------|
+| `withdraw` reverts with `USER_UNREGISTERED` | The Stark key has no registered Ethereum address. | [Register the Stark key](#if-withdraw-fails-with-user_unregistered), then withdraw. |
+| `withdraw` reverts with `NO_PENDING_WITHDRAWAL` | No pending balance for this Stark key and Asset ID. | Check the Asset ID against the [reference tables](#asset-id-reference-tables). For tokens with several entries, try each. The withdrawal may already have been finalised. |
+| `getWithdrawalBalance` returns `0` for every token | Wrong Stark key, or the withdrawals were already finalised. | Confirm your Stark key (see [How to find your Stark Key](#how-to-find-your-stark-key)). The registration tool also shows the Stark key for your connected wallet. |
+| `getEthKey` returns an address you do not control | The Stark key was registered to that address earlier. | Registration cannot be changed. Contact Immutable support. |
 
 ---
 
@@ -58,12 +106,14 @@ Once the transaction is confirmed, the withdrawn funds will be sent to the Ether
 
 For **StarkEx v4 standard keys** (which includes the majority of Immutable X users), your Stark Key is simply the **decimal representation of your Ethereum address**.
 
+Other accounts have a separately generated Stark key: a number of around 75 digits, shown in Immutable X transaction details and support tickets. The [Stark Key Registration Tool](../tools/stark-key-registration/README.md) also recreates it from your Ethereum wallet.
+
 To convert your Ethereum address to a decimal Stark Key:
 
 1. Take your Ethereum address (e.g. `0x1234...abcd`).
 2. Convert the hexadecimal value to decimal. You can use a tool like [RapidTables Hex to Decimal Converter](https://www.rapidtables.com/convert/number/hex-to-decimal.html)
 
-> **Tip:** If you are unsure whether your key follows the standard mapping, you can verify by calling `getEthKey` on the contract with your suspected Stark Key — it should return your Ethereum address.
+> **Tip:** Calling `getEthKey` with a standard key returns your Ethereum address. For any other Stark key, `getEthKey` returns the registered address, or `0x0000000000000000000000000000000000000000` if the key has never been registered. See [If `withdraw` fails with `USER_UNREGISTERED`](#if-withdraw-fails-with-user_unregistered).
 
 ---
 
