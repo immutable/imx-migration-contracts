@@ -11,7 +11,7 @@
 > | Last day for manual withdrawals from Immutable X | 11 February 2026 |
 > | Automated fund migration to Immutable zkEVM | 5–9 March 2026 |
 
-> **Have a pending withdrawal from Immutable X?** If you initiated a withdrawal on Immutable X on or before 11 February 2026 and have not yet finalised it on Ethereum, your funds are still held by the bridge contract. This is separate from the automated migration. See the **[Finalise Manually Initiated Withdrawals Guide](./docs/finalise-pending-withdrawals.md)** for step-by-step instructions on how to claim your funds.
+> **Have a pending withdrawal from Immutable X?** If you initiated a withdrawal on Immutable X on or before 11 February 2026 and have not yet finalised it on Ethereum, your funds are still held by the bridge contract. This is separate from the automated migration. See the **[Finalise Manually Initiated Withdrawals Guide](./docs/finalise-pending-withdrawals.md)** for step-by-step instructions on how to claim your funds. If `withdraw` fails with `USER_UNREGISTERED`, the guide covers registering your Stark key with the [Stark Key Registration Tool](./tools/stark-key-registration/README.md).
 
 <!-- TOC -->
 * [Immutable X Asset Migration Contracts](#immutable-x-asset-migration-contracts)

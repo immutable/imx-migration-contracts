@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      The page makes no network requests of its own: all chain access goes through the
+      browser wallet extension (window.ethereum), which this policy does not restrict.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stark Key Registration</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./src/ui/style.css" />
+  </head>
+  <body>
+    <main id="app">
+      <noscript>This tool needs JavaScript enabled.</noscript>
+    </main>
+    <script type="module" src="./src/ui/main.ts"></script>
+  </body>
+</html>
