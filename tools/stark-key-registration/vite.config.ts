@@ -8,7 +8,8 @@ export default defineConfig({
     emptyOutDir: true,
     // The polyfill is an inline script, which the page's Content-Security-Policy blocks.
     modulePreload: { polyfill: false },
-    sourcemap: true,
+    // DevTools fetches source maps with a network request, which the page's connect-src 'none' blocks.
+    sourcemap: false,
   },
   server: {
     host: "127.0.0.1",

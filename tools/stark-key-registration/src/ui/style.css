@@ -65,6 +65,17 @@ h2 {
   margin: 0 0 12px;
 }
 
+.badge {
+  display: inline-block;
+  margin: 0 0 10px;
+  padding: 2px 10px;
+  border: 1px solid var(--info-border);
+  border-radius: 999px;
+  background: var(--info-bg);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 .lede {
   color: var(--muted);
   margin: 0 0 24px;

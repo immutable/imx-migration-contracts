@@ -2,6 +2,8 @@
 
 A web page that runs on your own computer. It links an Immutable X Stark key to its Ethereum wallet on the Immutable X bridge, then finalises the key's pending withdrawals to that wallet.
 
+**Ethereum Mainnet only.** Testnets, including Sepolia, are not supported.
+
 It is for users whose `withdraw()` call on the bridge fails with `USER_UNREGISTERED`. See [Finalise Manually Initiated Withdrawals](../../docs/finalise-pending-withdrawals.md) for the full withdrawal guide.
 
 > [!WARNING]
@@ -37,7 +39,7 @@ Stark keys below 2^160 (a Stark key equal to the decimal form of the Ethereum ad
 
 - [Node.js](https://nodejs.org/) 20 or later, and [git](https://git-scm.com/).
 - A browser wallet extension such as MetaMask or Rabby that holds **the Ethereum wallet you used with Immutable X**. A hardware wallet connected through the extension works.
-- A small amount of ETH in that wallet for gas: one registration transaction plus one transaction per token withdrawn.
+- ETH in that wallet for gas: one registration transaction plus one transaction per token withdrawn. Registration uses about 8 million gas, because the bridge verifies the Stark signature with elliptic-curve arithmetic in Solidity. Its cost scales with the gas price: about 0.0006 ETH at 0.07 gwei, 0.008 ETH at 1 gwei and 0.04 ETH at 5 gwei. A withdrawal uses a small fraction of that.
 
 ## Running the tool
 
@@ -89,6 +91,7 @@ Reject any prompt that does not match this table.
 | Wallet is connected to chain … | Switch the wallet to Ethereum Mainnet. The page reloads when the network changes. |
 | Bridge implementation is …, expected … | The bridge has been upgraded since this version of the tool. Do not continue. Pull the latest version of the repository or contact Immutable support. |
 | Registration simulation failed / Withdrawal simulation failed | The transaction would revert, so it was not sent. The revert reason follows the message. |
+| The wallet, or a simulator such as Tenderly or Phalcon, says registration is likely to fail or runs out of gas | Registration needs about 8 million gas. Check that the wallet's ETH balance covers that at the current gas price. A simulator also needs a gas limit of at least about 8,500,000. With too little gas, the trace stops at the modexp precompile (`0x…05`) inside `registerSender`. |
 
 ## Security model
 
@@ -139,7 +142,7 @@ The tool does not protect against a compromised computer, browser or wallet exte
 
 - Ethereum Mainnet only. The Sepolia bridge does not have `registerSender`.
 - Covers Stark keys derived from an Ethereum wallet signature, which is how the Immutable X SDK and Link created them. Keys created another way (for example, custodial accounts) are not found.
-- Covers the fungible tokens in `config/operate/mainnet/imx_tokens.json`. The bridge's `withdraw` does not support NFTs.
+- `getWithdrawalBalance` takes a Stark key and an asset ID, so the page calls it for each fungible token in `config/operate/mainnet/imx_tokens.json` (the tokens in the guide's Asset ID table) and lists the tokens it checked. A pending withdrawal in any other token is not found. The bridge's `withdraw` does not support NFTs.
 - `window.ethereum` is used as the wallet. With several wallet extensions installed, the page talks to whichever one claims `window.ethereum`. Disable the others if the wrong one responds.
 
 ## Development
@@ -159,9 +162,19 @@ ETH_RPC_URL=<mainnet RPC> npm run test:e2e       # built page in headless Chromi
 | `test/unit/derivation.test.ts` | Derived keys equal the outputs of `@imtbl/core-sdk` 3.6.1's `generateLegacyStarkPrivateKey`, recorded in `test/vectors/sdk-3.6.1.json`:<ul><li>typical wallets, whose derivation needs no API call;</li><li>ambiguous wallets, where the candidate set equals exactly the keys the SDK returns across its API-resolved branches, including a wallet with three distinct candidates;</li><li>public keys match the SDK's Stark signer.</li></ul> |
 | `test/unit/registration.test.ts` | Message hash matches `abi.encodePacked`. Signatures pass a BigInt port of the contract's `StarkCurveECDSA.verify`, including its `r` and `s⁻¹` bounds, and fail for a different address. Public keys match an independent scalar multiplication. |
 | `test/fork/bridge.fork.test.ts` | Against the deployed bridge:<ul><li>register and withdraw ETH and USDC;</li><li>recover funds held by a non-primary candidate key;</li><li>signature replay from another wallet is rejected;</li><li>keys registered to another address are refused;</li><li>no withdrawal before registration;</li><li>detection of a changed implementation and of a non-mainnet chain;</li><li>the account from the originating support ticket reads as 0.45 ETH pending and unregistered.</li></ul> |
-| `test/e2e/page.e2e.test.ts` | Clicks through the built page with a stub wallet, from disclaimers to register to withdraw. Also checks the no-funds path and the hosted-copy block, asserts that the page makes no requests beyond its own files, and that no CSP violations occur. |
+| `test/e2e/page.e2e.test.ts` | Clicks through the built page with a stub wallet that follows MetaMask's event ordering and chain ID validation:<ul><li>disclaimers, register and withdraw;</li><li>the no-funds path;</li><li>switching a wallet on another chain to mainnet;</li><li>keeping state through wallet events before connecting, and resetting on a real account or network change;</li><li>a readable error and retry when the wallet's RPC fails;</li><li>the `?allow-registration-without-funds` override;</li><li>the block on hosted copies.</li></ul>Asserts that the page makes no requests beyond its own files and that no CSP violations occur. |
 
 Pending withdrawals for test wallets are written into the bridge's `pendingWithdrawals` mapping (storage slot 8) on the fork.
+
+### Testing registration without pending withdrawals
+
+The page normally offers registration only for Stark keys with a pending withdrawal in the checked tokens. To exercise registration with a wallet that has none, open the page with a query parameter:
+
+```text
+http://127.0.0.1:4173/?allow-registration-without-funds
+```
+
+The page then shows a "Testing mode" banner and offers **Register Stark key** for every derived Stark key that is not yet registered. Signing, simulation and the `registerSender` transaction are unchanged. On mainnet, registration costs gas and permanently links that wallet's Stark key to the wallet, so use a dedicated test wallet.
 
 ### Regenerating the SDK vectors
 

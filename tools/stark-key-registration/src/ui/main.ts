@@ -1,6 +1,8 @@
-import { BrowserProvider, formatUnits, getAddress, toBeHex, type Eip1193Provider, type Signer } from "ethers";
+import { BrowserProvider, formatUnits, getAddress, type Eip1193Provider, type Signer } from "ethers";
 import {
   BRIDGE_ADDRESS,
+  MAINNET_CHAIN_ID,
+  TOKENS,
   checkDeployment,
   classify,
   getAccountState,
@@ -14,13 +16,21 @@ import { deriveAccounts, type DerivedAccount } from "../lib/session.js";
 
 declare global {
   interface Window {
-    ethereum?: Eip1193Provider & { on?: (event: string, handler: () => void) => void };
+    ethereum?: Eip1193Provider & { on?: (event: string, handler: (payload: unknown) => void) => void };
   }
 }
 
 /** The page refuses to run anywhere but the user's own machine. */
 const ALLOWED_HOSTNAMES = ["localhost", "127.0.0.1"];
 const ETHERSCAN = "https://etherscan.io";
+/**
+ * Testing override: offers registration for unregistered Stark keys that have no pending
+ * withdrawals in the checked tokens, so registration can be exercised end to end on mainnet.
+ * Not linked from the page; documented in the README's Development section.
+ */
+const ALLOW_REGISTRATION_WITHOUT_FUNDS = new URLSearchParams(location.search).has("allow-registration-without-funds");
+/** EIP-3326 chain ID: 0x-prefixed hex without leading zeros, which MetaMask enforces. */
+const MAINNET_CHAIN_ID_HEX = "0x1";
 
 const app = document.getElementById("app")!;
 
@@ -53,10 +63,30 @@ function formatBalance(b: Balance): string {
   return `${formatUnits(b.amount, b.decimals)} ${b.token.symbol}`;
 }
 
+interface WalletError {
+  code?: string | number;
+  shortMessage?: string;
+  message?: string;
+  info?: { error?: { message?: string; data?: { message?: string } } };
+}
+
 function errorMessage(err: unknown): string {
-  const e = err as { code?: string | number; shortMessage?: string; message?: string };
+  const e = err as WalletError;
   if (e.code === "ACTION_REJECTED" || e.code === 4001) return "You rejected the request in your wallet.";
   return e.shortMessage ?? e.message ?? String(err);
+}
+
+/**
+ * A failed eth_call surfaces from ethers as CALL_EXCEPTION "missing revert data" whether the
+ * contract reverted silently or the wallet's RPC endpoint failed. The endpoint's own message,
+ * when present, is in `info.error`.
+ */
+function rpcFailureDetail(err: unknown): string | null {
+  const e = err as WalletError;
+  const inner = e.info?.error;
+  if (!inner) return e.shortMessage === "missing revert data" ? "The network request failed without a reason." : null;
+  const detail = inner.data?.message ?? inner.message ?? "";
+  return detail.length > 240 ? detail.slice(0, 240) + "…" : detail;
 }
 
 // ---------------------------------------------------------------------------
@@ -68,11 +98,13 @@ function header(): HTMLElement {
     "header",
     {},
     el("h1", {}, "Register your Immutable X Stark key"),
+    el("p", { class: "badge" }, "Ethereum Mainnet only"),
     el(
       "p",
       { class: "lede" },
       "For Immutable X users whose withdrawal fails with USER_UNREGISTERED. This page links your Stark key to your " +
-        "Ethereum wallet on the Immutable X bridge, then lets you finalise your pending withdrawals to that wallet.",
+        "Ethereum wallet on the Immutable X bridge on Ethereum Mainnet, then lets you finalise your pending " +
+        "withdrawals to that wallet. Testnets, including Sepolia, are not supported.",
     ),
   );
 }
@@ -140,43 +172,88 @@ interface Connection {
   address: string;
 }
 
+/**
+ * Wallet the page is connected to. Before a connection exists, wallet events are
+ * expected (unlocking the wallet and approving the connection emits
+ * accountsChanged) and must not reload the page and discard the acknowledgements.
+ */
+let connectedAddress: string | null = null;
+/** Re-runs the connection attempt after a network change, while the wrong-network notice is shown. */
+let retryConnect: (() => void) | null = null;
+
 function connectSection(onConnected: (c: Connection) => void): HTMLElement {
   const status = el("div", { class: "status" });
   const button = el("button", { type: "button" }, "Connect wallet");
 
-  button.addEventListener("click", async () => {
+  let inFlight = false;
+  // A network switch triggers both chainChanged and the switch handler; only one attempt runs.
+  const connect = async () => {
+    if (inFlight || connectedAddress !== null) return;
+    retryConnect = null;
     status.replaceChildren();
     if (!window.ethereum) {
       status.append(notice("danger", "No browser wallet found. Install or enable your wallet extension and reload this page."));
       return;
     }
+    inFlight = true;
     button.disabled = true;
     try {
       const provider = new BrowserProvider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       const problems = await checkDeployment(provider);
       if (problems.length > 0) {
-        const switchButton = el("button", { type: "button" }, "Switch wallet to Ethereum Mainnet");
-        switchButton.addEventListener("click", () =>
-          provider.send("wallet_switchEthereumChain", [{ chainId: toBeHex(1) }]).catch(() => undefined),
-        );
-        status.append(notice("danger", ...problems.map((p) => el("p", {}, p))), switchButton);
+        status.append(notice("danger", ...problems.map((p) => el("p", {}, p))));
+        const { chainId } = await provider.getNetwork();
+        if (chainId !== MAINNET_CHAIN_ID) {
+          const switchButton = el("button", { type: "button" }, "Switch wallet to Ethereum Mainnet");
+          const switchStatus = el("div", { class: "status" });
+          switchButton.addEventListener("click", async () => {
+            switchStatus.replaceChildren();
+            try {
+              await window.ethereum!.request({
+                method: "wallet_switchEthereumChain",
+                params: [{ chainId: MAINNET_CHAIN_ID_HEX }],
+              });
+              await connect();
+            } catch (err) {
+              switchStatus.append(
+                notice("danger", `Could not switch network: ${errorMessage(err)} Switch to Ethereum Mainnet in your wallet.`),
+              );
+            }
+          });
+          status.append(
+            el(
+              "p",
+              {},
+              "Some wallets, including MetaMask, keep a separate network for each site, so this page can be on a " +
+                "different network from the one your wallet's main screen shows. The button below asks your wallet " +
+                "to switch this site to Ethereum Mainnet.",
+            ),
+            switchButton,
+            switchStatus,
+          );
+          retryConnect = () => void connect();
+        }
         button.disabled = false;
         return;
       }
       const signer = await provider.getSigner();
       const address = getAddress(await signer.getAddress());
       status.append(notice("ok", "Connected: ", el("code", {}, address)));
+      connectedAddress = address;
       onConnected({ provider, signer, address });
     } catch (err) {
       status.append(notice("danger", errorMessage(err)));
       button.disabled = false;
+    } finally {
+      inFlight = false;
     }
-  });
+  };
+  button.addEventListener("click", () => void connect());
 
   return section(
     "2. Connect your wallet",
-    el("p", {}, "Connect the wallet you used with Immutable X, on Ethereum Mainnet."),
+    el("p", {}, "Connect the wallet you used with Immutable X. It must be on Ethereum Mainnet (chain 1)."),
     button,
     status,
   );
@@ -214,6 +291,17 @@ function deriveSection(conn: Connection, onDerived: (accounts: DerivedAccount[])
   );
 }
 
+/** Lists the tokens the page checks; a pending withdrawal in any other token is not found. */
+function checkedTokensNote(): HTMLElement {
+  const symbols = [...new Set(TOKENS.map((t) => t.symbol))].sort();
+  return el(
+    "p",
+    { class: "muted" },
+    `Checked for pending withdrawals of: ${symbols.join(", ")}. Withdrawals of other tokens, and of NFTs, are not ` +
+      "shown by this tool.",
+  );
+}
+
 function starkKeyLabel(starkKey: bigint): HTMLElement {
   return el(
     "div",
@@ -234,7 +322,12 @@ function accountCard(
   report: (...nodes: Node[]) => void,
   refresh: () => void,
 ): HTMLElement {
-  const status = classify(state, conn.address);
+  let status = classify(state, conn.address);
+  if (ALLOW_REGISTRATION_WITHOUT_FUNDS && status.kind === "no-funds") {
+    if (state.registeredTo === null) status = { kind: "needs-registration" };
+    else if (state.registeredTo === getAddress(conn.address)) status = { kind: "ready-to-withdraw" };
+    else status = { kind: "registered-elsewhere", registeredTo: state.registeredTo };
+  }
   const log = el("div", { class: "status" });
   const card = el("article", { class: "card" }, starkKeyLabel(account.starkKey));
 
@@ -282,7 +375,14 @@ function accountCard(
       break;
     }
     case "ready-to-withdraw": {
-      card.append(notice("ok", "Registered to your connected wallet. Finalise each withdrawal below; each is one transaction."));
+      card.append(
+        notice(
+          "ok",
+          state.balances.length > 0
+            ? "Registered to your connected wallet. Finalise each withdrawal below; each is one transaction."
+            : "Registered to your connected wallet. No pending withdrawals for this Stark key.",
+        ),
+      );
       for (const balance of state.balances) {
         const button = el("button", { type: "button" }, `Withdraw ${formatBalance(balance)}`);
         button.addEventListener("click", async () => {
@@ -333,7 +433,7 @@ function accountsSection(conn: Connection, accounts: DerivedAccount[]): HTMLElem
       const states = await Promise.all(accounts.map((a) => getAccountState(conn.provider, a.starkKey)));
       const withFunds = accounts
         .map((account, i) => ({ account, state: states[i] }))
-        .filter(({ state }) => state.balances.length > 0);
+        .filter(({ state }) => ALLOW_REGISTRATION_WITHOUT_FUNDS || state.balances.length > 0);
 
       if (withFunds.length === 0) {
         body.replaceChildren(
@@ -348,12 +448,35 @@ function accountsSection(conn: Connection, accounts: DerivedAccount[]): HTMLElem
             ),
           ),
           ...accounts.map((a) => starkKeyLabel(a.starkKey)),
+          checkedTokensNote(),
         );
         return;
       }
-      body.replaceChildren(...withFunds.map(({ account, state }) => accountCard(conn, account, state, report, render)));
+      body.replaceChildren(
+        ...withFunds.map(({ account, state }) => accountCard(conn, account, state, report, render)),
+        checkedTokensNote(),
+      );
     } catch (err) {
-      body.replaceChildren(notice("danger", errorMessage(err)));
+      const retry = el("button", { type: "button" }, "Try again");
+      retry.addEventListener("click", () => {
+        body.replaceChildren(el("p", {}, "Checking the bridge for pending withdrawals…"));
+        void render();
+      });
+      const detail = rpcFailureDetail(err) ?? errorMessage(err);
+      body.replaceChildren(
+        notice(
+          "danger",
+          el("strong", {}, "Could not read your pending withdrawals from the bridge."),
+          el(
+            "p",
+            {},
+            "Your wallet's network connection returned an error, so nothing was checked and nothing was sent. " +
+              "Try again in a moment. If it keeps failing, check your wallet's Ethereum Mainnet network settings.",
+          ),
+          el("p", {}, el("code", {}, detail)),
+        ),
+        retry,
+      );
     }
   };
   void render();
@@ -368,10 +491,35 @@ function start(): void {
     app.append(blockedHost());
     return;
   }
+  if (ALLOW_REGISTRATION_WITHOUT_FUNDS) {
+    app.append(
+      notice(
+        "danger",
+        el("strong", {}, "Testing mode: registration without pending withdrawals."),
+        el(
+          "p",
+          {},
+          "This page was opened with ?allow-registration-without-funds, so it offers to register Stark keys that " +
+            "have no pending withdrawals in the checked tokens. Registration is permanent and costs gas. If you " +
+            "did not add this to the address yourself, remove it and reload the page.",
+        ),
+      ),
+    );
+  }
 
-  // A wallet or network change invalidates everything derived so far.
-  window.ethereum?.on?.("accountsChanged", () => location.reload());
-  window.ethereum?.on?.("chainChanged", () => location.reload());
+  // Once connected, a different account, a locked wallet or a network change invalidates
+  // everything derived so far.
+  window.ethereum?.on?.("accountsChanged", (accounts) => {
+    if (connectedAddress === null) return;
+    const [current] = (accounts as string[] | undefined) ?? [];
+    if (!current || getAddress(current) !== connectedAddress) location.reload();
+  });
+  // Wallets emit chainChanged after resolving wallet_switchEthereumChain, which can be after the
+  // page has already reconnected on mainnet; only a move off mainnet invalidates the connection.
+  window.ethereum?.on?.("chainChanged", (chainId) => {
+    if (connectedAddress === null) retryConnect?.();
+    else if (BigInt(chainId as string) !== MAINNET_CHAIN_ID) location.reload();
+  });
 
   const intro = disclaimers(() => {
     intro.querySelectorAll("input, button").forEach((n) => n.setAttribute("disabled", ""));

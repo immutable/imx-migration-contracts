@@ -76,6 +76,8 @@ export async function checkDeployment(provider: Provider): Promise<string[]> {
   return problems;
 }
 
+const BALANCE_BATCH_SIZE = 5;
+
 const decimalsCache = new Map<string, number>();
 
 async function tokenDecimals(provider: Provider, token: Token): Promise<number> {
@@ -91,9 +93,16 @@ export async function getAccountState(provider: Provider, starkKey: bigint): Pro
   const contract = bridge(provider);
   // getEthKey falls back to the key itself for keys below 2^160; derived Stark keys are far above that.
   const ethKey = getAddress(await contract.getEthKey(starkKey));
-  const amounts = await Promise.all(
-    TOKENS.map(async (token) => (await contract.getWithdrawalBalance(starkKey, token.assetType)) as bigint),
-  );
+  // Read in small batches: wallet RPC endpoints rate-limit bursts of parallel eth_calls.
+  const amounts: bigint[] = [];
+  for (let i = 0; i < TOKENS.length; i += BALANCE_BATCH_SIZE) {
+    const batch = TOKENS.slice(i, i + BALANCE_BATCH_SIZE);
+    amounts.push(
+      ...(await Promise.all(
+        batch.map(async (token) => (await contract.getWithdrawalBalance(starkKey, token.assetType)) as bigint),
+      )),
+    );
+  }
   const balances: Balance[] = [];
   for (const [i, amount] of amounts.entries()) {
     if (amount > 0n) balances.push({ token: TOKENS[i], amount, decimals: await tokenDecimals(provider, TOKENS[i]) });

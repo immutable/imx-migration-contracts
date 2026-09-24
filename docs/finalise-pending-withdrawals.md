@@ -10,7 +10,7 @@ During normal Immutable X operation, withdrawals were a two-step process: users 
 
 - An Ethereum wallet (e.g. MetaMask) connected to the correct network (Ethereum Mainnet or Sepolia Testnet).
 - Your **Stark Key** (see [How to find your Stark Key](#how-to-find-your-stark-key)).
-- A small amount of ETH in the connected wallet for gas.
+- ETH in the connected wallet for gas. A withdrawal needs a small amount; registering a Stark key (see [below](#if-withdraw-fails-with-user_unregistered)) uses about 8 million gas.
 - The **Asset ID** for the token you are withdrawing (see [Asset ID Reference Tables](#asset-id-reference-tables)).
 
 ---
@@ -86,6 +86,8 @@ Registration needs a signature made with your **Stark private key**. Immutable X
 > **The Stark Key Registration Tool has not been independently audited** and is provided as-is, without warranty. Read its [security model](../tools/stark-key-registration/README.md#security-model) before using it.
 >
 > Only run it from the official repository on your own computer. Immutable does not host it on any website. The signature it asks for recreates your Immutable X key: a website asking you to sign `Only sign this request if you’ve initiated an action with Immutable X.` is a phishing attempt. Immutable staff will never ask for this signature, your private keys, your seed phrase, or anything the tool displays.
+
+Registration uses about 8 million gas, because the bridge verifies the Stark signature on-chain. The cost depends on the gas price: about 0.0006 ETH at 0.07 gwei, 0.008 ETH at 1 gwei and 0.04 ETH at 5 gwei. Make sure the wallet holds enough ETH before registering. A wallet or transaction simulator may otherwise report the transaction as likely to fail or out of gas.
 
 Registration is permanent. After it, `getEthKey` returns your address and anyone, including you, can finalise the withdrawal using [step 3](#3-finalise-the-withdrawal) above or the tool itself.
 
